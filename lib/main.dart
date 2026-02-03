@@ -19,10 +19,12 @@ void main() async {
   CachedVariables.lang = await CacheHelper.getData(key: CachedKeys.lang);
   registerErrorHandler();
   runApp(
-    EasyLocalization(
-      supportedLocales: const [Locale('en', ''), Locale('ar', '')],
-      path: 'assets/lang',
-      child: const ProviderScope(child: App()),
+    ProviderScope(
+      child: EasyLocalization(
+        supportedLocales: const [Locale('en', ''), Locale('ar', '')],
+        path: 'assets/lang',
+        child: const App(),
+      ),
     ),
   );
 }

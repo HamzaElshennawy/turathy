@@ -155,5 +155,10 @@
   "enterOtpForNumber": "Enter the OTP sent to {}",
   "verify": "Verify",
   "resendCode": "Resend code",
-  "otpResentSuccessfully": "OTP resent successfully"
+  "otpResentSuccessfully": "OTP resent successfully",
+  "notifications": "Notifications",
+  "or": "Or",
+  "more": "More",
+  "settings": "Settings",
+  "products": "Products"
 }

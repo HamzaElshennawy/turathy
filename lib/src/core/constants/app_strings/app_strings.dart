@@ -154,6 +154,7 @@ class AppStrings {
   static const String waitingForPayment = "waitingForPayment";
   static const String alreadyPaid = "alreadyPaid";
   static const String or = "or";
+  static const String notifications = "notifications";
   // Validation - phone numbers
   static const String phoneRequired = "phoneRequired";
   static const String phoneInvalidInternational = "phoneInvalidInternational";
@@ -163,4 +164,7 @@ class AppStrings {
   static const String verify = "verify";
   static const String resendCode = "resendCode";
   static const String otpResentSuccessfully = "otpResentSuccessfully";
+  static const String more = "more";
+  static const String settings = "settings";
+  static const String products = "products";
 }

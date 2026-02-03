@@ -20,7 +20,7 @@
   "createAccount": "إنشاء حساب",
   "continueAsGuest": "المتابعة كضيف",
   "categories": "التصنيفات",
-  "auctions" : "المزادات",
+  "auctions": "المزادات",
   "hi": "مرحبا",
   "poweredBy": "مدعوم من ",
   "barakahCo": "بركة",
@@ -155,5 +155,10 @@
   "enterOtpForNumber": "أدخل رمز التحقق المرسل إلى {}",
   "verify": "تأكيد",
   "resendCode": "إعادة إرسال الرمز",
-  "otpResentSuccessfully": "تمت إعادة إرسال رمز التحقق بنجاح"
+  "otpResentSuccessfully": "تمت إعادة إرسال رمز التحقق بنجاح",
+  "notifications": "أشعارات",
+  "or": "او",
+  "more": "المزيد",
+  "settings": "الاعدادات",
+  "products": "المنتجات"
 }
