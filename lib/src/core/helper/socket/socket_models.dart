@@ -1,0 +1,347 @@
+/// Unified socket event models to avoid duplication across the app
+library;
+
+/// User count update event from socket
+class UserCountUpdate {
+  final int auctionId;
+  final int userCount;
+
+  const UserCountUpdate({
+    required this.auctionId,
+    required this.userCount,
+  });
+
+  factory UserCountUpdate.fromJson(Map<String, dynamic> json) {
+    return UserCountUpdate(
+      auctionId: json['auctionId'] as int,
+      userCount: json['userCount'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'auctionId': auctionId,
+      'userCount': userCount,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserCountUpdate &&
+          runtimeType == other.runtimeType &&
+          auctionId == other.auctionId &&
+          userCount == other.userCount;
+
+  @override
+  int get hashCode => auctionId.hashCode ^ userCount.hashCode;
+
+  @override
+  String toString() =>
+      'UserCountUpdate(auctionId: $auctionId, userCount: $userCount)';
+}
+
+/// Single comment model for socket events
+class SocketComment {
+  final int id;
+  final int auctionId;
+  final int userId;
+  final String comment;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final SocketUser user;
+
+  const SocketComment({
+    required this.id,
+    required this.auctionId,
+    required this.userId,
+    required this.comment,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.user,
+  });
+
+  factory SocketComment.fromJson(Map<String, dynamic> json) {
+    return SocketComment(
+      id: json['id'] as int,
+      auctionId: json['auction_id'] as int,
+      userId: json['user_id'] as int,
+      comment: json['comment'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      user: SocketUser.fromJson(json['user'] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'auction_id': auctionId,
+      'user_id': userId,
+      'comment': comment,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'user': user.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SocketComment &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          auctionId == other.auctionId &&
+          userId == other.userId &&
+          comment == other.comment &&
+          user == other.user;
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      auctionId.hashCode ^
+      userId.hashCode ^
+      comment.hashCode ^
+      user.hashCode;
+
+  @override
+  String toString() =>
+      'SocketComment(id: $id, auctionId: $auctionId, comment: $comment)';
+}
+
+/// Comment event containing new comment and all comments
+class CommentEvent {
+  final SocketComment newComment;
+  final List<SocketComment> allComments;
+
+  const CommentEvent({
+    required this.newComment,
+    required this.allComments,
+  });
+
+  factory CommentEvent.fromJson(Map<String, dynamic> json) {
+    return CommentEvent(
+      newComment:
+          SocketComment.fromJson(json['newComment'] as Map<String, dynamic>),
+      allComments: (json['comments'] as List<dynamic>)
+          .map((comment) =>
+              SocketComment.fromJson(comment as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'newComment': newComment.toJson(),
+      'comments': allComments.map((comment) => comment.toJson()).toList(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CommentEvent &&
+          runtimeType == other.runtimeType &&
+          newComment == other.newComment;
+
+  @override
+  int get hashCode => newComment.hashCode;
+
+  @override
+  String toString() =>
+      'CommentEvent(newComment: $newComment, totalComments: ${allComments.length})';
+}
+
+/// User model for socket events
+class SocketUser {
+  final int id;
+  final String name;
+  final String number;
+
+  const SocketUser({
+    required this.id,
+    required this.name,
+    required this.number,
+  });
+
+  factory SocketUser.fromJson(Map<String, dynamic> json) {
+    return SocketUser(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      number: json['number'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'number': number,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SocketUser &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          number == other.number;
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ number.hashCode;
+
+  @override
+  String toString() => 'SocketUser(id: $id, name: $name)';
+}
+
+/// Auction product change event model
+class AuctionProductChangeEvent {
+  final String product;
+  final num bidPrice;
+  final num minBidPrice;
+  final num actualPrice;
+
+  const AuctionProductChangeEvent({
+    required this.product,
+    required this.bidPrice,
+    required this.minBidPrice,
+    required this.actualPrice,
+  });
+
+  factory AuctionProductChangeEvent.fromJson(Map<String, dynamic> json) {
+    return AuctionProductChangeEvent(
+      product: json['product'] as String,
+      bidPrice: json['bidPrice'] as num,
+      minBidPrice: json['minBidPrice'] as num,
+      actualPrice: json['actualPrice'] as num,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'product': product,
+      'bidPrice': bidPrice,
+      'minBidPrice': minBidPrice,
+      'actualPrice': actualPrice,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuctionProductChangeEvent &&
+          runtimeType == other.runtimeType &&
+          product == other.product &&
+          bidPrice == other.bidPrice &&
+          minBidPrice == other.minBidPrice &&
+          actualPrice == other.actualPrice;
+
+  @override
+  int get hashCode =>
+      product.hashCode ^
+      bidPrice.hashCode ^
+      minBidPrice.hashCode ^
+      actualPrice.hashCode;
+
+  @override
+  String toString() =>
+      'AuctionProductChangeEvent(product: $product, bidPrice: $bidPrice)';
+}
+
+/// Socket error event model
+class SocketErrorEvent {
+  final String message;
+  final String? code;
+  final Map<String, dynamic>? details;
+
+  const SocketErrorEvent({
+    required this.message,
+    this.code,
+    this.details,
+  });
+
+  factory SocketErrorEvent.fromJson(Map<String, dynamic> json) {
+    return SocketErrorEvent(
+      message: json['message'] as String,
+      code: json['code'] as String?,
+      details: json['details'] as Map<String, dynamic>?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'message': message,
+      if (code != null) 'code': code,
+      if (details != null) 'details': details,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SocketErrorEvent &&
+          runtimeType == other.runtimeType &&
+          message == other.message &&
+          code == other.code;
+
+  @override
+  int get hashCode => message.hashCode ^ code.hashCode;
+
+  @override
+  String toString() => 'SocketErrorEvent(message: $message, code: $code)';
+}
+
+/// Auction ended event model
+class AuctionEndedEvent {
+  final String winnerName;
+  final int? winnerId;
+  final int auctionId;
+  final num? finalBidAmount;
+
+  const AuctionEndedEvent({
+    required this.winnerName,
+    this.winnerId,
+    required this.auctionId,
+    this.finalBidAmount,
+  });
+
+  factory AuctionEndedEvent.fromJson(Map<String, dynamic> json) {
+    final winningUser = json['winningUser'] as Map<String, dynamic>?;
+    return AuctionEndedEvent(
+      winnerName: winningUser?['name'] as String? ?? 'Unknown',
+      winnerId: winningUser?['id'] as int?,
+      auctionId: json['auctionId'] as int? ?? 0,
+      finalBidAmount: json['finalBidAmount'] as num?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'winningUser': {
+        'name': winnerName,
+        if (winnerId != null) 'id': winnerId,
+      },
+      'auctionId': auctionId,
+      if (finalBidAmount != null) 'finalBidAmount': finalBidAmount,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuctionEndedEvent &&
+          runtimeType == other.runtimeType &&
+          winnerName == other.winnerName &&
+          winnerId == other.winnerId &&
+          auctionId == other.auctionId;
+
+  @override
+  int get hashCode =>
+      winnerName.hashCode ^ winnerId.hashCode ^ auctionId.hashCode;
+
+  @override
+  String toString() =>
+      'AuctionEndedEvent(winner: $winnerName, auctionId: $auctionId)';
+}
