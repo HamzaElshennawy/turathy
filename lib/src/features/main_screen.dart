@@ -124,23 +124,47 @@ class _MainScreenState extends ConsumerState<MainScreen>
         // floatingActionButton: FloatingActionButton.extended(
         //     onPressed: () {}, label: Text('إضافة عرض')),
         appBar: AppBar(
-          leadingWidth: 80,
-          toolbarHeight: 45,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: Image.asset(
-              AppImages.logo,
-              width: 70,
-              filterQuality: FilterQuality.high,
-            ),
-          ),
-          //title: Text(
-          //  AppStrings.appName.tr(),
-          //  style: Theme.of(context).textTheme.titleLarge,
-          //),
+          leadingWidth: _selectedIndex >= 1 ? 80 : 0,
+          toolbarHeight: 75,
+          leading: _selectedIndex >= 1
+              ? Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Image.asset(
+                    AppImages.logo,
+                    width: 70,
+                    filterQuality: FilterQuality.high,
+                  ),
+                )
+              : null,
+          title: _selectedIndex < 1
+              ? Row(
+                  children: [
+                    _UserAvatar(
+                      // image: authController.valueOrNull?.image,
+                      name: authController.valueOrNull?.name,
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '👋 ${AppStrings.hi.tr()}, ${authController.valueOrNull?.name ?? 'User'}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey, fontSize: 18),
+                        ),
+                        //Text(
+                        //  authController.valueOrNull?.name ?? 'User',
+                        //  style: Theme.of(context).textTheme.titleMedium
+                        //      ?.copyWith(fontWeight: FontWeight.bold),
+                        //),
+                      ],
+                    ),
+                  ],
+                )
+              : null,
           actions: [
             IconButton(
-              icon: const Icon(Icons.notifications_outlined),
+              icon: const Icon(Icons.notifications_outlined, size: 32),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -190,7 +214,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
                 borderRadius: BorderRadius.circular(24),
                 child: NavigationBar(
                   height: 70,
-                  elevation: 0,
+                  elevation: 1,
                   backgroundColor: const Color(0xFFFDFDF5),
                   surfaceTintColor: Colors.transparent,
                   indicatorColor: const Color(0xFFE8F5E9),
@@ -286,3 +310,28 @@ final connectionProvider = StreamProvider<List<ConnectivityResult>>((ref) {
   final connectivity = Connectivity();
   return connectivity.onConnectivityChanged;
 });
+
+class _UserAvatar extends StatelessWidget {
+  final String? image;
+  final String? name;
+
+  const _UserAvatar({this.image, this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 30,
+      backgroundColor: Colors.grey.shade200,
+      backgroundImage: image != null ? NetworkImage(image!) : null,
+      child: image == null
+          ? Text(
+              name?.isNotEmpty == true ? name![0].toUpperCase() : 'U',
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            )
+          : null,
+    );
+  }
+}

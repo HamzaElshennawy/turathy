@@ -44,52 +44,57 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           children: [
             Center(
               child: AnimatedScale(
-                  onEnd: () {
-                    AuthRepository.getLocalDetails().then((_) {
-                      if (CachedVariables.phoneNumber != null &&
-                          CachedVariables.password != null &&
-                          CachedVariables.userId != null) {
-                        ref.read(authControllerProvider.notifier).signIn(
+                onEnd: () {
+                  AuthRepository.getLocalDetails().then((_) {
+                    if (CachedVariables.phoneNumber != null &&
+                        CachedVariables.password != null &&
+                        CachedVariables.userId != null) {
+                      ref
+                          .read(authControllerProvider.notifier)
+                          .signIn(
                             CachedVariables.phoneNumber!,
-                            CachedVariables.password!);
-                      }
-                      GoRouter.of(context).go(RouteConstants.home);
-                      // else {
-                      //   GoRouter.of(context).go(RouteConstants.signIn);
-                      // }
-                    });
-                  },
-                  duration: const Duration(seconds: 2),
-                  scale: logoScale,
-                  child: Image.asset(
-                    AppImages.logo,
-                    width: MediaQuery.of(context).size.width / 1.8,
-                  )),
+                            CachedVariables.password!,
+                          );
+                    }
+                    GoRouter.of(context).go(RouteConstants.home);
+                    // else {
+                    //   GoRouter.of(context).go(RouteConstants.signIn);
+                    // }
+                  });
+                },
+                duration: const Duration(seconds: 2),
+                scale: logoScale,
+                child: Image.asset(
+                  AppImages.logo,
+                  width: MediaQuery.of(context).size.width / 1.8,
+                ),
+              ),
             ),
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
-                  padding: const EdgeInsets.only(bottom: 15.0),
-                  child: RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                          text: AppStrings.poweredBy.tr(),
-                          style: Theme.of(context).textTheme.bodySmall,
-                          children: [
-                            TextSpan(
-                                text: AppStrings.barakahCo.tr(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        fontWeight: FontWeight.bold)),
-                            TextSpan(
-                                text:
-                                    '\n${AppStrings.allRightsReserved.tr()} © ${DateTime.now().year}\n${AppStrings.version.tr()} 1.0.0'),
-                          ]))),
+                padding: const EdgeInsets.only(bottom: 15.0),
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    text: AppStrings.poweredBy.tr(),
+                    style: Theme.of(context).textTheme.bodySmall,
+                    children: [
+                      TextSpan(
+                        text: AppStrings.turathiCo.tr(),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            '\n${AppStrings.allRightsReserved.tr()} © ${DateTime.now().year}\n${AppStrings.version.tr()} 1.0.0',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),

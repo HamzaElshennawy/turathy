@@ -1,5 +1,5 @@
 {
-  "appName": "بركة",
+  "appName": "تراثي",
   "player": "لاعب",
   "coach": "مدرب",
   "store": "متجر",
@@ -23,7 +23,7 @@
   "auctions": "المزادات",
   "hi": "مرحبا",
   "poweredBy": "مدعوم من ",
-  "barakahCo": "بركة",
+  "turathiCo": "تراثي",
   "allRightsReserved": "جميع الحقوق محفوظة",
   "version": "الإصدار",
   "profileAndSettings": "الملف الشخصي والإعدادات",
@@ -163,5 +163,6 @@
   "products": "المنتجات",
   "bidNow": "زايد الآن",
   "remainingTime": "الوقت المتبقى",
-  "currency": "ر.س"
+  "currency": "ر.س",
+  "buyNow": "أشتري الآن"
 }

@@ -23,7 +23,7 @@ class AppStrings {
   static const String auctions = "auctions";
   static const String hi = "hi";
   static const String poweredBy = "poweredBy";
-  static const String barakahCo = "barakahCo";
+  static const String turathiCo = "turathiCo";
   static const String allRightsReserved = "allRightsReserved";
   static const String version = "version";
   static const String profileAndSettings = "profileAndSettings";
@@ -155,6 +155,7 @@ class AppStrings {
   static const String alreadyPaid = "alreadyPaid";
   static const String or = "or";
   static const String notifications = "notifications";
+  static const String buyNow = "buyNow";
   // Validation - phone numbers
   static const String phoneRequired = "phoneRequired";
   static const String phoneInvalidInternational = "phoneInvalidInternational";

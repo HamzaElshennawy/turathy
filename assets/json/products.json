@@ -1,0 +1,62 @@
+[
+    {
+        "id": 1,
+        "title": "Vintage Camera",
+        "name": "Leica M3",
+        "description": "A classic rangefinder camera in excellent condition.",
+        "price": 1200.0,
+        "imageUrl": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        "category": "Electronics",
+        "brand": "Leica",
+        "stock": 5,
+        "rating": 4.8,
+        "reviews": 12,
+        "createdAt": "2023-01-01T10:00:00.000Z",
+        "updatedAt": "2023-01-05T10:00:00.000Z"
+    },
+    {
+        "id": 2,
+        "title": "Antique Vase",
+        "name": "Ming Dynasty Vase",
+        "description": "A beautiful blue and white porcelain vase.",
+        "price": 5000.0,
+        "imageUrl": "https://images.unsplash.com/photo-1581591524425-c7e0978865fc?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        "category": "Art",
+        "brand": "Generic",
+        "stock": 1,
+        "rating": 5.0,
+        "reviews": 3,
+        "createdAt": "2023-02-01T10:00:00.000Z",
+        "updatedAt": "2023-02-01T10:00:00.000Z"
+    },
+    {
+        "id": 3,
+        "title": "Classic Watch",
+        "name": "Rolex Submariner",
+        "description": "A timeless luxury watch.",
+        "price": 8500.0,
+        "imageUrl": "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        "category": "Fashion",
+        "brand": "Rolex",
+        "stock": 2,
+        "rating": 4.9,
+        "reviews": 25,
+        "createdAt": "2023-03-01T10:00:00.000Z",
+        "updatedAt": "2023-03-10T10:00:00.000Z"
+    },
+    {
+        "id": 4,
+        "title": "Retro Typewriter",
+        "name": "Olympia SM3",
+        "description": "A fully functional portable typewriter.",
+        "price": 350.0,
+        "imageUrl": "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+        "category": "Antiques",
+        "brand": "Olympia",
+        "stock": 3,
+        "rating": 4.5,
+        "reviews": 8,
+        "createdAt": "2023-04-01T10:00:00.000Z",
+        "updatedAt": "2023-04-01T10:00:00.000Z"
+    }
+]
