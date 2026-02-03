@@ -167,4 +167,7 @@ class AppStrings {
   static const String more = "more";
   static const String settings = "settings";
   static const String products = "products";
+  static const String bidNow = "bidNow";
+  static const String remainingTime = "remainingTime";
+  static const String currency = "currency";
 }

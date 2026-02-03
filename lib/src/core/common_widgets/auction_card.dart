@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -6,159 +8,244 @@ import '../../features/auctions/domain/auction_model.dart';
 import '../../features/auctions/presentation/auction_screen/auction_screen.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
+import '../constants/app_strings/app_strings.dart';
 
-class AuctionCard extends StatelessWidget {
+class AuctionCard extends StatefulWidget {
   final AuctionModel product;
 
   const AuctionCard({super.key, required this.product});
 
   @override
+  State<AuctionCard> createState() => _AuctionCardState();
+}
+
+class _AuctionCardState extends State<AuctionCard> {
+  Timer? _timer;
+  Duration _remainingTime = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateRemainingTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _calculateRemainingTime();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _calculateRemainingTime() {
+    if (widget.product.expiryDate != null) {
+      final expiryDate = DateTime.parse(widget.product.expiryDate!);
+      final now = DateTime.now();
+      if (expiryDate.isAfter(now)) {
+        setState(() {
+          _remainingTime = expiryDate.difference(now);
+        });
+      } else {
+        setState(() {
+          _remainingTime = Duration.zero;
+        });
+      }
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours.toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(Sizes.p8),
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AuctionScreen(product),
-              ));
+            context,
+            MaterialPageRoute(
+              builder: (context) => AuctionScreen(widget.product),
+            ),
+          );
         },
         onLongPress: () {
           AppFunctions.showImageDialog(
-              context: context,
-              imageUrl: product.imageUrl ?? '',
-              id: product.id ?? 0);
+            context: context,
+            imageUrl: widget.product.imageUrl ?? '',
+            id: widget.product.id ?? 0,
+          );
         },
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Image Section with Heart Icon
             Expanded(
+              flex: 5,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   Hero(
-                    tag: product.id ?? 0,
+                    tag: widget.product.id ?? 0,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(Sizes.p8),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
                       child: CachedNetworkImage(
-                        imageUrl: product.imageUrl ?? '',
+                        imageUrl: widget.product.imageUrl ?? '',
                         width: double.infinity,
                         fit: BoxFit.cover,
                         progressIndicatorBuilder:
                             (context, url, downloadProgress) => Center(
-                          child: CircularProgressIndicator(
-                              value: downloadProgress.progress),
+                              child: CircularProgressIndicator(
+                                value: downloadProgress.progress,
+                              ),
+                            ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image, size: 50),
                         ),
                       ),
                     ),
                   ),
-                  if (product.expiryDate != null)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: Sizes.p4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: const BorderRadius.only(
-                            bottomRight: Radius.circular(Sizes.p8),
-                            topLeft: Radius.circular(Sizes.p8),
-                          ),
-                        ),
-                        child: Text(
-                          'Ends in ${DateFormat.yMd().format(DateTime.parse(product.expiryDate!))}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall!
-                              .copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer),
-                        ),
+                  // Heart Icon (Favorite)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(200),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.favorite_border,
+                        color: Colors.grey[600],
+                        size: 24,
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
-            ListTile(
-              title: Text(
-                (context.locale.languageCode == 'en'
-                        ? product.title
-                        : product.title) ??
-                    '0',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                // style: Theme.of(context).textTheme.titleSmall,
-              ),
-              subtitle: Text(
-                (context.locale.languageCode == 'en'
-                        ? product.category?.name
-                        : product.category?.name) ??
-                    '0',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                // style: Theme.of(context).textTheme.subtitleSmall,
+            // Content Section
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      widget.product.title ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    gapH4,
+                    // Description
+                    Text(
+                      widget.product.description ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        height: 1.3,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Price and Time Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Price
+                        Text(
+                          '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        // Remaining Time
+                        if (widget.product.expiryDate != null)
+                          Text(
+                            '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFD32F2F), // Red color
+                            ),
+                          ),
+                      ],
+                    ),
+                    gapH8,
+                    // Bid Now Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AuctionScreen(widget.product),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFF1B5E20,
+                          ), // Dark green
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          AppStrings.bidNow.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
     );
-    // back: Card(
-    //   child: Padding(
-    //     padding: const EdgeInsets.all(Sizes.p4),
-    //     child: Column(
-    //       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    //       // crossAxisAlignment: CrossAxisAlignment.stretch,
-    //       children: [
-    //         Text(
-    //           product.nameEN,
-    //           style: Theme.of(context).textTheme.titleMedium!.copyWith(
-    //               fontWeight: FontWeight.bold,
-    //               color: Theme.of(context).colorScheme.primary),
-    //         ),
-    //         const Text(
-    //           'select quantity',
-    //           style: TextStyle(
-    //             fontSize: 15,
-    //             fontWeight: FontWeight.bold,
-    //           ),
-    //           textAlign: TextAlign.center,
-    //         ),
-    //         Row(
-    //           children: [
-    //             IconButton(onPressed: () {}, icon: const Icon(Icons.remove)),
-    //             Expanded(
-    //                 child: TextField(
-    //               controller: quantityController,
-    //               textAlign: TextAlign.center,
-    //               style: TextStyle(
-    //                 fontSize: 15,
-    //                 fontWeight: FontWeight.bold,
-    //                 color: Theme.of(context).colorScheme.onSecondaryContainer,
-    //               ),
-    //               keyboardType: TextInputType.number,
-    //             )),
-    //             IconButton(onPressed: () {}, icon: const Icon(Icons.add)),
-    //           ],
-    //         ),
-    //         Consumer(
-    //           builder: (BuildContext context, WidgetRef ref, Widget? child) {
-    //             return PrimaryButton(
-    //               isLoading: false,
-    //               onPressed: () {
-    //                 if (quantityController.text.isEmpty) return;
-    //                 ref.read(cartControllerProvider.notifier).addProduct(
-    //                     product, int.parse(quantityController.text));
-    //               },
-    //               text: 'Add to cart',
-    //             );
-    //           },
-    //         )
-    //       ],
-    //     ),
-    //   ),
-    // ),
   }
 }

@@ -158,67 +158,103 @@ class _MainScreenState extends ConsumerState<MainScreen>
               ),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          height: 60,
-          elevation: 3,
-          shadowColor: Theme.of(context).colorScheme.shadow.withAlpha(100),
-          backgroundColor: Theme.of(context).colorScheme.surface.withAlpha(98),
-          surfaceTintColor: Theme.of(context).colorScheme.primary.withAlpha(3),
-          indicatorColor: const Color(0xFFE8F5E9), // Light green for background
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          animationDuration: const Duration(milliseconds: 500),
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _selectedIndex = index;
-              pageController.jumpToPage(index);
-            });
-          },
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined, size: 22),
-              selectedIcon: const Icon(
-                Icons.home,
-                size: 22,
-                color: Color(0xFF1B5E20),
-              ), // Dark green
-              label: AppStrings.home.tr(),
+        extendBody: true, // Allows body to extend behind the floating navbar
+        bottomNavigationBar: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Gradient drop shadow
+            Container(
+              height: 100,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: const BoxDecoration(),
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.gavel_outlined, size: 22),
-              selectedIcon: const Icon(
-                Icons.gavel,
-                size: 22,
-                color: Color(0xFF1B5E20),
+            // Floating Navigation Bar
+            Container(
+              margin: const EdgeInsets.only(),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                //gradient: LinearGradient(
+                //  begin: Alignment.center,
+                //  end: Alignment.topCenter,
+                //  colors: [Colors.transparent, Color(0xFFDCCAA7)],
+                //),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFFDCCAA7),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
               ),
-              label: AppStrings.auctions.tr(),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.store_outlined, size: 22),
-              selectedIcon: const Icon(
-                Icons.store,
-                size: 22,
-                color: Color(0xFF1B5E20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: NavigationBar(
+                  height: 70,
+                  elevation: 0,
+                  backgroundColor: const Color(0xFFFDFDF5),
+                  surfaceTintColor: Colors.transparent,
+                  indicatorColor: const Color(0xFFE8F5E9),
+                  indicatorShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  animationDuration: const Duration(milliseconds: 500),
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (index) {
+                    setState(() {
+                      _selectedIndex = index;
+                      pageController.jumpToPage(index);
+                    });
+                  },
+                  destinations: [
+                    NavigationDestination(
+                      icon: const Icon(Icons.home_outlined, size: 24),
+                      selectedIcon: const Icon(
+                        Icons.home,
+                        size: 28,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      label: AppStrings.home.tr(),
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.gavel_outlined, size: 24),
+                      selectedIcon: const Icon(
+                        Icons.gavel,
+                        size: 28,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      label: AppStrings.auctions.tr(),
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.store_outlined, size: 24),
+                      selectedIcon: const Icon(
+                        Icons.store,
+                        size: 28,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      label: AppStrings.store.tr(),
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.inventory_2_outlined, size: 24),
+                      selectedIcon: const Icon(
+                        Icons.inventory_2,
+                        size: 28,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      label: AppStrings.myOrders.tr(),
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.menu_outlined, size: 24),
+                      selectedIcon: const Icon(
+                        Icons.menu,
+                        size: 28,
+                        color: Color(0xFF1B5E20),
+                      ),
+                      label: AppStrings.more.tr(),
+                    ),
+                  ],
+                ),
               ),
-              label: AppStrings.store.tr(),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.inventory_2_outlined, size: 22),
-              selectedIcon: const Icon(
-                Icons.inventory_2,
-                size: 22,
-                color: Color(0xFF1B5E20),
-              ),
-              label: AppStrings.myOrders.tr(),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.menu_outlined, size: 22),
-              selectedIcon: const Icon(
-                Icons.menu,
-                size: 22,
-                color: Color(0xFF1B5E20),
-              ),
-              label: AppStrings.more.tr(),
             ),
           ],
         ),

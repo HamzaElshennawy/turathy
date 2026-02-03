@@ -17,59 +17,76 @@ class LiveAuctionsWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          AppStrings.liveAuctions.tr(),
-          style: Theme.of(context).textTheme.titleMedium,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              AppStrings.liveAuctions.tr(),
+              //style: Theme.of(context).textTheme.titleLarge,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+            ),
+            TextButton(
+              onPressed: () {},
+              child: Text(
+                AppStrings.more.tr(),
+                style: TextStyle(
+                  fontSize: 16,
+                  decoration: TextDecoration.underline,
+                  color: Theme.of(context).primaryColor,
+                  letterSpacing: 1.2,
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ],
         ),
-        gapH4,
+        gapH24,
         Expanded(
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(liveAuctionsProvider);
               return productsListValue.when(
-                  data: (data) {
-                    if (data.isEmpty) {
-                      return Center(
-                        child: Text(AppStrings.noThingFound.tr()),
-                      );
-                    }
-                    return ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemExtent: MediaQuery.of(context).size.width * .7,
-                      itemCount: data.length,
-                      // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      //     crossAxisCount:
-                      //         AppFunctions.isMobile(context: context) ? 2 : 3,
-                      //     childAspectRatio: .7,
-                      //     crossAxisSpacing: 8,
-                      //     mainAxisSpacing: 8),
+                data: (data) {
+                  if (data.isEmpty) {
+                    return Center(child: Text(AppStrings.noThingFound.tr()));
+                  }
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemExtent: MediaQuery.of(context).size.width * .7,
+                    itemCount: data.length,
 
-                      itemBuilder: (BuildContext context, int index) {
-                        final product = data[index];
-                        return AuctionCard(
-                          product: product,
-                        );
-                      },
-                    );
-                  },
-                  loading: () => GridView.builder(
-                        shrinkWrap: true,
-                        itemCount: 4,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:
-                                AppFunctions.isMobile(context: context) ? 2 : 3,
-                            childAspectRatio: .7,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8),
-                        itemBuilder: (context, index) =>
-                            const ShimmerWidget(width: 400, height: 0),
-                      ),
-                  error: (error, stackTrace) => Center(
-                        child: Text('Error: $error'),
-                      ));
+                    // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    //     crossAxisCount:
+                    //         AppFunctions.isMobile(context: context) ? 2 : 3,
+                    //     childAspectRatio: .7,
+                    //     crossAxisSpacing: 8,
+                    //     mainAxisSpacing: 8),
+                    itemBuilder: (BuildContext context, int index) {
+                      final product = data[index];
+                      return AuctionCard(product: product);
+                    },
+                  );
+                },
+                loading: () => GridView.builder(
+                  shrinkWrap: true,
+                  itemCount: 4,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: AppFunctions.isMobile(context: context)
+                        ? 2
+                        : 3,
+                    childAspectRatio: .7,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemBuilder: (context, index) =>
+                      const ShimmerWidget(width: 400, height: 0),
+                ),
+                error: (error, stackTrace) =>
+                    Center(child: Text('Error: $error')),
+              );
             },
           ),
-        )
+        ),
       ],
     );
   }

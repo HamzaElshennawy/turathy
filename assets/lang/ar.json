@@ -121,7 +121,7 @@
   "auctionProducts": "سلع المزاد",
   "comments": "التعليقات",
   "writeComment": "اكتب تعليق",
-  "liveAuctions": "المزادات المباشرة",
+  "liveAuctions": "المزادات الجارية",
   "openAuctions": "المزادات المفتوحة",
   "auctionType": "نوع المزاد",
   "winningAuctions": "المزادات الفائزة",
@@ -160,5 +160,8 @@
   "or": "او",
   "more": "المزيد",
   "settings": "الاعدادات",
-  "products": "المنتجات"
+  "products": "المنتجات",
+  "bidNow": "زايد الآن",
+  "remainingTime": "الوقت المتبقى",
+  "currency": "ر.س"
 }
