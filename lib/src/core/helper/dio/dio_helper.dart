@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import '../../../features/authintication/data/auth_repository.dart';
@@ -19,6 +22,18 @@ class DioHelper {
         validateStatus: (status) => true,
       ),
     );
+
+    print('DioHelper init with baseUrl: ${EndPoints.baseUrl}');
+
+    if (!kIsWeb) {
+      (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+        final client = HttpClient();
+        client.badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
+        return client;
+      };
+    }
+
     dio.interceptors.add(
       PrettyDioLogger(
         requestHeader: true,

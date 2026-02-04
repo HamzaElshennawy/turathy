@@ -1,8 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 /// Socket configuration class for managing connection settings
 abstract class SocketConfig {
-  static const String _baseUrl = 'wss://backend.barakkh.sa/';
+  //static const String _baseUrl = 'wss://backend.barakkh.sa/';
+  static String get _baseUrl {
+    if (kIsWeb) return 'ws://localhost:4005/';
+    if (defaultTargetPlatform == TargetPlatform.android)
+      return 'wss://10.0.2.2:4005/';
+    return 'ws://localhost:4005/';
+  }
+
   static const int _reconnectionDelay = 3000;
   static const int _maxReconnectionAttempts = 5;
   static const int _timeout = 20000;

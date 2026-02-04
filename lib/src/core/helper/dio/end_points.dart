@@ -1,6 +1,14 @@
+import 'package:flutter/foundation.dart';
+
 abstract class EndPoints {
   // base url
-  static const String baseUrl = "https://backend.barakkh.sa/";
+  //static const String baseUrl = "https://backend.barakkh.sa/";
+  static String get baseUrl {
+    if (kIsWeb) return "http://localhost:4005/";
+    if (defaultTargetPlatform == TargetPlatform.android)
+      return "https://10.0.2.2:4005/";
+    return "http://localhost:4005/";
+  }
 
   // auth
   static const String login = "auth/login";

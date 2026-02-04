@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -14,6 +15,10 @@ import 'src/core/helper/fcm/fcm_service.dart';
 import 'src/features/profile/data/shared_preference_theme_repo.dart';
 
 void main() async {
+  if (!kIsWeb) {
+    HttpOverrides.global = MyHttpOverrides();
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
@@ -29,7 +34,7 @@ void main() async {
   CachedVariables.lang = await CacheHelper.getData(key: CachedKeys.lang);
 
   // Initialize FCM service
-  await fcmService.initialize();
+  fcmService.initialize();
 
   registerErrorHandler();
   runApp(
@@ -59,4 +64,13 @@ void registerErrorHandler() {
       body: Center(child: Text(details.toString())),
     );
   };
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
 }

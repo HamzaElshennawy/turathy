@@ -7,11 +7,13 @@ import '../data/auth_repository.dart';
 import '../domain/user_model.dart';
 
 class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
-  final TextEditingController passwordController =
-      TextEditingController(text: CachedVariables.password);
+  final TextEditingController passwordController = TextEditingController(
+    text: CachedVariables.password,
+  );
   final nameController = TextEditingController();
-  final phoneController =
-      TextEditingController(text: CachedVariables.phoneNumber);
+  final phoneController = TextEditingController(
+    text: CachedVariables.phoneNumber,
+  );
   final formKey = GlobalKey<FormState>();
 
   AuthController() : super(const AsyncValue.data(null));
@@ -20,8 +22,9 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 
   Future<void> signIn(String phone, String password) async {
     state = const AsyncValue.loading();
-    state =
-        await AsyncValue.guard(() => AuthRepository.signIn(phone, password));
+    state = await AsyncValue.guard(
+      () => AuthRepository.signIn(phone, password),
+    );
   }
 
   // get user
@@ -39,15 +42,20 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       var user = UserModel(
         password: passwordController.text,
         name: nameController.text,
-        phoneNumber: '+966${phoneController.text}',
+        //phoneNumber: '+966${phoneController.text}',
+        phoneNumber: '12${phoneController.text}',
       );
-      final result =
-          await AsyncValue.guard(() => AuthRepository.createUser(user));
+      final result = await AsyncValue.guard(
+        () => AuthRepository.createUser(user),
+      );
       if (result.hasError) {
         AppFunctions.logPrint(
-            message: '${result.error} error${result.stackTrace}');
+          message: '${result.error} error${result.stackTrace}',
+        );
         state = AsyncValue.error(
-            result.error.toString(), result.stackTrace ?? StackTrace.empty);
+          result.error.toString(),
+          result.stackTrace ?? StackTrace.empty,
+        );
         return false;
       } else if (result.hasValue) {
         state = const AsyncValue.data(null);
@@ -90,5 +98,5 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 // provider
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<UserModel?>>((ref) {
-  return AuthController();
-});
+      return AuthController();
+    });

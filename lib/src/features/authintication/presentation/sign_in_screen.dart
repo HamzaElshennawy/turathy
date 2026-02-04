@@ -40,11 +40,11 @@ class SignInScreen extends ConsumerWidget {
             .phoneController
             .text
             .trim();
-        final e164 = '+966$phone';
+        //final e164 = '+966$phone';
+        final e164 = '12$phone';
+
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => OtpScreen(phoneNumber: e164),
-          ),
+          MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: e164)),
         );
       }
     });
@@ -60,7 +60,9 @@ class SignInScreen extends ConsumerWidget {
               child: ResponsiveCenter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 16.0),
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -80,9 +82,7 @@ class SignInScreen extends ConsumerWidget {
                         AppStrings.signIn.tr(),
                         textAlign: TextAlign
                             .end, // RTL alignment by default for Arabic
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
+                        style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
@@ -93,9 +93,9 @@ class SignInScreen extends ConsumerWidget {
                       Text(
                         "اهلا بعودتك , نحن في انتظار مزاداتك القادمة", // "Welcome back..."
                         textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
 
@@ -119,11 +119,12 @@ class SignInScreen extends ConsumerWidget {
                                 validator: Validators.ksaLocalPhoneValidator,
                                 inputFormatters:
                                     Validators.ksaLocalPhoneInputFormatters,
-                                hintText: '5XXXXXXXX',
-                                prefix: '+966',
+                                hintText: '5XXXXXXXXXX',
+                                //prefix: '+966',
                                 // Adjusted style to look cleaner (white bg, subtle border)
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade300),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
                             ),
 
@@ -163,8 +164,9 @@ class SignInScreen extends ConsumerWidget {
                               validator: Validators.passwordValidator,
                               hintText: AppStrings.password,
                               prefixIcon: const Icon(Icons.lock),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
 
                             // Forgot Password
@@ -184,7 +186,6 @@ class SignInScreen extends ConsumerWidget {
                             //     ),
                             //   ),
                             // ),
-
                             const SizedBox(height: 32),
 
                             // Sign In Button
@@ -196,9 +197,13 @@ class SignInScreen extends ConsumerWidget {
                                 text: AppStrings.signIn.tr(),
                                 onPressed: () {
                                   if (_formKey.currentState!.validate()) {
-                                    final local =
-                                        controller.phoneController.text.trim();
-                                    final e164 = '+966$local';
+                                    final local = controller
+                                        .phoneController
+                                        .text
+                                        .trim();
+                                    //final e164 = '+966$local';
+                                    final e164 = '12$local';
+
                                     ref
                                         .read(authControllerProvider.notifier)
                                         .signIn(
@@ -221,9 +226,10 @@ class SignInScreen extends ConsumerWidget {
                           Expanded(child: Divider(color: Colors.grey.shade300)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(AppStrings.or.tr(),
-                                style: TextStyle(
-                                    color: Colors.grey.shade600)), // "Or"
+                            child: Text(
+                              AppStrings.or.tr(),
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ), // "Or"
                           ),
                           Expanded(child: Divider(color: Colors.grey.shade300)),
                         ],
