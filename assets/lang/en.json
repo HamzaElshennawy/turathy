@@ -162,5 +162,16 @@
   "settings": "Settings",
   "products": "Products",
   "bidNow": "Bid Now",
-  "buyNow": "Buy Now"
+  "buyNow": "Buy Now",
+  "markAllAsRead": "Mark all as read",
+  "allNotificationsMarkedRead": "All notifications marked as read",
+  "failedToMarkNotifications": "Failed to mark notifications",
+  "noNotifications": "No notifications",
+  "notificationsWillAppearHere": "Your notifications will appear here",
+  "errorLoadingNotifications": "Error loading notifications",
+  "daysAgo": "{} days ago",
+  "yesterday": "Yesterday",
+  "hoursAgo": "{} hours ago",
+  "minutesAgo": "{} minutes ago",
+  "justNow": "Just now"
 }

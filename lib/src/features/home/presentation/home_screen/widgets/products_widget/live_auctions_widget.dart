@@ -41,7 +41,8 @@ class LiveAuctionsWidget extends StatelessWidget {
           ],
         ),
         gapH24,
-        Expanded(
+        SizedBox(
+          height: MediaQuery.of(context).size.width,
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(liveAuctionsProvider);

@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/products_list_widget.dart';
-import 'package:turathy/src/features/home/presentation/home_screen/widgets/search_widget.dart';
+import 'package:turathi/src/features/home/presentation/home_screen/widgets/products_widget/products_list_widget.dart';
+import 'package:turathi/src/features/home/presentation/home_screen/widgets/search_widget.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_strings/app_strings.dart';
@@ -43,28 +43,24 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          Consumer(
-            builder: (context, ref, _) {
-              return Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(liveAuctionsProvider);
-                    ref.invalidate(getAllCategoriesProvider);
-                  },
-                  child: Column(
+          Expanded(
+            child: SingleChildScrollView(
+              child: Consumer(
+                builder: (context, ref, _) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SearchWidget(),
                       //CategoriesWidget(),
                       //gapH12,
-                      Expanded(child: LiveAuctionsWidget()),
+                      LiveAuctionsWidget(),
                       //Expanded(child: OpenAuctionsWidget()),
-                      Expanded(child: ProductsListWidget()),
+                      ProductsListWidget(),
                     ],
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),

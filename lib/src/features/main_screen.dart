@@ -4,11 +4,11 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/core/constants/app_images/app_images.dart';
-import 'package:turathy/src/core/helper/socket/socket_exports.dart';
-import 'package:turathy/src/features/more/presentation/more_screen.dart';
-import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
-import 'package:turathy/src/features/orders/presentation/orders_list_screen.dart';
+import 'package:turathi/src/core/constants/app_images/app_images.dart';
+import 'package:turathi/src/core/helper/socket/socket_exports.dart';
+import 'package:turathi/src/features/more/presentation/more_screen.dart';
+import 'package:turathi/src/features/notifications/presentation/notifications_screen.dart';
+import 'package:turathi/src/features/orders/presentation/orders_list_screen.dart';
 
 import '../core/constants/app_functions/app_functions.dart';
 import '../core/constants/app_sizes.dart';

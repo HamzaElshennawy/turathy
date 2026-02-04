@@ -1,0 +1,1844 @@
+{
+    "openapi": "3.0.0",
+    "paths": {
+        "/categories/add-category": {
+            "post": {
+                "operationId": "CategoriesController_AddCategory",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddCategoryDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Categories"
+                ]
+            }
+        },
+        "/categories/update-category": {
+            "patch": {
+                "operationId": "CategoriesController_UpdateCategory",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCategoryDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Categories"
+                ]
+            }
+        },
+        "/categories/delete-category": {
+            "delete": {
+                "operationId": "CategoriesController_DeleteCategory",
+                "parameters": [
+                    {
+                        "name": "category_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Categories"
+                ]
+            }
+        },
+        "/categories/get-all-categories": {
+            "get": {
+                "operationId": "CategoriesController_GetAllCategories",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Categories"
+                ]
+            }
+        },
+        "/categories/add-sub-category": {
+            "post": {
+                "operationId": "CategoriesController_AddSubCategory",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddSubCategoryDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Categories"
+                ]
+            }
+        },
+        "/auctions/add-auction": {
+            "post": {
+                "operationId": "AuctionsController_AddAuction",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddAuctionDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-auctions-by-categories": {
+            "post": {
+                "operationId": "AuctionsController_GetAuctionsByCategories",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GetAuctionsByCategoriesDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-auctions-by-category": {
+            "get": {
+                "operationId": "AuctionsController_GetAuctionByCategory",
+                "parameters": [
+                    {
+                        "name": "category_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "required": true,
+                        "in": "query",
+                        "example": "Image",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-all-auctions": {
+            "get": {
+                "operationId": "AuctionsController_GetAllAuctions",
+                "parameters": [
+                    {
+                        "name": "type",
+                        "required": true,
+                        "in": "query",
+                        "example": "Image",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-user-auctions": {
+            "get": {
+                "operationId": "AuctionsController_GetUserAuctions",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "required": true,
+                        "in": "query",
+                        "example": "Image",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-auction": {
+            "get": {
+                "operationId": "AuctionsController_GetAuction",
+                "parameters": [
+                    {
+                        "name": "auction_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-winnings": {
+            "get": {
+                "operationId": "AuctionsController_GetWinnings",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/upload-auctions": {
+            "post": {
+                "operationId": "AuctionsController_uploadRooms",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/uploadSheetForAuctions"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/get-all-winnings": {
+            "get": {
+                "operationId": "AuctionsController_GetAllWinnings",
+                "parameters": [
+                    {
+                        "name": "dateFrom",
+                        "required": true,
+                        "in": "query",
+                        "example": "2024-10-03T00:00:00",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dateTo",
+                        "required": true,
+                        "in": "query",
+                        "example": "2024-10-03T00:00:00",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/delete-all-auctions": {
+            "delete": {
+                "operationId": "AuctionsController_DeleteAllAuctions",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/delete-auction": {
+            "delete": {
+                "operationId": "AuctionsController_DeleteAuction",
+                "parameters": [
+                    {
+                        "name": "auction_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auctions/change-all-winnings": {
+            "post": {
+                "operationId": "AuctionsController_ChangeAllWinnings",
+                "parameters": [],
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auctions"
+                ]
+            }
+        },
+        "/auth/signup": {
+            "post": {
+                "operationId": "AuthController_signUp",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SignUpDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auth"
+                ]
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "operationId": "AuthController_Login",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auth"
+                ]
+            }
+        },
+        "/auth/otp": {
+            "post": {
+                "operationId": "AuthController_OTP",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OTPDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auth"
+                ]
+            }
+        },
+        "/auth/resend-otp": {
+            "post": {
+                "operationId": "AuthController_ResendOtp",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserIdentifier"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auth"
+                ]
+            }
+        },
+        "/auth/request-otp": {
+            "post": {
+                "operationId": "AuthController_RequestOtp",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RequestOtpDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auth"
+                ]
+            }
+        },
+        "/auth/change-password": {
+            "post": {
+                "operationId": "AuthController_ChangePassword",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Auth"
+                ]
+            }
+        },
+        "/agora/token": {
+            "get": {
+                "operationId": "AgoraController_GenerateAgoraToken",
+                "parameters": [
+                    {
+                        "name": "channelName",
+                        "required": true,
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "uid",
+                        "required": false,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "isPublisher",
+                        "required": true,
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Agora"
+                ]
+            }
+        },
+        "/users/get-all-users": {
+            "get": {
+                "operationId": "UsersController_GetAllUsers",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Users"
+                ]
+            }
+        },
+        "/users/delete-user": {
+            "delete": {
+                "operationId": "UsersController_DeleteUser",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Users"
+                ]
+            }
+        },
+        "/users/delete-all-users": {
+            "delete": {
+                "operationId": "UsersController_DeleteAllUsers",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Users"
+                ]
+            }
+        },
+        "/users/get-user": {
+            "get": {
+                "operationId": "UsersController_GetUser",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Users"
+                ]
+            }
+        },
+        "/live-auction-requests/add-live-auction-request": {
+            "post": {
+                "operationId": "LiveAuctionRequestsController_AddLiveAuctionRequest",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddLiveAuctionRequestDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Live-Auction-Requests"
+                ]
+            }
+        },
+        "/live-auction-requests/delete-live-auction-request": {
+            "delete": {
+                "operationId": "LiveAuctionRequestsController_DeleteLiveAuctionRequest",
+                "parameters": [
+                    {
+                        "name": "request_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Live-Auction-Requests"
+                ]
+            }
+        },
+        "/live-auction-requests/confirm-request": {
+            "patch": {
+                "operationId": "LiveAuctionRequestsController_ConfirmRequest",
+                "parameters": [
+                    {
+                        "name": "request_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Live-Auction-Requests"
+                ]
+            }
+        },
+        "/live-auction-requests/get-all-requests": {
+            "get": {
+                "operationId": "LiveAuctionRequestsController_GetAllRequests",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Live-Auction-Requests"
+                ]
+            }
+        },
+        "/live-auction-requests/delete-all-request": {
+            "delete": {
+                "operationId": "LiveAuctionRequestsController_DeleteAllRequest",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Live-Auction-Requests"
+                ]
+            }
+        },
+        "/order/add-order": {
+            "post": {
+                "operationId": "OrderController_AddOrder",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddOrderDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Order"
+                ]
+            }
+        },
+        "/order/confirm-order": {
+            "post": {
+                "operationId": "OrderController_ConfirmOrder",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrderIdentifier"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Order"
+                ]
+            }
+        },
+        "/order/add-payment": {
+            "post": {
+                "operationId": "OrderController_AddPayment",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddPaymentDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Order"
+                ]
+            }
+        },
+        "/order/get-all-orders": {
+            "get": {
+                "operationId": "OrderController_GetAllOrders",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Order"
+                ]
+            }
+        },
+        "/order/delete-all-orders": {
+            "delete": {
+                "operationId": "OrderController_DeleteAllOrders",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Order"
+                ]
+            }
+        },
+        "/products/add-product": {
+            "post": {
+                "operationId": "ProductsController_AddProduct",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddProductDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Products"
+                ]
+            }
+        },
+        "/products/get-product": {
+            "get": {
+                "operationId": "ProductsController_GetProduct",
+                "parameters": [
+                    {
+                        "name": "product_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Products"
+                ]
+            }
+        },
+        "/products/get-products": {
+            "get": {
+                "operationId": "ProductsController_GetAllProducts",
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Products"
+                ]
+            }
+        },
+        "/products/delete-product": {
+            "delete": {
+                "operationId": "ProductsController_DeleteProduct",
+                "parameters": [
+                    {
+                        "name": "product_id",
+                        "required": true,
+                        "in": "query",
+                        "example": 1,
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Products"
+                ]
+            }
+        },
+        "/products/delete-products": {
+            "delete": {
+                "operationId": "ProductsController_DeleteProducts",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DeleteProductsDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Products"
+                ]
+            }
+        },
+        "/notifications/register-device": {
+            "post": {
+                "operationId": "NotificationsController_registerDevice",
+                "summary": "Register device token for push notifications",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterDeviceDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Notifications"
+                ]
+            }
+        },
+        "/notifications/unregister-device": {
+            "delete": {
+                "operationId": "NotificationsController_unregisterDevice",
+                "summary": "Unregister device token (on logout)",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnregisterDeviceDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Notifications"
+                ]
+            }
+        },
+        "/notifications/{userId}": {
+            "get": {
+                "operationId": "NotificationsController_getNotifications",
+                "summary": "Get user notifications with pagination",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": true,
+                        "in": "query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "required": true,
+                        "in": "query",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Notifications"
+                ]
+            }
+        },
+        "/notifications/{id}/read": {
+            "patch": {
+                "operationId": "NotificationsController_markAsRead",
+                "summary": "Mark a notification as read",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Notifications"
+                ]
+            }
+        },
+        "/notifications/read-all/{userId}": {
+            "patch": {
+                "operationId": "NotificationsController_markAllAsRead",
+                "summary": "Mark all notifications as read for a user",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "required": true,
+                        "in": "path",
+                        "schema": {
+                            "type": "number"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Notifications"
+                ]
+            }
+        },
+        "/notifications/test": {
+            "post": {
+                "operationId": "NotificationsController_sendTestNotification",
+                "summary": "[TEST] Send a test notification to a user",
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendTestNotificationDto"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Notifications"
+                ]
+            }
+        }
+    },
+    "info": {
+        "title": "Dev Turathi APIs From deep blue Company",
+        "description": "RESTful APIs for the Turathi system provided by deep blue Company. These APIs enable interactions with various functionalities, including user management, data retrieval, and more.",
+        "version": "1.0.0",
+        "contact": {}
+    },
+    "tags": [],
+    "servers": [],
+    "components": {
+        "securitySchemes": {
+            "bearer": {
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "type": "http"
+            }
+        },
+        "schemas": {
+            "AddCategoryDto": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "╪Ñ╪¿┘ä"
+                    },
+                    "pic_url": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "required": [
+                    "name",
+                    "pic_url"
+                ]
+            },
+            "UpdateCategoryDto": {
+                "type": "object",
+                "properties": {
+                    "category_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "╪Ñ╪¿┘ä"
+                    },
+                    "pic_url": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "required": [
+                    "category_id",
+                    "name"
+                ]
+            },
+            "AddSubCategoryDto": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "╪º┘ä╪¡╪¼┘à"
+                    },
+                    "category_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "parend_id": {
+                        "type": "number",
+                        "example": 1
+                    }
+                },
+                "required": [
+                    "name",
+                    "category_id"
+                ]
+            },
+            "AddAuctionDto": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "example": "Auction"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Auction"
+                    },
+                    "actualPrice": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "minBidPrice": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "bidPrice": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "quantity": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "expiryDate": {
+                        "format": "date-time",
+                        "type": "string",
+                        "example": "2024-09-11T10:11:11"
+                    },
+                    "category_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "subCategories_ids": {
+                        "example": [
+                            1,
+                            2
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "required": [
+                    "title",
+                    "description",
+                    "actualPrice",
+                    "minBidPrice",
+                    "bidPrice",
+                    "quantity",
+                    "expiryDate",
+                    "category_id",
+                    "user_id",
+                    "image_url"
+                ]
+            },
+            "GetCategoryDto": {
+                "type": "object",
+                "properties": {
+                    "category_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "subCategories_ids": {
+                        "example": [
+                            1,
+                            2
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "required": [
+                    "category_id",
+                    "subCategories_ids"
+                ]
+            },
+            "GetAuctionsByCategoriesDto": {
+                "type": "object",
+                "properties": {
+                    "search": {
+                        "example": [
+                            {
+                                "category_id": 1,
+                                "subCategories_ids": [
+                                    1,
+                                    2
+                                ]
+                            },
+                            {
+                                "category_id": 2,
+                                "subCategories_ids": [
+                                    1,
+                                    2
+                                ]
+                            }
+                        ],
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GetCategoryDto"
+                        }
+                    }
+                },
+                "required": [
+                    "search"
+                ]
+            },
+            "uploadSheetForAuctions": {
+                "type": "object",
+                "properties": {
+                    "excel_file": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                },
+                "required": [
+                    "excel_file"
+                ]
+            },
+            "SignUpDto": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "┘à╪¡┘à┘ê╪» ╪│┘ä┘è┘à"
+                    },
+                    "phone_number": {
+                        "type": "string",
+                        "example": "12345678911"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "1234"
+                    }
+                },
+                "required": [
+                    "name",
+                    "phone_number",
+                    "password"
+                ]
+            },
+            "LoginDto": {
+                "type": "object",
+                "properties": {
+                    "phone_number": {
+                        "type": "string",
+                        "example": "12345678911"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "1234"
+                    }
+                },
+                "required": [
+                    "phone_number",
+                    "password"
+                ]
+            },
+            "OTPDto": {
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "type": "string",
+                        "example": "number"
+                    },
+                    "otp": {
+                        "type": "string",
+                        "example": "otp"
+                    }
+                },
+                "required": [
+                    "number",
+                    "otp"
+                ]
+            },
+            "UserIdentifier": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "number",
+                        "example": 1
+                    }
+                },
+                "required": [
+                    "user_id"
+                ]
+            },
+            "RequestOtpDto": {
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "type": "string",
+                        "example": "number"
+                    }
+                },
+                "required": [
+                    "number"
+                ]
+            },
+            "ChangePasswordDto": {
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "type": "string",
+                        "example": "otp"
+                    },
+                    "otp": {
+                        "type": "string",
+                        "example": "otp"
+                    },
+                    "password": {
+                        "type": "string",
+                        "example": "password"
+                    }
+                },
+                "required": [
+                    "number",
+                    "otp",
+                    "password"
+                ]
+            },
+            "RequestProduct": {
+                "type": "object",
+                "properties": {
+                    "product": {
+                        "type": "string",
+                        "example": "Camel"
+                    },
+                    "bidPrice": {
+                        "type": "string",
+                        "example": "100"
+                    },
+                    "minBidPrice": {
+                        "type": "string",
+                        "example": "1000"
+                    },
+                    "actualPrice": {
+                        "type": "string",
+                        "example": "5000"
+                    }
+                },
+                "required": [
+                    "product",
+                    "bidPrice",
+                    "minBidPrice",
+                    "actualPrice"
+                ]
+            },
+            "AddLiveAuctionRequestDto": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "example": "Auction"
+                    },
+                    "current_product": {
+                        "type": "string",
+                        "example": "Auction"
+                    },
+                    "product_description": {
+                        "type": "string",
+                        "example": "Auction"
+                    },
+                    "actualPrice": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "minBidPrice": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "bidPrice": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "type": {
+                        "type": "string",
+                        "example": "Image"
+                    },
+                    "user_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "category_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "format": "binary"
+                    },
+                    "expiryDate": {
+                        "format": "date-time",
+                        "type": "string",
+                        "example": "2024-09-11T10:11:11"
+                    },
+                    "startDate": {
+                        "format": "date-time",
+                        "type": "string",
+                        "example": "2024-09-11T10:11:11"
+                    },
+                    "products": {
+                        "example": [
+                            {
+                                "product": "Camel",
+                                "bidPrice": "100",
+                                "minBidPrice": "2000",
+                                "actualPrice": "5000"
+                            },
+                            {
+                                "product": "Cow",
+                                "bidPrice": "100",
+                                "minBidPrice": "1000",
+                                "actualPrice": "5000"
+                            }
+                        ],
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RequestProduct"
+                        }
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary"
+                        }
+                    }
+                },
+                "required": [
+                    "title",
+                    "type",
+                    "user_id",
+                    "category_id",
+                    "image_url",
+                    "expiryDate",
+                    "startDate",
+                    "products"
+                ]
+            },
+            "AddOrderDto": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "auction_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "total": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "date": {
+                        "format": "date-time",
+                        "type": "string",
+                        "example": "2024-12-15"
+                    },
+                    "cName": {
+                        "type": "string",
+                        "example": "name"
+                    },
+                    "cCountry": {
+                        "type": "string",
+                        "example": "KSA"
+                    },
+                    "cCity": {
+                        "type": "string",
+                        "example": "ULA"
+                    },
+                    "cMobile": {
+                        "type": "string",
+                        "example": "5674576"
+                    },
+                    "cAddress": {
+                        "type": "string",
+                        "example": "address"
+                    },
+                    "PCs": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "codAmt": {
+                        "type": "number",
+                        "example": "Value Either 0 or greater than 0 in case of COD"
+                    },
+                    "weight": {
+                        "type": "string",
+                        "example": "1"
+                    },
+                    "itemDesc": {
+                        "type": "string",
+                        "example": "1"
+                    }
+                },
+                "required": [
+                    "user_id",
+                    "auction_id",
+                    "total",
+                    "date",
+                    "cName",
+                    "cCountry",
+                    "cCity",
+                    "cMobile",
+                    "cAddress",
+                    "PCs",
+                    "codAmt",
+                    "weight",
+                    "itemDesc"
+                ]
+            },
+            "OrderIdentifier": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "number",
+                        "example": 1
+                    },
+                    "payment_status": {
+                        "type": "string",
+                        "example": "Image"
+                    },
+                    "payment_id": {
+                        "type": "string",
+                        "example": "1"
+                    }
+                },
+                "required": [
+                    "order_id",
+                    "payment_status",
+                    "payment_id"
+                ]
+            },
+            "AddPaymentDto": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "name"
+                    },
+                    "number": {
+                        "type": "string",
+                        "example": "name"
+                    },
+                    "MM": {
+                        "type": "string",
+                        "example": "name"
+                    },
+                    "YY": {
+                        "type": "string",
+                        "example": "name"
+                    },
+                    "CVV": {
+                        "type": "string",
+                        "example": "name"
+                    }
+                },
+                "required": [
+                    "name",
+                    "number",
+                    "MM",
+                    "YY",
+                    "CVV"
+                ]
+            },
+            "AddProductDto": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "example": "Premium Leather Wallet"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Wallet"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "High-quality genuine leather wallet with multiple card slots"
+                    },
+                    "price": {
+                        "type": "number",
+                        "example": 49.99
+                    },
+                    "imageUrl": {
+                        "type": "string",
+                        "example": "https://example.com/image.jpg"
+                    },
+                    "category": {
+                        "type": "string",
+                        "example": "Accessories"
+                    },
+                    "brand": {
+                        "type": "string",
+                        "example": "BrandName"
+                    },
+                    "stock": {
+                        "type": "number",
+                        "example": 100
+                    },
+                    "rating": {
+                        "type": "number",
+                        "example": 4.5
+                    },
+                    "reviews": {
+                        "type": "number",
+                        "example": 25
+                    },
+                    "sku": {
+                        "type": "string",
+                        "example": "SKU-12345"
+                    },
+                    "discount": {
+                        "type": "number",
+                        "example": 10
+                    },
+                    "isActive": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                }
+            },
+            "DeleteProductsDto": {
+                "type": "object",
+                "properties": {
+                    "product_ids": {
+                        "example": [
+                            1,
+                            2,
+                            3
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "product_ids"
+                ]
+            },
+            "RegisterDeviceDto": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "number",
+                        "description": "User ID",
+                        "example": 1
+                    },
+                    "token": {
+                        "type": "string",
+                        "description": "FCM device token",
+                        "example": "fcm_token_string"
+                    },
+                    "platform": {
+                        "type": "string",
+                        "description": "Platform type",
+                        "enum": [
+                            "ANDROID",
+                            "IOS",
+                            "WEB"
+                        ],
+                        "example": "ANDROID"
+                    }
+                },
+                "required": [
+                    "user_id",
+                    "token",
+                    "platform"
+                ]
+            },
+            "UnregisterDeviceDto": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "FCM device token to remove",
+                        "example": "fcm_token_string"
+                    }
+                },
+                "required": [
+                    "token"
+                ]
+            },
+            "SendTestNotificationDto": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "number",
+                        "description": "User ID to send notification to",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Notification title",
+                        "example": "Test Notification"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Notification body",
+                        "example": "This is a test notification"
+                    }
+                },
+                "required": [
+                    "user_id"
+                ]
+            }
+        }
+    }
+}

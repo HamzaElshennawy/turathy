@@ -171,4 +171,18 @@ class AppStrings {
   static const String bidNow = "bidNow";
   static const String remainingTime = "remainingTime";
   static const String currency = "currency";
+  static const String markAllAsRead = "markAllAsRead";
+  static const String allNotificationsMarkedRead = "allNotificationsMarkedRead";
+  static const String failedToMarkNotifications = "failedToMarkNotifications";
+  static const String noNotifications = "noNotifications";
+  static const String notificationsWillAppearHere =
+      "notificationsWillAppearHere";
+  static const String errorLoadingNotifications = "errorLoadingNotifications";
+
+  // Time Ago
+  static const String daysAgo = "daysAgo";
+  static const String yesterday = "yesterday";
+  static const String hoursAgo = "hoursAgo";
+  static const String minutesAgo = "minutesAgo";
+  static const String justNow = "justNow";
 }

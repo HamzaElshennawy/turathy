@@ -1,6 +1,6 @@
-import 'package:turathy/src/core/helper/dio/end_points.dart';
-import 'package:turathy/src/core/helper/socket/socket_exports.dart';
-import 'package:turathy/src/features/home/domain/category_model.dart';
+import 'package:turathi/src/core/helper/dio/end_points.dart';
+import 'package:turathi/src/core/helper/socket/socket_exports.dart';
+import 'package:turathi/src/features/home/domain/category_model.dart';
 
 class AuctionModel {
   int? id;

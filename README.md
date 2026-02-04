@@ -1,4 +1,4 @@
-# turathy
+# turathi
 
 A new Flutter project.
 

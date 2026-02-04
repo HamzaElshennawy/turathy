@@ -22,7 +22,8 @@ class ProductsListWidget extends StatelessWidget {
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
         ),
         gapH4,
-        Expanded(
+        SizedBox(
+          height: MediaQuery.of(context).size.width,
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(productsListProvider);

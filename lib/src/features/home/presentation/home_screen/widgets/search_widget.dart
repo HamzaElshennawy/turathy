@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
 
 class SearchWidget extends StatelessWidget {
   const SearchWidget({super.key});

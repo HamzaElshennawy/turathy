@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:turathy/src/features/products/presentation/product_screen.dart';
+import 'package:turathi/src/features/products/presentation/product_screen.dart';
 
 import '../../features/products/domain/product_model.dart';
 import '../constants/app_functions/app_functions.dart';
@@ -93,12 +93,13 @@ class _ProductCardState extends State<ProductCard> {
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             // Image Section with Heart Icon
             Expanded(
               flex: 5,
               child: Stack(
-                fit: StackFit.expand,
+                fit: StackFit.passthrough,
                 children: [
                   Hero(
                     tag: widget.product.id,
@@ -146,7 +147,7 @@ class _ProductCardState extends State<ProductCard> {
             ),
             // Content Section
             Expanded(
-              flex: 4,
+              flex: 2,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -204,7 +205,7 @@ class _ProductCardState extends State<ProductCard> {
                         //  ),
                       ],
                     ),
-                    gapH8,
+                    gapH4,
                     // Bid Now Button
                     SizedBox(
                       width: double.infinity,

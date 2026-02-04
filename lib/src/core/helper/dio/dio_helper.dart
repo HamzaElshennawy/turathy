@@ -10,21 +10,26 @@ class DioHelper {
   static late Dio dio;
 
   static init() {
-    dio = Dio(BaseOptions(
-      baseUrl: EndPoints.baseUrl,
-      receiveDataWhenStatusError: true,
-      followRedirects: false,
-      // will not throw errors
-      validateStatus: (status) => true,
-    ));
-    dio.interceptors.add(PrettyDioLogger(
+    dio = Dio(
+      BaseOptions(
+        baseUrl: EndPoints.baseUrl,
+        receiveDataWhenStatusError: true,
+        followRedirects: false,
+        // will not throw errors
+        validateStatus: (status) => true,
+      ),
+    );
+    dio.interceptors.add(
+      PrettyDioLogger(
         requestHeader: true,
         requestBody: true,
         responseBody: true,
         responseHeader: false,
         error: true,
         compact: true,
-        maxWidth: 90));
+        maxWidth: 90,
+      ),
+    );
     dio.interceptors.add(
       InterceptorsWrapper(
         onResponse: (response, handler) {
@@ -34,18 +39,14 @@ class DioHelper {
               return handler.next(response);
             }
             // using navigator
-            goRouter.push(
-              RouteConstants.signIn,
-            );
+            goRouter.push(RouteConstants.signIn);
             AuthRepository.clearLocalDetails();
           }
           return handler.next(response);
         },
         onError: (DioException error, handler) {
           if (error.response?.statusCode == 401) {
-            goRouter.push(
-              RouteConstants.signIn,
-            );
+            goRouter.push(RouteConstants.signIn);
             AuthRepository.clearLocalDetails();
           }
           return handler.next(error);
@@ -64,15 +65,17 @@ class DioHelper {
       dio.options.headers = {
         'Authorization': 'Bearer $token',
         "Accept": "application/json",
-        "lang": lang
+        "lang": lang,
       };
-      return await dio.get(url,
-          queryParameters: query,
-          options: Options(
-            validateStatus: (_) => true,
-            contentType: Headers.jsonContentType,
-            responseType: ResponseType.json,
-          ));
+      return await dio.get(
+        url,
+        queryParameters: query,
+        options: Options(
+          validateStatus: (_) => true,
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.json,
+        ),
+      );
     } catch (error) {
       rethrow;
     }
@@ -91,14 +94,16 @@ class DioHelper {
         "Accept": "application/json",
         "Content-Type": "application/json",
       };
-      return await dio.post(url,
-          queryParameters: query,
-          data: data,
-          options: Options(
-            validateStatus: (_) => true,
-            contentType: Headers.jsonContentType,
-            responseType: ResponseType.json,
-          ));
+      return await dio.post(
+        url,
+        queryParameters: query,
+        data: data,
+        options: Options(
+          validateStatus: (_) => true,
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.json,
+        ),
+      );
     } catch (error) {
       rethrow;
     }
@@ -111,15 +116,40 @@ class DioHelper {
     String? token,
   }) async {
     try {
-      dio.options.headers = {
-        'Authorization': 'Bearer $token',
-      };
+      dio.options.headers = {'Authorization': 'Bearer $token'};
       Response response = await dio.put(
         url,
         data: data,
         queryParameters: query,
       );
       return response;
+    } catch (error) {
+      rethrow;
+    }
+  }
+
+  static Future<Response> patchData({
+    required String url,
+    dynamic data,
+    Map<String, dynamic>? query,
+    String? token,
+  }) async {
+    try {
+      dio.options.headers = {
+        'Authorization': 'Bearer $token',
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      };
+      return await dio.patch(
+        url,
+        data: data,
+        queryParameters: query,
+        options: Options(
+          validateStatus: (_) => true,
+          contentType: Headers.jsonContentType,
+          responseType: ResponseType.json,
+        ),
+      );
     } catch (error) {
       rethrow;
     }
@@ -138,8 +168,11 @@ class DioHelper {
         "Accept": "application/json",
         "Content-Type": "application/json",
       };
-      final response =
-          await dio.delete(url, queryParameters: query, data: data);
+      final response = await dio.delete(
+        url,
+        queryParameters: query,
+        data: data,
+      );
 
       return response;
     } catch (error) {

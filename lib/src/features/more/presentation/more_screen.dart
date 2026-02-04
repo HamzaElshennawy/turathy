@@ -1,9 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
-import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
-import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
+import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathi/src/features/authintication/presentation/auth_controller.dart';
+import 'package:turathi/src/features/authintication/presentation/sign_in_screen.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});

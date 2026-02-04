@@ -1,7 +1,7 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathi/src/core/helper/cache/cached_variables.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class AgoraVideoWidget extends ConsumerStatefulWidget {

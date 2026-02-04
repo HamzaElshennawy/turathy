@@ -40,4 +40,11 @@ abstract class EndPoints {
   static const String getAgoraToken = "agora/token";
 
   static const String addOrder = '/order/add-order';
+
+  // Notifications
+  static String getNotifications(int userId) => "notifications/$userId";
+  static String markAsRead(int id) => "notifications/$id/read";
+  static String markAllAsRead(int userId) => "notifications/read-all/$userId";
+  static const String registerDevice = "notifications/register-device";
+  static const String unregisterDevice = "notifications/unregister-device";
 }
