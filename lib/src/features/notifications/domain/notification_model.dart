@@ -89,9 +89,9 @@ class NotificationModel {
       body: json['body'] as String? ?? '',
       type: json['type'] as String?,
       data: json['data'] as Map<String, dynamic>?,
-      isRead: json['is_read'] as bool? ?? false,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+      isRead: json['isRead'] as bool? ?? false,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
     );
   }
@@ -111,6 +111,28 @@ class NotificationModel {
       return AppStrings.minutesAgo.tr(args: [difference.inMinutes.toString()]);
     } else {
       return AppStrings.justNow.tr();
+    }
+  }
+
+  /// Get formatted title based on notification type or return raw title
+  String get formattedTitle {
+    if (type == null) return title;
+
+    switch (type) {
+      case 'AUCTION_STARTED':
+        return AppStrings.notificationAuctionStarted.tr();
+      case 'NEW_BID':
+        return AppStrings.notificationNewBid.tr();
+      case 'OUTBID':
+        return AppStrings.notificationOutbid.tr();
+      case 'AUCTION_WON':
+        return AppStrings.notificationAuctionWon.tr();
+      case 'AUCTION_ENDING_SOON':
+        return AppStrings.notificationAuctionEndingSoon.tr();
+      case 'ORDER_STATUS':
+        return AppStrings.notificationOrderStatus.tr();
+      default:
+        return title;
     }
   }
 }

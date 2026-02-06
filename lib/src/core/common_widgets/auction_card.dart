@@ -12,8 +12,9 @@ import '../constants/app_strings/app_strings.dart';
 
 class AuctionCard extends StatefulWidget {
   final AuctionModel product;
+  final String? heroTag;
 
-  const AuctionCard({super.key, required this.product});
+  const AuctionCard({super.key, required this.product, this.heroTag});
 
   @override
   State<AuctionCard> createState() => _AuctionCardState();
@@ -103,7 +104,7 @@ class _AuctionCardState extends State<AuctionCard> {
                 fit: StackFit.expand,
                 children: [
                   Hero(
-                    tag: widget.product.id ?? 0,
+                    tag: widget.heroTag ?? widget.product.id ?? 0,
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(16),

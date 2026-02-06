@@ -179,6 +179,15 @@ class AppStrings {
       "notificationsWillAppearHere";
   static const String errorLoadingNotifications = "errorLoadingNotifications";
 
+  // Notification Types
+  static const String notificationAuctionStarted = "notificationAuctionStarted";
+  static const String notificationNewBid = "notificationNewBid";
+  static const String notificationOutbid = "notificationOutbid";
+  static const String notificationAuctionWon = "notificationAuctionWon";
+  static const String notificationAuctionEndingSoon =
+      "notificationAuctionEndingSoon";
+  static const String notificationOrderStatus = "notificationOrderStatus";
+
   // Time Ago
   static const String daysAgo = "daysAgo";
   static const String yesterday = "yesterday";

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -27,6 +28,13 @@ class FCMService {
 
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
+
+  // Stream controller for broadcasting foreground messages
+  final StreamController<RemoteMessage> _messageController =
+      StreamController<RemoteMessage>.broadcast();
+
+  /// Stream of foreground messages
+  Stream<RemoteMessage> get onMessage => _messageController.stream;
 
   /// Initialize FCM service
   Future<void> initialize() async {
@@ -68,6 +76,12 @@ class FCMService {
     );
 
     print('FCM Permission status: ${settings.authorizationStatus}');
+
+    await _messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   /// Initialize local notifications for foreground display
@@ -165,6 +179,15 @@ class FCMService {
   /// Handle foreground message - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     print('Received foreground message: ${message.messageId}');
+    print('Message data: ${message.data}');
+    if (message.notification != null) {
+      print(
+        'Message notification: ${message.notification?.title}, ${message.notification?.body}',
+      );
+    }
+
+    // Add message to stream for UI updates
+    _messageController.add(message);
 
     final notification = message.notification;
     if (notification == null) return;
@@ -181,7 +204,7 @@ class FCMService {
           channelDescription: 'Notifications from turathi app',
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: '@mipmap/launcher_icon',
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -211,6 +234,40 @@ class FCMService {
     if (_fcmToken != null) {
       await _registerTokenWithBackend(_fcmToken!);
     }
+  }
+
+  /// Show a test notification locally
+  Future<void> showTestNotification({
+    String title = 'Test Notification',
+    String body = 'This is a test notification from the app',
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'turathi_notifications',
+      'turathi Notifications',
+      channelDescription: 'Notifications from turathi app',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/launcher_icon',
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _localNotifications.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      details,
+      payload: '{"type": "test"}',
+    );
   }
 }
 

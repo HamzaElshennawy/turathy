@@ -30,12 +30,12 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          '👋 ${AppStrings.hi.tr()}, ${user.name}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
+                      //Expanded(
+                      //  child: Text(
+                      //    '👋 ${AppStrings.hi.tr()}, ${user.name}',
+                      //    style: Theme.of(context).textTheme.titleMedium,
+                      //  ),
+                      //),
                     ],
                   ),
                   const Divider(),

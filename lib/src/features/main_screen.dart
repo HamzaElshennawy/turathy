@@ -7,7 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathi/src/core/constants/app_images/app_images.dart';
 import 'package:turathi/src/core/helper/socket/socket_exports.dart';
 import 'package:turathi/src/features/more/presentation/more_screen.dart';
+import 'package:turathi/src/features/notifications/data/notifications_repository.dart';
+import 'package:turathi/src/features/notifications/presentation/notifications_controller.dart';
 import 'package:turathi/src/features/notifications/presentation/notifications_screen.dart';
+
 import 'package:turathi/src/features/orders/presentation/orders_list_screen.dart';
 
 import '../core/constants/app_functions/app_functions.dart';
@@ -163,23 +166,62 @@ class _MainScreenState extends ConsumerState<MainScreen>
                 )
               : null,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined, size: 32),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationsScreen(),
-                  ),
-                );
-              },
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined, size: 32),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    // Initialize notifications controller to start listening/fetching
+                    ref.watch(notificationsNotifierProvider);
+                    final unreadCount = ref.watch(unreadCountProvider);
+
+                    if (unreadCount == 0) return const SizedBox.shrink();
+
+                    return Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-            if (isSignedIn)
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () {
-                  ref.read(authControllerProvider.notifier).signOut();
-                },
-              ),
+            //if (isSignedIn)
+            //  IconButton(
+            //    icon: const Icon(Icons.logout),
+            //    onPressed: () {
+            //      ref.read(authControllerProvider.notifier).signOut();
+            //    },
+            //  ),
           ],
         ),
         extendBody: true, // Allows body to extend behind the floating navbar

@@ -2,9 +2,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:turathi/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
-import 'package:turathi/src/features/notifications/data/notifications_repository.dart';
+
 import 'package:turathi/src/features/notifications/domain/notification_model.dart';
+import 'package:turathi/src/features/notifications/presentation/notifications_controller.dart';
 import 'package:turathi/src/features/notifications/presentation/widgets/notification_item_widget.dart';
 import 'package:turathi/src/routing/rout_constants.dart';
 
@@ -24,6 +26,12 @@ class NotificationsScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_active),
+            onPressed: () {
+              FCMService().showTestNotification();
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) async {

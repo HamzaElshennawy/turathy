@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/cache/cached_variables.dart';
+import '../../../core/helper/fcm/fcm_service.dart';
 import '../data/auth_repository.dart';
 import '../domain/user_model.dart';
 
@@ -25,6 +26,10 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     state = await AsyncValue.guard(
       () => AuthRepository.signIn(phone, password),
     );
+
+    if (state.hasValue && !state.hasError) {
+      await FCMService().registerAfterLogin();
+    }
   }
 
   // get user

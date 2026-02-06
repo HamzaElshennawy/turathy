@@ -18,64 +18,76 @@ class NotificationItem extends StatelessWidget {
         color: isRead ? Colors.transparent : Colors.blue.withOpacity(0.05),
         padding: const EdgeInsets.symmetric(
           horizontal: Sizes.p16,
-          vertical: Sizes.p12,
+          vertical: Sizes.p16, // Increased vertical padding
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Row(
+            // Logo
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade200),
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/logo.png'),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            gapW12,
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Expanded(
+                        child: Text(
+                          notification.formattedTitle,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                        ),
+                      ),
                       if (!isRead)
                         Container(
                           width: 8,
                           height: 8,
-                          margin: const EdgeInsetsDirectional.only(end: 8),
                           decoration: const BoxDecoration(
                             color: Colors.blue,
                             shape: BoxShape.circle,
                           ),
                         ),
-                      Expanded(
-                        child: Text(
-                          notification.title,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: isRead
-                                    ? FontWeight.normal
-                                    : FontWeight.bold,
-                              ),
-                        ),
-                      ),
                     ],
                   ),
-                ),
-                Text(
-                  notification.timeAgo,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-                ),
-              ],
-            ),
-            gapH8,
-            Padding(
-              padding: EdgeInsetsDirectional.only(start: isRead ? 0 : 16),
-              child: Text(
-                notification.body,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                  gapH4,
+                  Text(
+                    notification.body,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.black54,
+                      height: 1.3,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  gapH8,
+                  Text(
+                    notification.timeAgo,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
               ),
             ),
-            gapH12,
-            const Divider(height: 1),
           ],
         ),
       ),

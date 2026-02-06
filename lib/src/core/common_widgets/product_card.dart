@@ -12,8 +12,9 @@ import '../constants/app_strings/app_strings.dart';
 
 class ProductCard extends StatefulWidget {
   final ProductModel product;
+  final String? heroTag;
 
-  const ProductCard({super.key, required this.product});
+  const ProductCard({super.key, required this.product, this.heroTag});
 
   @override
   State<ProductCard> createState() => _ProductCardState();
@@ -102,7 +103,7 @@ class _ProductCardState extends State<ProductCard> {
                 fit: StackFit.passthrough,
                 children: [
                   Hero(
-                    tag: widget.product.id,
+                    tag: widget.heroTag ?? widget.product.id,
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(16),

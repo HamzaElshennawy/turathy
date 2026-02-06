@@ -80,6 +80,7 @@ class NotificationsRepository {
   static Future<bool> markAllAsRead(int userId) async {
     final result = await DioHelper.patchData(
       url: EndPoints.markAllAsRead(userId),
+      data: {},
       token: CachedVariables.token,
     );
 
@@ -171,80 +172,3 @@ final unreadNotificationsCountProvider = Provider<int>((ref) {
     error: (_, __) => 0,
   );
 });
-
-/// StateNotifier for managing notifications state with actions
-class NotificationsNotifier
-    extends StateNotifier<AsyncValue<List<NotificationModel>>> {
-  final Ref ref;
-
-  NotificationsNotifier(this.ref) : super(const AsyncValue.loading()) {
-    loadNotifications();
-  }
-
-  Future<void> loadNotifications() async {
-    state = const AsyncValue.loading();
-    try {
-      final userId = CachedVariables.userId;
-      if (userId == null) {
-        state = AsyncValue.error(
-          NotificationsException('User not logged in', 401),
-          StackTrace.current,
-        );
-        return;
-      }
-      final response = await NotificationsRepository.getNotifications(
-        userId: userId,
-      );
-      state = AsyncValue.data(response.notifications);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  Future<void> refresh() async {
-    await loadNotifications();
-  }
-
-  Future<void> markAsRead(int notificationId) async {
-    try {
-      await NotificationsRepository.markAsRead(notificationId);
-      // Update local state
-      state.whenData((notifications) {
-        final updated = notifications.map((n) {
-          if (n.id == notificationId) {
-            return n.copyWith(isRead: true);
-          }
-          return n;
-        }).toList();
-        state = AsyncValue.data(updated);
-      });
-    } catch (e) {
-      // Silently fail but could show error toast
-      rethrow;
-    }
-  }
-
-  Future<void> markAllAsRead() async {
-    try {
-      final userId = CachedVariables.userId;
-      if (userId == null) return;
-
-      await NotificationsRepository.markAllAsRead(userId);
-      // Update local state
-      state.whenData((notifications) {
-        final updated = notifications
-            .map((n) => n.copyWith(isRead: true))
-            .toList();
-        state = AsyncValue.data(updated);
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-}
-
-final notificationsNotifierProvider =
-    StateNotifierProvider.autoDispose<
-      NotificationsNotifier,
-      AsyncValue<List<NotificationModel>>
-    >((ref) => NotificationsNotifier(ref));

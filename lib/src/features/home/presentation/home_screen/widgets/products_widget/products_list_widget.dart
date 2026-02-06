@@ -38,7 +38,10 @@ class ProductsListWidget extends StatelessWidget {
                     itemCount: data.length,
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
-                      return ProductCard(product: product);
+                      return ProductCard(
+                        product: product,
+                        heroTag: 'products_list_${product.id}_$index',
+                      );
                     },
                   );
                 },

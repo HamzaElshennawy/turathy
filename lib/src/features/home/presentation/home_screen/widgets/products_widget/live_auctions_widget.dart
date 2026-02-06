@@ -64,7 +64,10 @@ class LiveAuctionsWidget extends StatelessWidget {
                     //     mainAxisSpacing: 8),
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
-                      return AuctionCard(product: product);
+                      return AuctionCard(
+                        product: product,
+                        heroTag: 'live_auctions_${product.id}_$index',
+                      );
                     },
                   );
                 },
