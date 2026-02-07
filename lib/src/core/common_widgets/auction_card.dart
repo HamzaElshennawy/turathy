@@ -96,6 +96,7 @@ class _AuctionCardState extends State<AuctionCard> {
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             // Image Section with Heart Icon
             Expanded(
@@ -153,7 +154,7 @@ class _AuctionCardState extends State<AuctionCard> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 8,
+                  vertical: 6,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,20 +191,70 @@ class _AuctionCardState extends State<AuctionCard> {
                         Text(
                           '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
                         // Remaining Time
-                        if (widget.product.expiryDate != null)
-                          Text(
-                            '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFFD32F2F), // Red color
-                            ),
+                        // Time Display
+                        if (widget.product.expiryDate != null &&
+                            widget.product.startDate != null)
+                          Builder(
+                            builder: (context) {
+                              final now = DateTime.now();
+                              final startDate = DateTime.parse(
+                                widget.product.startDate!,
+                              );
+                              final expiryDate = DateTime.parse(
+                                widget.product.expiryDate!,
+                              );
+
+                              if (startDate.isAfter(now)) {
+                                // Future Auction
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${AppStrings.startedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1B5E20),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              } else if (expiryDate.isBefore(now)) {
+                                // Ended Auction
+                                return Text(
+                                  '${AppStrings.endedOn.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey,
+                                  ),
+                                );
+                              } else {
+                                // Live Auction
+                                return Text(
+                                  '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFD32F2F), // Red color
+                                  ),
+                                );
+                              }
+                            },
                           ),
                       ],
                     ),

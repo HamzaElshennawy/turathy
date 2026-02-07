@@ -179,12 +179,13 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               children: [
                                 Text(
                                   AppStrings.endedAt.tr(),
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurface.withOpacity(.6),
-                                      ),
+                                  style: TextStyle(color: Colors.red),
+                                  //Theme.of(context).textTheme.titleMedium
+                                  //    ?.copyWith(
+                                  //      color: Theme.of(
+                                  //        context,
+                                  //      ).colorScheme.onSurface.withOpacity(.6),
+                                  //    ),
                                 ),
                                 Text(
                                   DateFormat.yMMMMEEEEd(

@@ -21,7 +21,8 @@ class App extends ConsumerWidget {
       secondary: Color(0xFFD9D9D9),
       secondaryContainer: Color(0xFFFFFFFF),
       tertiary: Color(
-          0xFF005D24), // Using primary as tertiary for consistency or accents
+        0xFF005D24,
+      ), // Using primary as tertiary for consistency or accents
       tertiaryContainer: Color(0xFF95F0FF),
       appBarColor: Color(0xFFFFFDF8), // Match background
       error: Color(0xFFB00020),
@@ -30,31 +31,34 @@ class App extends ConsumerWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: goRouter,
-      title: 'Barakah',
+      title: 'Turathy',
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      theme: FlexThemeData.light(
-        useMaterial3: true,
-        colors: myCustomScheme, // Apply custom colors
-        scaffoldBackground:
-            const Color(0xFFFFFDF8), // Background Color from request
-        surface: const Color(
-            0xFFFFFDF8), // Surface matching background often looks cleaner
-        swapLegacyOnMaterial3: true,
-        useMaterial3ErrorColors: true,
-        fontFamily: GoogleFonts.cairo().fontFamily,
-      ).copyWith(
-        cardTheme: CardThemeData(
-          color: const Color(0xFFFFFDF8)
-              .brighten(5)
-              .withValues(alpha: .9), // Adjusted to fit background
-        ),
-        // Ensure bottom nav uses the correct selected color
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          selectedItemColor: Color(0xFF005D24),
-        ),
-      ),
+      theme:
+          FlexThemeData.light(
+            useMaterial3: true,
+            colors: myCustomScheme, // Apply custom colors
+            scaffoldBackground: const Color(
+              0xFFFFFDF8,
+            ), // Background Color from request
+            surface: const Color(
+              0xFFFFFDF8,
+            ), // Surface matching background often looks cleaner
+            swapLegacyOnMaterial3: true,
+            useMaterial3ErrorColors: true,
+            fontFamily: GoogleFonts.cairo().fontFamily,
+          ).copyWith(
+            cardTheme: CardThemeData(
+              color: const Color(
+                0xFFFFFDF8,
+              ).brighten(5).withValues(alpha: .9), // Adjusted to fit background
+            ),
+            // Ensure bottom nav uses the correct selected color
+            bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+              selectedItemColor: Color(0xFF005D24),
+            ),
+          ),
       darkTheme: FlexThemeData.dark(
         useMaterial3: true,
         scheme: theme

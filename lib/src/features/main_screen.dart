@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:turathi/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathi/src/core/constants/app_images/app_images.dart';
 import 'package:turathi/src/core/helper/socket/socket_exports.dart';
 import 'package:turathi/src/features/more/presentation/more_screen.dart';
-import 'package:turathi/src/features/notifications/data/notifications_repository.dart';
+
 import 'package:turathi/src/features/notifications/presentation/notifications_controller.dart';
 import 'package:turathi/src/features/notifications/presentation/notifications_screen.dart';
 
@@ -17,7 +18,7 @@ import '../core/constants/app_functions/app_functions.dart';
 import '../core/constants/app_sizes.dart';
 import '../core/constants/app_strings/app_strings.dart';
 import 'auctions/data/auctions_repository.dart';
-import 'auctions/presentation/auction_screen/user_auctions_screen.dart';
+
 import 'authintication/presentation/auth_controller.dart';
 import 'home/data/category_repository.dart';
 import 'home/presentation/home_screen/home_screen.dart';
@@ -108,7 +109,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
           Navigator.of(context).pop();
           _isDialogOpen = false;
           // invalidate all other providers
-          ref.invalidate(liveAuctionsProvider);
+          ref.invalidate(homeLiveAuctionsProvider);
           ref.invalidate(searchProductsProvider);
           ref.invalidate(getAllCategoriesProvider);
         }
@@ -330,7 +331,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             controller: pageController,
             children: const [
               HomeScreen(),
-              UserAuctionsScreen(),
+              AllAuctionsScreen(),
               StoreScreen(),
               OrdersListScreen(),
               MoreScreen(),

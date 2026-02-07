@@ -112,8 +112,9 @@
   "termsAndConditions": "Terms and Conditions",
   "editProfile": "Edit Profile",
   "price": "Price",
-  "startedAt": "Started At",
+  "startedAt": "Starts At",
   "endedAt": "Ends At",
+  "endedOn": "Ended on",
   "minBidPrice": "Open Auction Price",
   "bidPrice": "Minimum Bid Price",
   "currentProduct": "Current Product",
@@ -123,6 +124,9 @@
   "writeComment": "Write a comment",
   "liveAuctions": "Live Auctions",
   "openAuctions": "Open Auctions",
+  "currentAuctions": "Current Auctions",
+  "futureAuctions": "Future Auctions",
+  "endingSoonAuctions": "Ending Soon Auctions",
   "auctionType": "Auction Type",
   "winningAuctions": "Winning Auctions",
   "shippingDetails": "Shipping Details",
@@ -173,5 +177,7 @@
   "yesterday": "Yesterday",
   "hoursAgo": "{} hours ago",
   "minutesAgo": "{} minutes ago",
-  "justNow": "Just now"
+  "justNow": "Just now",
+  "remainingTime": "Remaining Time",
+  "currency": "SAR"
 }

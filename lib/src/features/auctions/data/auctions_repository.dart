@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:turathi/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_provider.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,9 +15,7 @@ import '../domain/winning_auction_model.dart';
 class AuctionsRepository {
   Future<List<AuctionModel>> getAllAuctions([FilterState? filters]) async {
     final lastFilters = (filters?.toMap() ?? {});
-    lastFilters.addAll({
-      'limit': '100',
-    });
+    lastFilters.addAll({'limit': '100'});
     final result = await DioHelper.getData(
       url: EndPoints.getAllAuctions,
       token: CachedVariables.token,
@@ -35,12 +34,11 @@ class AuctionsRepository {
     }
   }
 
-  Future<List<AuctionModel>> getAuctionsByCategory(
-      [FilterState? filters]) async {
+  Future<List<AuctionModel>> getAuctionsByCategory([
+    FilterState? filters,
+  ]) async {
     final lastFilters = (filters?.toMap() ?? {});
-    lastFilters.addAll({
-      'limit': '100',
-    });
+    lastFilters.addAll({'limit': '100'});
     final result = await DioHelper.getData(
       url: (filters == null || filters.selectedCategoryID == null)
           ? EndPoints.getAllAuctions
@@ -69,7 +67,8 @@ class AuctionsRepository {
     if (result.statusCode == 200) {
       return AuctionModel.fromJson(result.data['data']);
     } else {
-      String message = result.data['error'] ??
+      String message =
+          result.data['error'] ??
           'An error occurred while fetching auction details';
       throw AuthException(message, result.statusCode);
     }
@@ -88,7 +87,8 @@ class AuctionsRepository {
     if (result.statusCode == 200) {
       return result.data['data'];
     } else {
-      String message = result.data['error'] ??
+      String message =
+          result.data['error'] ??
           'An error occurred while fetching agora token';
       throw AuthException(message, result.statusCode);
     }
@@ -112,7 +112,8 @@ class AuctionsRepository {
       }
       return auctions;
     } else {
-      String message = result.data['error'] ??
+      String message =
+          result.data['error'] ??
           'An error occurred while fetching user auctions';
       throw AuthException(message, result.statusCode);
     }
@@ -122,9 +123,7 @@ class AuctionsRepository {
     final result = await DioHelper.getData(
       url: EndPoints.getWiningAuctions,
       token: CachedVariables.token,
-      query: {
-        'user_id': CachedVariables.userId.toString(),
-      },
+      query: {'user_id': CachedVariables.userId.toString()},
     );
     if (result.statusCode == 200) {
       List<WinningAuctionModel> auctions = [];
@@ -136,7 +135,8 @@ class AuctionsRepository {
       });
       return auctions;
     } else {
-      String message = result.data['error'] ??
+      String message =
+          result.data['error'] ??
           'An error occurred while fetching winning auctions';
       throw AuthException(message, result.statusCode);
     }
@@ -147,16 +147,40 @@ final productsRepositoryProvider = Provider<AuctionsRepository>((ref) {
   return AuctionsRepository();
 });
 
-final liveAuctionsProvider = FutureProvider<List<AuctionModel>>((ref) async {
+final filteredAuctionsProvider = FutureProvider<List<AuctionModel>>((
+  ref,
+) async {
   final timer = Timer(const Duration(minutes: 3), () {
     ref.invalidateSelf();
   });
   ref.onDispose(() {
     timer.cancel();
   });
+
+  final status = ref.watch(auctionsFilterProvider);
+
   return ref
       .watch(productsRepositoryProvider)
-      .getAllAuctions(FilterState(isLiveAuctionsSelected: true));
+      .getAllAuctions(
+        FilterState(isLiveAuctionsSelected: true, auctionStatus: status),
+      );
+});
+
+final homeLiveAuctionsProvider = FutureProvider<List<AuctionModel>>((
+  ref,
+) async {
+  final timer = Timer(const Duration(minutes: 3), () {
+    ref.invalidateSelf();
+  });
+  ref.onDispose(() {
+    timer.cancel();
+  });
+
+  return ref
+      .watch(productsRepositoryProvider)
+      .getAllAuctions(
+        FilterState(isLiveAuctionsSelected: true, auctionStatus: 'current'),
+      );
 });
 final openAuctionsProvider = FutureProvider<List<AuctionModel>>((ref) async {
   final timer = Timer(const Duration(minutes: 3), () {
@@ -184,35 +208,32 @@ final searchProductsProvider = FutureProvider<List<AuctionModel>>((ref) async {
 
 final auctionDetailsProvider = FutureProvider.autoDispose
     .family<AuctionModel, int>((ref, auctionID) async {
-  return ref.watch(productsRepositoryProvider).getAuctionByID(auctionID);
-});
+      return ref.watch(productsRepositoryProvider).getAuctionByID(auctionID);
+    });
 
 final agoraTokenProvider = FutureProvider.autoDispose
     .family<String, AgoraTokenRequest>((ref, request) async {
-  return ref.watch(productsRepositoryProvider).getAgoraToken(
-        request.auctionID,
-        request.isPublisher,
-      );
-});
+      return ref
+          .watch(productsRepositoryProvider)
+          .getAgoraToken(request.auctionID, request.isPublisher);
+    });
 
 final userAuctionsProvider = FutureProvider.autoDispose
     .family<List<AuctionModel>, String>((ref, type) async {
-  return ref.watch(productsRepositoryProvider).getUserAuctions(type);
-});
+      return ref.watch(productsRepositoryProvider).getUserAuctions(type);
+    });
 
-final userWinningAuctionsProvider = FutureProvider.autoDispose<List<WinningAuctionModel>>((ref) async {
-  return ref.watch(productsRepositoryProvider).getWinningAuctions();
-});
+final userWinningAuctionsProvider =
+    FutureProvider.autoDispose<List<WinningAuctionModel>>((ref) async {
+      return ref.watch(productsRepositoryProvider).getWinningAuctions();
+    });
 
 class AgoraTokenRequest {
   final int auctionID;
   final bool isPublisher;
 
-//<editor-fold desc="Data Methods">
-  const AgoraTokenRequest({
-    required this.auctionID,
-    required this.isPublisher,
-  });
+  //<editor-fold desc="Data Methods">
+  const AgoraTokenRequest({required this.auctionID, required this.isPublisher});
 
   @override
   bool operator ==(Object other) =>
@@ -233,10 +254,7 @@ class AgoraTokenRequest {
         '}';
   }
 
-  AgoraTokenRequest copyWith({
-    int? auctionID,
-    bool? isPublisher,
-  }) {
+  AgoraTokenRequest copyWith({int? auctionID, bool? isPublisher}) {
     return AgoraTokenRequest(
       auctionID: auctionID ?? this.auctionID,
       isPublisher: isPublisher ?? this.isPublisher,
@@ -244,10 +262,7 @@ class AgoraTokenRequest {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'auctionID': this.auctionID,
-      'isPublisher': this.isPublisher,
-    };
+    return {'auctionID': this.auctionID, 'isPublisher': this.isPublisher};
   }
 
   factory AgoraTokenRequest.fromMap(Map<String, dynamic> map) {
@@ -257,5 +272,5 @@ class AgoraTokenRequest {
     );
   }
 
-//</editor-fold>
+  //</editor-fold>
 }

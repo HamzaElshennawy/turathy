@@ -6,7 +6,9 @@ class FilterState {
   final String? searchText;
   final bool isLiveAuctionsSelected;
 
-//<editor-fold desc="Data Methods">
+  final String? auctionStatus;
+
+  //<editor-fold desc="Data Methods">
   FilterState({
     this.selectedColor,
     this.selectedSize,
@@ -14,6 +16,7 @@ class FilterState {
     this.isAllOffersSelected = false,
     this.searchText,
     this.isLiveAuctionsSelected = false,
+    this.auctionStatus,
   });
 
   @override
@@ -26,7 +29,8 @@ class FilterState {
           selectedCategoryID == other.selectedCategoryID &&
           isAllOffersSelected == other.isAllOffersSelected &&
           searchText == other.searchText &&
-          isLiveAuctionsSelected == other.isLiveAuctionsSelected);
+          isLiveAuctionsSelected == other.isLiveAuctionsSelected &&
+          auctionStatus == other.auctionStatus);
 
   @override
   int get hashCode =>
@@ -35,11 +39,12 @@ class FilterState {
       selectedCategoryID.hashCode ^
       isAllOffersSelected.hashCode ^
       searchText.hashCode ^
-      isLiveAuctionsSelected.hashCode;
+      isLiveAuctionsSelected.hashCode ^
+      auctionStatus.hashCode;
 
   @override
   String toString() {
-    return 'FilterState{ selectedColorIndex: $selectedColor, selectedSizeIndex: $selectedSize, selectedCategoryIndex: $selectedCategoryID, isAllOffersSelected: $isAllOffersSelected, searchText: $searchText, isLiveAuctionsSelected: $isLiveAuctionsSelected}';
+    return 'FilterState{ selectedColorIndex: $selectedColor, selectedSizeIndex: $selectedSize, selectedCategoryIndex: $selectedCategoryID, isAllOffersSelected: $isAllOffersSelected, searchText: $searchText, isLiveAuctionsSelected: $isLiveAuctionsSelected, auctionStatus: $auctionStatus}';
   }
 
   FilterState copyWith({
@@ -49,12 +54,15 @@ class FilterState {
     bool? isAllOffersSelected,
     String? searchText,
     bool? isLiveAuctionsSelected,
+    String? auctionStatus,
   }) {
     return FilterState(
-      selectedColor:
-          selectedColor == '' ? null : selectedColor ?? this.selectedColor,
-      selectedSize:
-          selectedSize == '' ? null : selectedSize ?? this.selectedSize,
+      selectedColor: selectedColor == ''
+          ? null
+          : selectedColor ?? this.selectedColor,
+      selectedSize: selectedSize == ''
+          ? null
+          : selectedSize ?? this.selectedSize,
       selectedCategoryID: selectedCategoryID == -1
           ? null
           : selectedCategoryID ?? this.selectedCategoryID,
@@ -62,6 +70,7 @@ class FilterState {
       searchText: searchText ?? this.searchText,
       isLiveAuctionsSelected:
           isLiveAuctionsSelected ?? this.isLiveAuctionsSelected,
+      auctionStatus: auctionStatus ?? this.auctionStatus,
     );
   }
 
@@ -73,8 +82,9 @@ class FilterState {
       if (isAllOffersSelected) 'has_offer': '1',
       if (searchText != null) 'search': searchText,
       'type': isLiveAuctionsSelected ? 'Live' : 'Open',
+      if (auctionStatus != null) 'status': auctionStatus,
     };
   }
 
-//</editor-fold>
+  //</editor-fold>
 }

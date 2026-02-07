@@ -119,6 +119,7 @@ class AppStrings {
   static const String price = "price";
   static const String startedAt = "startedAt";
   static const String endedAt = "endedAt";
+  static const String endedOn = "endedOn";
   static const String minBidPrice = "minBidPrice";
   static const String bidPrice = "bidPrice";
   static const String currentProduct = "currentProduct";
@@ -128,6 +129,9 @@ class AppStrings {
   static const String writeComment = "writeComment";
   static const String liveAuctions = "liveAuctions";
   static const String openAuctions = "openAuctions";
+  static const String currentAuctions = "currentAuctions";
+  static const String futureAuctions = "futureAuctions";
+  static const String endingSoonAuctions = "endingSoonAuctions";
   static const String auctionType = "auctionType";
   static const String winningAuctions = "winningAuctions";
   static const String orderConfirmation = "orderConfirmation";
