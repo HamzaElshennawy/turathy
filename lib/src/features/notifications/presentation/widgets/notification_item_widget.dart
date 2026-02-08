@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:turathi/src/core/constants/app_sizes.dart';
+import 'package:turathy/src/core/constants/app_sizes.dart';
 import '../../domain/notification_model.dart';
 
 class NotificationItem extends StatelessWidget {

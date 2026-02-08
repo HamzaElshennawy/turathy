@@ -1141,8 +1141,8 @@
         }
     },
     "info": {
-        "title": "Dev Turathi APIs From deep blue Company",
-        "description": "RESTful APIs for the Turathi system provided by deep blue Company. These APIs enable interactions with various functionalities, including user management, data retrieval, and more.",
+        "title": "Dev turathy APIs From deep blue Company",
+        "description": "RESTful APIs for the turathy system provided by deep blue Company. These APIs enable interactions with various functionalities, including user management, data retrieval, and more.",
         "version": "1.0.0",
         "contact": {}
     },

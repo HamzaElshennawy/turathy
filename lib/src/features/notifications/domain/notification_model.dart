@@ -1,5 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 
 /// Model representing a notification from the backend API
 class NotificationModel {

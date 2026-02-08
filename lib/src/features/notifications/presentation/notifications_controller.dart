@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/core/helper/cache/cached_variables.dart';
-import 'package:turathi/src/core/helper/fcm/fcm_service.dart';
-import 'package:turathi/src/features/notifications/data/notifications_repository.dart';
-import 'package:turathi/src/features/notifications/domain/notification_model.dart';
+import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
+import 'package:turathy/src/features/notifications/data/notifications_repository.dart';
+import 'package:turathy/src/features/notifications/domain/notification_model.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 /// StateNotifier for managing notifications state with actions

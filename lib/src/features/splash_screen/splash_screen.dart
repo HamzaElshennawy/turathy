@@ -81,7 +81,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     style: Theme.of(context).textTheme.bodySmall,
                     children: [
                       TextSpan(
-                        text: AppStrings.turathiCo.tr(),
+                        text: AppStrings.turathyCo.tr(),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.bold,

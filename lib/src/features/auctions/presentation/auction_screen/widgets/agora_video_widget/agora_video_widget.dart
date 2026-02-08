@@ -1,7 +1,7 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class AgoraVideoWidget extends ConsumerStatefulWidget {
@@ -21,8 +21,8 @@ class AgoraVideoWidget extends ConsumerStatefulWidget {
   ConsumerState createState() => _AgoraVideoWidgetState();
 }
 
-const appId = "937088aae0fe4e60824cf69220c67f83";
-const appCert = "31a42420f79a49e48343323526bc55ea";
+const appId = "f89c312549cf41a4a89a503e7458f0fa";
+const appCert = "f0e5b11629eb491bb80e79f4cf2a1616";
 
 class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
   late final String _channelName = "auction_${widget.auctionId}";
@@ -38,16 +38,6 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
 
   Future<void> initAgora() async {
     try {
-      // Request microphone and camera permissions for broadcasters
-      if (widget.isAdmin) {
-        print("Client Role Broadcaster");
-        print("  await [Permission.microphone, Permission.camera].request();");
-        await [Permission.microphone, Permission.camera].request();
-      } else {
-        await [Permission.microphone, Permission.camera].request();
-        print("Client Role Audience");
-      }
-
       // Create the engine
       _engine = createAgoraRtcEngine();
 
@@ -111,19 +101,20 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
         ),
       );
 
-      // Set client role
+      // Set client role and permissions logic
       if (widget.isAdmin) {
+        // Broadcaster: Request Camera & Mic, Enable Video, Start Preview
+        await [Permission.microphone, Permission.camera].request();
         await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-        // await _engine.enableVideo(); // Enable video for broadcasters
+        await _engine.enableVideo();
+        await _engine.startPreview();
       } else {
+        // Audience: No permissions needed to watch (usually), or just network.
+        // We set role to Audience.
         await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
-        // await _engine.disableVideo(); // Disable video for audience
+        await _engine.enableVideo(); // Enable video module to see remote video
+        // Do NOT start preview for audience
       }
-
-      print("await _engine.enableVideo();");
-      await _engine.enableVideo(); //
-      // Start video preview
-      await _engine.startPreview();
 
       // Join channel
       await _engine.joinChannel(

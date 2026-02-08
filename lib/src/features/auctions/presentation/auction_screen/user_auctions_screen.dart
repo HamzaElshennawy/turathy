@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/features/auctions/data/auctions_repository.dart';
+import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 
 import '../../../../core/common_widgets/auction_card.dart';
 import '../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
@@ -18,7 +18,7 @@ class UserAuctionsScreen extends ConsumerStatefulWidget {
 
 class _UserAuctionsScreenState extends ConsumerState<UserAuctionsScreen>
     with SingleTickerProviderStateMixin {
-  String auctionType = 'Open';
+  String auctionType = 'Live';
   late TabController _tabController;
 
   @override

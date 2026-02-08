@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:turathi/src/features/products/presentation/product_screen.dart';
+import 'package:turathy/src/features/products/presentation/product_screen.dart';
 
 import '../../features/products/domain/product_model.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
-import 'package:turathi/src/core/helper/dio/end_points.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
 
 class ProductCard extends StatefulWidget {
   final ProductModel product;

@@ -1,12 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/core/common_widgets/product_card.dart';
-import 'package:turathi/src/core/constants/app_sizes.dart';
-import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
-import 'package:turathi/src/features/home/data/category_repository.dart';
-import 'package:turathi/src/features/products/data/products_repository.dart';
-import 'package:turathi/src/features/home/domain/category_model.dart';
+import 'package:turathy/src/core/common_widgets/product_card.dart';
+import 'package:turathy/src/core/constants/app_sizes.dart';
+import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/home/data/category_repository.dart';
+import 'package:turathy/src/features/products/data/products_repository.dart';
+import 'package:turathy/src/features/home/domain/category_model.dart';
 
 class StoreScreen extends ConsumerStatefulWidget {
   const StoreScreen({super.key});
@@ -168,9 +168,9 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    mainAxisSpacing: 8,
+                    mainAxisSpacing: 12,
                     crossAxisSpacing: 8,
-                    childAspectRatio: 0.6, // Adjust card aspect ratio
+                    childAspectRatio: 0.55, // Adjust card aspect ratio
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
                     return ProductCard(product: filteredProducts[index]);

@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/core/constants/app_sizes.dart';
-import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/constants/app_sizes.dart';
+import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'auctions_filter_provider.dart';
 
 class AuctionsFilterWidget extends ConsumerWidget {

@@ -1,4 +1,4 @@
-import 'package:turathi/src/core/helper/dio/end_points.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
 
 class CategoryModel {
   int? id;

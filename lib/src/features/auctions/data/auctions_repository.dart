@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:turathi/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_provider.dart';
+import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_provider.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

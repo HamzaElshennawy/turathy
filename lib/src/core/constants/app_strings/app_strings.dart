@@ -23,7 +23,7 @@ class AppStrings {
   static const String auctions = "auctions";
   static const String hi = "hi";
   static const String poweredBy = "poweredBy";
-  static const String turathiCo = "turathiCo";
+  static const String turathyCo = "turathyCo";
   static const String allRightsReserved = "allRightsReserved";
   static const String version = "version";
   static const String profileAndSettings = "profileAndSettings";
@@ -220,4 +220,20 @@ class AppStrings {
   static const String checkout = "checkout";
   static const String signInRequired = "signInRequired";
   static const String signInToAddToCart = "signInToAddToCart";
+
+  // Auction Bidding Controls
+  static const String currentPrice = "currentPrice";
+  static const String bidWith = "bidWith";
+  static const String bidBy = "bidBy";
+  static const String searchingForBidders = "searchingForBidders";
+  static const String confirmBid = "confirmBid";
+  static const String confirmBidMessage = "confirmBidMessage";
+  static const String confirm = "confirm";
+  static const String auctionEnded = "auctionEnded";
+  static const String winner = "winner";
+  static const String live = "live";
+  static const String public = "public";
+  static const String auctionDetails = "auctionDetails";
+  static const String notSpecified = "notSpecified";
+  static const String usage = "usage";
 }

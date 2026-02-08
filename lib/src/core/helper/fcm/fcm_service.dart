@@ -108,9 +108,9 @@ class FCMService {
     // Create notification channel for Android
     if (Platform.isAndroid) {
       const channel = AndroidNotificationChannel(
-        'turathi_notifications',
-        'turathi Notifications',
-        description: 'Notifications from turathi app',
+        'turathy_notifications',
+        'turathy Notifications',
+        description: 'Notifications from turathy app',
         importance: Importance.high,
       );
 
@@ -199,9 +199,9 @@ class FCMService {
       notification.body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          'turathi_notifications',
-          'turathi Notifications',
-          channelDescription: 'Notifications from turathi app',
+          'turathy_notifications',
+          'turathy Notifications',
+          channelDescription: 'Notifications from turathy app',
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/launcher_icon',
@@ -242,9 +242,9 @@ class FCMService {
     String body = 'This is a test notification from the app',
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'turathi_notifications',
-      'turathi Notifications',
-      channelDescription: 'Notifications from turathi app',
+      'turathy_notifications',
+      'turathy Notifications',
+      channelDescription: 'Notifications from turathy app',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/launcher_icon',

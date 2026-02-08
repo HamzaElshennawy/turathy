@@ -1,4 +1,4 @@
-package com.deepblue.turathi
+package com.deepblue.turathy
 
 import io.flutter.embedding.android.FlutterActivity
 

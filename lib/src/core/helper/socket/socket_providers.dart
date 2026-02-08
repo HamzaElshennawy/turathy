@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/features/auctions/domain/auction_model.dart';
+import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 import 'socket_connection_state.dart';
 import 'socket_models.dart';

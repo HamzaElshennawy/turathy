@@ -1,15 +1,15 @@
 {
   "project_info": {
     "project_number": "214584571316",
-    "project_id": "turathi-9e6f6",
-    "storage_bucket": "turathi-9e6f6.firebasestorage.app"
+    "project_id": "turathy-9e6f6",
+    "storage_bucket": "turathy-9e6f6.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
         "mobilesdk_app_id": "1:214584571316:android:6f7c4b980f2e62eb42eee1",
         "android_client_info": {
-          "package_name": "com.deepblue.turathi"
+          "package_name": "com.deepblue.turathy"
         }
       },
       "oauth_client": [],

@@ -1,5 +1,5 @@
 {
-  "appName": "Turathi",
+  "appName": "turathy",
   "player": "player",
   "coach": "coach",
   "store": "store",
@@ -23,7 +23,7 @@
   "auctions": "Auctions",
   "hi": "Hi",
   "poweredBy": "Powered by ",
-  "turathiCo": "Barakah Co.",
+  "turathyCo": "Barakah Co.",
   "allRightsReserved": "All rights reserved",
   "version": "Version",
   "profileAndSettings": "Profile & Settings",
@@ -197,5 +197,19 @@
   "cartEmpty": "Your cart is empty",
   "checkout": "Checkout",
   "signInRequired": "Sign In Required",
-  "signInToAddToCart": "Please sign in to add products to your cart"
+  "signInToAddToCart": "Please sign in to add products to your cart",
+  "usage": "Usage",
+  "notSpecified": "Not specified",
+  "currentPrice": "Current Price",
+  "bidWith": "Bid with",
+  "confirmBid": "Confirm Bid",
+  "confirmBidMessage": "Are you sure you want to bid with amount",
+  "auctionEnded": "Auction Ended",
+  "searchingForBidders": "Searching for bidders...",
+  "bidBy": "Bid by",
+  "winner": "Winner",
+  "live": "Live",
+  "public": "Public",
+  "confirm": "Confirm",
+  "auctionDetails": "Auction Details"
 }

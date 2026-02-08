@@ -1,12 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/core/common_widgets/auction_card.dart';
-import 'package:turathi/src/core/common_widgets/shimmer_widget/shimmer_widget.dart';
-import 'package:turathi/src/core/constants/app_sizes.dart';
-import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
-import 'package:turathi/src/features/auctions/data/auctions_repository.dart';
-import 'package:turathi/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_widget.dart';
+import 'package:turathy/src/core/common_widgets/auction_card.dart';
+import 'package:turathy/src/core/common_widgets/shimmer_widget/shimmer_widget.dart';
+import 'package:turathy/src/core/constants/app_sizes.dart';
+import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
+import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_widget.dart';
 
 class AllAuctionsScreen extends ConsumerWidget {
   const AllAuctionsScreen({super.key});
@@ -85,34 +85,56 @@ class AllAuctionsScreen extends ConsumerWidget {
               return productsListValue.when(
                 data: (data) {
                   if (data.isEmpty) {
-                    return Center(child: Text(AppStrings.noThingFound.tr()));
+                    return RefreshIndicator(
+                      onRefresh: () =>
+                          ref.refresh(filteredAuctionsProvider.future),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: constraints.maxHeight,
+                              child: Center(
+                                child: Text(AppStrings.noThingFound.tr()),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
                   }
-                  return GridView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        ref.refresh(filteredAuctionsProvider.future),
+                    child: GridView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: data.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: .76,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemBuilder: (BuildContext context, int index) {
+                        final product = data[index];
+                        return Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: AuctionCard(
+                            product: product,
+                            heroTag: 'all_auctions_${product.id}_$index',
+                          ),
+                        );
+                      },
                     ),
-                    itemCount: data.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: .76,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    itemBuilder: (BuildContext context, int index) {
-                      final product = data[index];
-                      return Container(
-                        margin: EdgeInsets.symmetric(vertical: 4),
-                        child: AuctionCard(
-                          product: product,
-                          heroTag: 'all_auctions_${product.id}_$index',
-                        ),
-                      );
-                    },
                   );
                 },
                 loading: () => GridView.builder(
                   shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
@@ -127,8 +149,20 @@ class AllAuctionsScreen extends ConsumerWidget {
                   itemBuilder: (context, index) =>
                       const ShimmerWidget(width: 400, height: 0),
                 ),
-                error: (error, stackTrace) =>
-                    Center(child: Text('Error: $error')),
+                error: (error, stackTrace) => RefreshIndicator(
+                  onRefresh: () => ref.refresh(filteredAuctionsProvider.future),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          child: Center(child: Text('Error: $error')),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               );
             },
           ),

@@ -5,7 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/app_root.dart';
+import 'package:turathy/src/app_root.dart';
 
 import 'src/core/helper/cache/cache_helper.dart';
 import 'src/core/helper/cache/cached_keys.dart';

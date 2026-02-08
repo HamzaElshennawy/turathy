@@ -1,6 +1,6 @@
-import 'package:turathi/src/core/helper/dio/end_points.dart';
-import 'package:turathi/src/core/helper/socket/socket_exports.dart';
-import 'package:turathi/src/features/home/domain/category_model.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
+import 'package:turathy/src/core/helper/socket/socket_exports.dart';
+import 'package:turathy/src/features/home/domain/category_model.dart';
 
 class AuctionModel {
   int? id;
@@ -29,6 +29,13 @@ class AuctionModel {
   List<AuctionBid>? auctionBids;
   late bool isLiveAuction;
   List<String>? auctionImages;
+  String? material;
+  String? approximateAge;
+  String? condition;
+  String? origin;
+  String? usage;
+
+  String get type => isLiveAuction ? 'live' : 'public';
 
   AuctionModel({
     this.id,
@@ -57,6 +64,11 @@ class AuctionModel {
     this.auctionComments,
     this.auctionBids,
     this.auctionImages,
+    this.material,
+    this.approximateAge,
+    this.condition,
+    this.origin,
+    this.usage,
   });
 
   @override
@@ -86,7 +98,12 @@ class AuctionModel {
           category == other.category &&
           user == other.user &&
           auctionProducts == other.auctionProducts &&
-          isLiveAuction == other.isLiveAuction;
+          isLiveAuction == other.isLiveAuction &&
+          material == other.material &&
+          approximateAge == other.approximateAge &&
+          condition == other.condition &&
+          origin == other.origin &&
+          usage == other.usage;
 
   @override
   int get hashCode =>
@@ -112,7 +129,12 @@ class AuctionModel {
       category.hashCode ^
       user.hashCode ^
       auctionProducts.hashCode ^
-      isLiveAuction.hashCode;
+      isLiveAuction.hashCode ^
+      material.hashCode ^
+      approximateAge.hashCode ^
+      condition.hashCode ^
+      origin.hashCode ^
+      usage.hashCode;
 
   AuctionModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -129,11 +151,13 @@ class AuctionModel {
     isExpired = json['isExpired'];
     isCanceled = json['isCanceled'];
     imageUrl = json['image_url'] != null
-        ? EndPoints.baseUrl + json['image_url']
+        ? EndPoints.baseUrl + Uri.encodeFull(json['image_url'])
         : '';
     auctionImages = json['Auction_images'] != null
         ? List<String>.from(
-            json['Auction_images'].map((x) => EndPoints.baseUrl + x['image']),
+            json['Auction_images'].map(
+              (x) => EndPoints.baseUrl + Uri.encodeFull(x['image']),
+            ),
           )
         : [];
     userId = json['user_id'];
@@ -166,6 +190,11 @@ class AuctionModel {
       });
     }
     isLiveAuction = json['type'] == 'Live';
+    material = json['material'];
+    approximateAge = json['approximateAge'];
+    condition = json['condition'];
+    origin = json['origin'];
+    usage = json['usage'];
   }
 
   Map<String, dynamic> toJson() {
@@ -189,6 +218,11 @@ class AuctionModel {
     data['category_id'] = categoryId;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
+    data['material'] = material;
+    data['approximateAge'] = approximateAge;
+    data['condition'] = condition;
+    data['origin'] = origin;
+    data['usage'] = usage;
     if (category != null) {
       data['category'] = category!.toJson();
     }
@@ -205,7 +239,7 @@ class AuctionModel {
 
   @override
   String toString() {
-    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
+    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids, material: $material, approximateAge: $approximateAge, condition: $condition, origin: $origin, usage: $usage}';
   }
 }
 

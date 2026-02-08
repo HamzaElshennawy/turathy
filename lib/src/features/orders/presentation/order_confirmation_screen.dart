@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:moyasar/moyasar.dart';
-import 'package:turathi/src/features/auctions/data/auctions_repository.dart';
+import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'dart:io' show Platform;
 
 import '../../../core/common_widgets/custom_card.dart';

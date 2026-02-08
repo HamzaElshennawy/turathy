@@ -27,6 +27,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     final cartAsync = ref.watch(cartProvider(userId));
 
+    // Directionality is handled automatically by MaterialApp's locale settings
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -49,7 +50,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: const Icon(
-              Icons.arrow_forward_ios,
+              Icons.arrow_back_ios,
               color: Colors.black,
               size: 16,
             ),
@@ -136,7 +137,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
-              imageUrl: product.imageUrl ?? '',
+              imageUrl: product.fullImageUrl,
               width: 80,
               height: 80,
               fit: BoxFit.cover,

@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/core/constants/app_strings/app_strings.dart';
-import 'package:turathi/src/core/helper/cache/cached_variables.dart';
-import 'package:turathi/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
+import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/sign_in_screen.dart';

@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathi/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';
 
 import '../../../../../../core/common_widgets/auction_card.dart';
 import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
