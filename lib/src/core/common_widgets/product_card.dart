@@ -9,6 +9,7 @@ import '../../features/products/domain/product_model.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
+import 'package:turathi/src/core/helper/dio/end_points.dart';
 
 class ProductCard extends StatefulWidget {
   final ProductModel product;
@@ -60,12 +61,29 @@ class _ProductCardState extends State<ProductCard> {
   //  final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
   //  final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
   //  return '$hours:$minutes:$seconds';
+  //  return '$hours:$minutes:$seconds';
   //}
+
+  String get _imageUrl {
+    String? url;
+    if (widget.product.images != null && widget.product.images!.isNotEmpty) {
+      url = widget.product.images!.first;
+    } else if (widget.product.imageUrl != null &&
+        widget.product.imageUrl!.isNotEmpty) {
+      url = widget.product.imageUrl!;
+    }
+
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return '${EndPoints.baseUrl}$url';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -82,14 +100,16 @@ class _ProductCardState extends State<ProductCard> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => ProductScreen()),
+            MaterialPageRoute(
+              builder: (context) => ProductScreen(product: widget.product),
+            ),
           );
         },
         onLongPress: () {
           AppFunctions.showImageDialog(
             context: context,
-            imageUrl: widget.product.imageUrl ?? '',
-            id: widget.product.id ?? 0,
+            imageUrl: _imageUrl,
+            id: widget.product.id,
           );
         },
         child: Column(
@@ -98,7 +118,7 @@ class _ProductCardState extends State<ProductCard> {
           children: [
             // Image Section with Heart Icon
             Expanded(
-              flex: 5,
+              flex: 2,
               child: Stack(
                 fit: StackFit.passthrough,
                 children: [
@@ -110,7 +130,7 @@ class _ProductCardState extends State<ProductCard> {
                         topRight: Radius.circular(16),
                       ),
                       child: CachedNetworkImage(
-                        imageUrl: widget.product.imageUrl ?? '',
+                        imageUrl: _imageUrl,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         progressIndicatorBuilder:
@@ -148,7 +168,7 @@ class _ProductCardState extends State<ProductCard> {
             ),
             // Content Section
             Expanded(
-              flex: 2,
+              flex: 1,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -215,7 +235,8 @@ class _ProductCardState extends State<ProductCard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => ProductScreen(),
+                              builder: (context) =>
+                                  ProductScreen(product: widget.product),
                             ),
                           );
                         },
@@ -225,12 +246,12 @@ class _ProductCardState extends State<ProductCard> {
                             borderRadius: BorderRadius.circular(24),
                             side: const BorderSide(color: Color(0xFF1B5E20)),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                         ),
                         child: Text(
                           "${AppStrings.buyNow.tr()} :${widget.product.price ?? 0} ${AppStrings.currency.tr()}",
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

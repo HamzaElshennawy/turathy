@@ -160,6 +160,12 @@ class AppStrings {
   static const String or = "or";
   static const String notifications = "notifications";
   static const String buyNow = "buyNow";
+  static const String itemNumber = "itemNumber";
+  static const String auctionItems = "auctionItems";
+  static const String auctionNumber = "auctionNumber";
+  static const String startsAt = "startsAt";
+  static const String endsAt = "endsAt";
+  static const String countdownStartsIn = "countdownStartsIn";
   // Validation - phone numbers
   static const String phoneRequired = "phoneRequired";
   static const String phoneInvalidInternational = "phoneInvalidInternational";
@@ -198,4 +204,20 @@ class AppStrings {
   static const String hoursAgo = "hoursAgo";
   static const String minutesAgo = "minutesAgo";
   static const String justNow = "justNow";
+
+  // Product Screen
+  static const String productInfo = "productInfo";
+  static const String basicData = "basicData";
+  static const String productType = "productType";
+  static const String material = "material";
+  static const String approximateAge = "approximateAge";
+  static const String productCondition = "productCondition";
+  static const String origin = "origin";
+  static const String orderPending = "orderPending";
+
+  // Cart (cart key already exists at line 75)
+  static const String cartEmpty = "cartEmpty";
+  static const String checkout = "checkout";
+  static const String signInRequired = "signInRequired";
+  static const String signInToAddToCart = "signInToAddToCart";
 }

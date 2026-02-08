@@ -283,6 +283,7 @@ class AuctionProducts {
   int? auctionId;
   String? createdAt;
   String? updatedAt;
+  String? imageUrl;
 
   AuctionProducts({
     this.id,
@@ -293,6 +294,7 @@ class AuctionProducts {
     this.auctionId,
     this.createdAt,
     this.updatedAt,
+    this.imageUrl,
   });
 
   @override
@@ -307,7 +309,8 @@ class AuctionProducts {
           actualPrice == other.actualPrice &&
           auctionId == other.auctionId &&
           createdAt == other.createdAt &&
-          updatedAt == other.updatedAt;
+          updatedAt == other.updatedAt &&
+          imageUrl == other.imageUrl;
 
   @override
   int get hashCode =>
@@ -318,7 +321,8 @@ class AuctionProducts {
       actualPrice.hashCode ^
       auctionId.hashCode ^
       createdAt.hashCode ^
-      updatedAt.hashCode;
+      updatedAt.hashCode ^
+      imageUrl.hashCode;
 
   AuctionProducts.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -329,6 +333,7 @@ class AuctionProducts {
     auctionId = json['auction_id'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    imageUrl = json['image'] != null ? EndPoints.baseUrl + json['image'] : '';
   }
 
   Map<String, dynamic> toJson() {
@@ -341,6 +346,7 @@ class AuctionProducts {
     data['auction_id'] = auctionId;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
+    data['image'] = imageUrl;
     return data;
   }
 }

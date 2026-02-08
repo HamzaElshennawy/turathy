@@ -55,4 +55,20 @@ abstract class EndPoints {
   static String markAllAsRead(int userId) => "notifications/read-all/$userId";
   static const String registerDevice = "notifications/register-device";
   static const String unregisterDevice = "notifications/unregister-device";
+
+  // Product Orders
+  static const String addProductOrder = '/order/add-product-order';
+
+  // Cart
+  static const String cart = 'cart';
+  static const String cartAdd = 'cart/add';
+  static const String cartRemove = 'cart/remove';
+  static const String cartClear = 'cart/clear';
+
+  // Products
+  static const String getProducts = 'products/get-products';
+  static const String getProduct = 'products/get-product';
+  static const String addProduct = 'products/add-product';
+  static const String editProduct = 'products/edit-product';
+  static const String uploadProductImages = 'products/upload-images';
 }
