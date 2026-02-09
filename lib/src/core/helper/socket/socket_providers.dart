@@ -67,16 +67,15 @@ final newCommentProvider = StreamProvider.autoDispose<CommentEvent>((ref) {
 
 /// State provider to track current bid value
 final currentBidStateProvider = StateProvider.autoDispose<AuctionBid?>((ref) {
-  final bid = ref.watch(_newBidProvider);
-  return bid.valueOrNull;
+  final bidEvent = ref.watch(newBidEventProvider);
+  return bidEvent.valueOrNull?.newBid;
 });
 
 /// New bid event stream - now updates the state provider
-final _newBidProvider = StreamProvider.autoDispose<AuctionBid>((ref) {
+final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
-  return service.getEventStream<AuctionBid>('newBid', (data) {
-    final bidData = data as Map<String, dynamic>;
-    return AuctionBid.fromJson(bidData['newBid'] as Map<String, dynamic>);
+  return service.getEventStream<BidPlacedEvent>('newBid', (data) {
+    return BidPlacedEvent.fromJson(data as Map<String, dynamic>);
   });
 });
 

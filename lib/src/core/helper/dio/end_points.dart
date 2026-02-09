@@ -5,8 +5,9 @@ abstract class EndPoints {
   //static const String baseUrl = "https://backend.barakkh.sa/";
   static String get baseUrl {
     if (kIsWeb) return "http://localhost:4005/";
-    if (defaultTargetPlatform == TargetPlatform.android)
+    if (defaultTargetPlatform == TargetPlatform.android) {
       return "https://10.0.2.2:4005/";
+    }
     return "http://localhost:4005/";
   }
 

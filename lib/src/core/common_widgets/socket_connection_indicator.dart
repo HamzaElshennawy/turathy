@@ -45,7 +45,9 @@ class SocketConnectionIndicator extends ConsumerWidget {
   }
 
   Widget _buildConnectionBanner(
-      BuildContext context, SocketConnectionStatus status) {
+    BuildContext context,
+    SocketConnectionStatus status,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -73,17 +75,17 @@ class SocketConnectionIndicator extends ConsumerWidget {
                   Text(
                     _getStatusTitle(status.state),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   if (status.errorMessage != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       status.errorMessage!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withOpacity(0.9),
-                          ),
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -93,8 +95,8 @@ class SocketConnectionIndicator extends ConsumerWidget {
                     Text(
                       'محاولة ${status.reconnectionAttempts + 1}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withOpacity(0.9),
-                          ),
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                     ),
                   ],
                 ],
@@ -131,9 +133,9 @@ class SocketConnectionIndicator extends ConsumerWidget {
               child: Text(
                 'خطأ في الاتصال: $error',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -249,7 +251,7 @@ class FloatingConnectionIndicator extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 

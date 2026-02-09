@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 /// Socket configuration class for managing connection settings
 abstract class SocketConfig {
   //static const String _baseUrl = 'wss://backend.barakkh.sa/';
   static String get _baseUrl {
     if (kIsWeb) return 'ws://localhost:4005/';
-    if (defaultTargetPlatform == TargetPlatform.android)
+    if (defaultTargetPlatform == TargetPlatform.android) {
       return 'wss://10.0.2.2:4005/';
+    }
     return 'ws://localhost:4005/';
   }
 
@@ -19,7 +20,7 @@ abstract class SocketConfig {
   static String get baseUrl => _baseUrl;
 
   /// Socket.IO options configuration
-  static Map<String, dynamic> get options => IO.OptionBuilder()
+  static Map<String, dynamic> get options => io.OptionBuilder()
       .setTransports(['websocket'])
       .enableReconnection()
       .setReconnectionDelay(_reconnectionDelay)

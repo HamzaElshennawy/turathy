@@ -36,9 +36,7 @@ class _InputEmailForgotPasswordScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppStrings.resetPassword.tr()),
-      ),
+      appBar: AppBar(title: Text(AppStrings.resetPassword.tr())),
       body: CustomScrollView(
         slivers: [
           SliverFillRemaining(
@@ -64,9 +62,7 @@ class _InputEmailForgotPasswordScreenState
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
+                          const SizedBox(height: 10),
                           Directionality(
                             textDirection: ui.TextDirection.ltr,
                             child: WhiteRoundedTextFormField(
@@ -80,20 +76,20 @@ class _InputEmailForgotPasswordScreenState
                               prefix: '+966',
                             ),
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
+                          const SizedBox(height: 10),
                           PrimaryButton(
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
                                 final e164 =
                                     '+966${_phoneLocalController.text.trim()}';
                                 final ok = await ref
-                                    .read(forgotPasswordControllerProvider
-                                        .notifier)
+                                    .read(
+                                      forgotPasswordControllerProvider.notifier,
+                                    )
                                     .requestOtp(e164Phone: e164);
                                 if (!mounted) return;
                                 if (ok) {
+                                  // ignore: use_build_context_synchronously
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => ResetPasswordScreen(

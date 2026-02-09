@@ -4,15 +4,13 @@ import 'dart:developer';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:moyasar/moyasar.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'dart:io' show Platform;
 
 import '../../../core/common_widgets/custom_card.dart';
-import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
-import '../../../core/helper/cache/cached_variables.dart';
 import '../data/order_repository.dart';
 import '../domain/order_model.dart';
 
@@ -80,7 +78,11 @@ class OrderConfirmationScreen extends ConsumerWidget {
             )
           : null,
     );
-    print('order is ${jsonEncode(order.toJson())}');
+    log(
+      'order is ${jsonEncode(order.toJson())}',
+      time: DateTime.now(),
+      level: 1,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -89,8 +91,10 @@ class OrderConfirmationScreen extends ConsumerWidget {
       ),
       body: orderValue.when(
         data: (data) {
+          //PaymentConfig.callbackUrl =
+          //'https://barakkh.sa/confirmOrder/${data.id}';
           PaymentConfig.callbackUrl =
-              'https://barakkh.sa/confirmOrder/${data.id}';
+              '${EndPoints.baseUrl}/confirmOrder/${data.id}';
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -170,11 +174,7 @@ class OrderConfirmationScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _buildDetailRow(
-            context,
-            AppStrings.orderNumber.tr(),
-            '#${order.id ?? "Pending"}',
-          ),
+          _buildDetailRow(context, AppStrings.orderNumber.tr(), '#${order.id}'),
           const Divider(height: 24),
           _buildDetailRow(
             context,

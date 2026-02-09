@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'socket_config.dart';
 import 'socket_connection_state.dart';
 
 /// Robust socket service with proper error handling and connection management
 class SocketService {
-  IO.Socket? _socket;
+  io.Socket? _socket;
   Timer? _heartbeatTimer;
   Timer? _reconnectionTimer;
 
@@ -48,7 +48,7 @@ class SocketService {
         ),
       );
 
-      _socket = IO.io(SocketConfig.baseUrl, SocketConfig.options);
+      _socket = io.io(SocketConfig.baseUrl, SocketConfig.options);
       _setupSocketListeners();
       _initializeEventControllers();
 
@@ -207,16 +207,18 @@ class SocketService {
       throw Exception('No stream controller found for event: $eventName');
     }
 
-    return controller.stream.map((data) {
-      try {
-        return parser(data);
-      } catch (error) {
-        log('Error parsing event $eventName: $error');
-        throw Exception('Failed to parse $eventName event: $error');
-      }
-    }).handleError((error) {
-      log('Stream error for $eventName: $error');
-    });
+    return controller.stream
+        .map((data) {
+          try {
+            return parser(data);
+          } catch (error) {
+            log('Error parsing event $eventName: $error');
+            throw Exception('Failed to parse $eventName event: $error');
+          }
+        })
+        .handleError((error) {
+          log('Stream error for $eventName: $error');
+        });
   }
 
   /// Update connection status and notify listeners
@@ -259,7 +261,8 @@ class SocketService {
     }
 
     final delay = Duration(
-        seconds: (2 * _currentStatus.reconnectionAttempts + 1).clamp(1, 30));
+      seconds: (2 * _currentStatus.reconnectionAttempts + 1).clamp(1, 30),
+    );
     log('Scheduling reconnection in ${delay.inSeconds} seconds');
 
     _reconnectionTimer = Timer(delay, () {
@@ -292,26 +295,17 @@ class SocketService {
 
   /// Start live auction
   void emitStartLiveAuction(int auctionId, int userId) {
-    _safeEmit('startLiveAuction', {
-      'auctionId': auctionId,
-      'userId': userId,
-    });
+    _safeEmit('startLiveAuction', {'auctionId': auctionId, 'userId': userId});
   }
 
   /// Join auction
   void emitJoinAuction(int auctionId, int userId) {
-    _safeEmit('joinAuction', {
-      'auctionId': auctionId,
-      'userId': userId,
-    });
+    _safeEmit('joinAuction', {'auctionId': auctionId, 'userId': userId});
   }
 
   /// Leave auction
   void emitLeaveAuction(int auctionId, int userId) {
-    _safeEmit('leaveAuction', {
-      'auctionId': auctionId,
-      'userId': userId,
-    });
+    _safeEmit('leaveAuction', {'auctionId': auctionId, 'userId': userId});
   }
 
   /// Send comment
@@ -342,10 +336,7 @@ class SocketService {
 
   /// Cancel auction
   void emitCancelAuction(int auctionId, int userId) {
-    _safeEmit('cancelAuction', {
-      'auctionId': auctionId,
-      'userId': userId,
-    });
+    _safeEmit('cancelAuction', {'auctionId': auctionId, 'userId': userId});
   }
 
   /// Award auction

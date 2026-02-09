@@ -535,22 +535,22 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     );
   }
 
-  void _showBuyDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: _BuyFormSheet(product: widget.product),
-      ),
-    );
-  }
+  //void _showBuyDialog() {
+  //  showModalBottomSheet(
+  //    context: context,
+  //    isScrollControlled: true,
+  //    backgroundColor: Colors.white,
+  //    shape: const RoundedRectangleBorder(
+  //      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  //    ),
+  //    builder: (context) => Padding(
+  //      padding: EdgeInsets.only(
+  //        bottom: MediaQuery.of(context).viewInsets.bottom,
+  //      ),
+  //      child: _BuyFormSheet(product: widget.product),
+  //    ),
+  //  );
+  //}
 }
 
 class _BuyFormSheet extends ConsumerStatefulWidget {

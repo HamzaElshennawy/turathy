@@ -28,8 +28,8 @@ void main() async {
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  await DioHelper.init();
-  await CacheHelper.init();
+  DioHelper.init();
+  CacheHelper.init();
   await LocalStorageThemeRepo.getTheme();
   CachedVariables.lang = await CacheHelper.getData(key: CachedKeys.lang);
 

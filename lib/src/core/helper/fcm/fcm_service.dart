@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -13,7 +14,11 @@ import '../cache/cached_variables.dart';
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   // Handle background message
-  print('Handling background message: ${message.messageId}');
+  log(
+    'Handling background message: ${message.messageId}',
+    time: DateTime.now(),
+    level: 1,
+  );
 }
 
 /// FCM Service for handling push notifications
@@ -75,7 +80,11 @@ class FCMService {
       sound: true,
     );
 
-    print('FCM Permission status: ${settings.authorizationStatus}');
+    log(
+      'FCM Permission status: ${settings.authorizationStatus}',
+      time: DateTime.now(),
+      level: 1,
+    );
 
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -126,19 +135,19 @@ class FCMService {
   Future<void> _getToken() async {
     try {
       _fcmToken = await _messaging.getToken();
-      print('FCM Token: $_fcmToken');
+      log('FCM Token: $_fcmToken', time: DateTime.now(), level: 1);
 
       if (_fcmToken != null) {
         await _registerTokenWithBackend(_fcmToken!);
       }
     } catch (e) {
-      print('Error getting FCM token: $e');
+      log('Error getting FCM token: $e', time: DateTime.now(), level: 1);
     }
   }
 
   /// Handle token refresh
   Future<void> _handleTokenRefresh(String newToken) async {
-    print('FCM Token refreshed: $newToken');
+    log('FCM Token refreshed: $newToken', time: DateTime.now(), level: 1);
     _fcmToken = newToken;
     await _registerTokenWithBackend(newToken);
   }
@@ -147,7 +156,11 @@ class FCMService {
   Future<void> _registerTokenWithBackend(String token) async {
     final userId = CachedVariables.userId;
     if (userId == null) {
-      print('User not logged in, skipping token registration');
+      log(
+        'User not logged in, skipping token registration',
+        time: DateTime.now(),
+        level: 1,
+      );
       return;
     }
 
@@ -158,9 +171,9 @@ class FCMService {
         token: token,
         platform: platform,
       );
-      print('FCM token registered with backend');
+      log('FCM token registered with backend', time: DateTime.now(), level: 1);
     } catch (e) {
-      print('Error registering FCM token: $e');
+      log('Error registering FCM token: $e', time: DateTime.now(), level: 1);
     }
   }
 
@@ -170,19 +183,29 @@ class FCMService {
 
     try {
       await NotificationsRepository.unregisterDevice(_fcmToken!);
-      print('FCM token unregistered from backend');
+      log(
+        'FCM token unregistered from backend',
+        time: DateTime.now(),
+        level: 1,
+      );
     } catch (e) {
-      print('Error unregistering FCM token: $e');
+      log('Error unregistering FCM token: $e', time: DateTime.now(), level: 1);
     }
   }
 
   /// Handle foreground message - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('Received foreground message: ${message.messageId}');
-    print('Message data: ${message.data}');
+    log(
+      'Received foreground message: ${message.messageId}',
+      time: DateTime.now(),
+      level: 1,
+    );
+    log('Message data: ${message.data}', time: DateTime.now(), level: 1);
     if (message.notification != null) {
-      print(
+      log(
         'Message notification: ${message.notification?.title}, ${message.notification?.body}',
+        time: DateTime.now(),
+        level: 1,
       );
     }
 
@@ -218,14 +241,22 @@ class FCMService {
 
   /// Handle notification tap when app is in background/terminated
   void _handleMessageOpenedApp(RemoteMessage message) {
-    print('Message opened app: ${message.messageId}');
+    log(
+      'Message opened app: ${message.messageId}',
+      time: DateTime.now(),
+      level: 1,
+    );
     // TODO: Navigate to specific screen based on message data
     // Example: if message.data['type'] == 'auction', navigate to auction details
   }
 
   /// Handle local notification tap
   void _onNotificationTap(NotificationResponse response) {
-    print('Notification tapped: ${response.payload}');
+    log(
+      'Notification tapped: ${response.payload}',
+      time: DateTime.now(),
+      level: 1,
+    );
     // TODO: Navigate based on payload
   }
 
@@ -236,10 +267,11 @@ class FCMService {
     }
   }
 
-  /// Show a test notification locally
-  Future<void> showTestNotification({
-    String title = 'Test Notification',
-    String body = 'This is a test notification from the app',
+  /// Show a local notification
+  Future<void> showLocalNotification({
+    required String title,
+    required String body,
+    String? payload,
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'turathy_notifications',
@@ -266,6 +298,15 @@ class FCMService {
       title,
       body,
       details,
+      payload: payload ?? '{"type": "local"}',
+    );
+  }
+
+  /// Show a test notification locally
+  Future<void> showTestNotification() async {
+    await showLocalNotification(
+      title: 'Test Notification',
+      body: 'This is a test notification from the app',
       payload: '{"type": "test"}',
     );
   }

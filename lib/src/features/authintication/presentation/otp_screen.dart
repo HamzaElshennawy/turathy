@@ -34,8 +34,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   @override
   void dispose() {
-    for (var c in _controllers) c.dispose();
-    for (var f in _focusNodes) f.dispose();
+    for (var c in _controllers) {
+      c.dispose();
+    }
+    for (var f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -61,8 +65,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     // but we should re-add the listener from original code.
     ref.listen(otpControllerProvider, (previous, next) {
       if (next.error != null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(next.error.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.error.toString())));
       }
     });
 
@@ -86,33 +91,30 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       body: SafeArea(
         child: ResponsiveCenter(
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                Center(
-                  child: Image.asset(
-                    AppImages.logo,
-                    height: 80,
-                  ),
-                ),
+                Center(child: Image.asset(AppImages.logo, height: 80)),
                 const SizedBox(height: 40),
                 Text(
                   "تحقق من عنوان جوالك", // "Verify your mobile address" / Check phone
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   "أدخل الرمز المكون من 6 أرقام الذي ارسلناه إلى رقمك ${widget.phoneNumber}",
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
 
@@ -131,7 +133,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                           inputFormatters: [
                             LengthLimitingTextInputFormatter(1),
                             FilteringTextInputFormatter.digitsOnly,
@@ -140,18 +144,21 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                             contentPadding: EdgeInsets.zero,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                               borderSide: BorderSide(
-                                  color: Theme.of(context).primaryColor),
+                                color: Theme.of(context).primaryColor,
+                              ),
                             ),
                           ),
                           onChanged: (value) => _onDigitChanged(index, value),
@@ -189,7 +196,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         // Manually validate to avoid form key issues with multiple fields if needed
                         // Or just call verify
                         final ok = await controller.verifyOtp(
-                            phoneNumber: widget.phoneNumber);
+                          phoneNumber: widget.phoneNumber,
+                        );
                         if (ok && context.mounted) {
                           // Navigate safely
                           Navigator.of(context).pop();
@@ -197,7 +205,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                              content: Text("Please enter 6 digits")),
+                            content: Text("Please enter 6 digits"),
+                          ),
                         );
                       }
                     },
@@ -212,18 +221,24 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       ? null
                       : () async {
                           await controller.resendOtp(
-                              phoneNumber: widget.phoneNumber);
+                            phoneNumber: widget.phoneNumber,
+                          );
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
                                 content: Text(
-                                    AppStrings.otpResentSuccessfully.tr())));
+                                  AppStrings.otpResentSuccessfully.tr(),
+                                ),
+                              ),
+                            );
                           }
                         },
                   child: Text(
                     "إعادة إرسال الرمز", // Resend Code
                     style: TextStyle(
-                        color: Theme.of(context).primaryColor,
-                        fontWeight: FontWeight.bold),
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

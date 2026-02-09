@@ -15,10 +15,7 @@ import 'order_confirmation_screen.dart';
 class ShippingDetailsScreen extends ConsumerStatefulWidget {
   final OrderModel initialOrder;
 
-  const ShippingDetailsScreen({
-    super.key,
-    required this.initialOrder,
-  });
+  const ShippingDetailsScreen({super.key, required this.initialOrder});
 
   @override
   ConsumerState<ShippingDetailsScreen> createState() =>
@@ -53,8 +50,9 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
             : const CityOption(title: '', value: ''),
       ),
     );
-    _selectedCityValue =
-        (matchedCity.value.isNotEmpty) ? matchedCity.value : null;
+    _selectedCityValue = (matchedCity.value.isNotEmpty)
+        ? matchedCity.value
+        : null;
   }
 
   @override
@@ -215,15 +213,11 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.error,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
         ),
         filled: true,
         fillColor: Theme.of(context).colorScheme.surface,
@@ -234,13 +228,15 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
 
   Widget _buildCountryDropdown(ThemeData theme) {
     return DropdownButtonFormField<String>(
-      value: kGovernates.any((g) => g.code == _selectedCountryCode)
+      initialValue: kGovernates.any((g) => g.code == _selectedCountryCode)
           ? _selectedCountryCode
           : null,
       decoration: InputDecoration(
         labelText: AppStrings.country.tr(),
-        prefixIcon:
-            Icon(Icons.public, color: Theme.of(context).colorScheme.primary),
+        prefixIcon: Icon(
+          Icons.public,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
@@ -255,24 +251,20 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.error,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
         ),
         filled: true,
         fillColor: Theme.of(context).colorScheme.surface,
       ),
       items: kGovernates
-          .map((g) => DropdownMenuItem<String>(
-                value: g.code,
-                child: Text(g.title),
-              ))
+          .map(
+            (g) =>
+                DropdownMenuItem<String>(value: g.code, child: Text(g.title)),
+          )
           .toList(),
       onChanged: (value) {
         setState(() {
@@ -295,8 +287,9 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
       (g) => g.code == _selectedCountryCode,
       orElse: () => kGovernates.first,
     );
-    final List<CityOption> cities =
-        (_selectedCountryCode == null) ? const [] : governate.cities;
+    final List<CityOption> cities = (_selectedCountryCode == null)
+        ? const []
+        : governate.cities;
     final bool enabled = _selectedCountryCode != null && cities.isNotEmpty;
 
     // If previously selected city no longer exists under new country, clear it
@@ -309,8 +302,10 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
       value: _selectedCityValue,
       decoration: InputDecoration(
         labelText: AppStrings.city.tr(),
-        prefixIcon: Icon(Icons.location_city,
-            color: Theme.of(context).colorScheme.primary),
+        prefixIcon: Icon(
+          Icons.location_city,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
@@ -329,18 +324,16 @@ class _ShippingDetailsScreenState extends ConsumerState<ShippingDetailsScreen> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.error,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
         ),
         filled: true,
         fillColor: Theme.of(context).colorScheme.surface,
       ),
       items: cities
-          .map((c) => DropdownMenuItem<String>(
-                value: c.value,
-                child: Text(c.title),
-              ))
+          .map(
+            (c) =>
+                DropdownMenuItem<String>(value: c.value, child: Text(c.title)),
+          )
           .toList(),
       onChanged: enabled
           ? (value) {

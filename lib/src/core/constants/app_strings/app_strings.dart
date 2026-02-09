@@ -236,4 +236,7 @@ class AppStrings {
   static const String auctionDetails = "auctionDetails";
   static const String notSpecified = "notSpecified";
   static const String usage = "usage";
+  static const String youWon = 'youWon';
+  static const String youLost = 'youLost';
+  static const String sold = 'sold';
 }

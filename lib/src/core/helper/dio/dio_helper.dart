@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -12,7 +13,7 @@ import 'end_points.dart';
 class DioHelper {
   static late Dio dio;
 
-  static init() {
+  static void init() {
     dio = Dio(
       BaseOptions(
         baseUrl: EndPoints.baseUrl,
@@ -23,7 +24,11 @@ class DioHelper {
       ),
     );
 
-    print('DioHelper init with baseUrl: ${EndPoints.baseUrl}');
+    log(
+      'DioHelper init with baseUrl: ${EndPoints.baseUrl}',
+      time: DateTime.now(),
+      level: 1,
+    );
 
     if (!kIsWeb) {
       (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {

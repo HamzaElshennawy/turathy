@@ -1,15 +1,14 @@
 /// Unified socket event models to avoid duplication across the app
 library;
 
+import 'package:turathy/src/features/auctions/domain/auction_model.dart';
+
 /// User count update event from socket
 class UserCountUpdate {
   final int auctionId;
   final int userCount;
 
-  const UserCountUpdate({
-    required this.auctionId,
-    required this.userCount,
-  });
+  const UserCountUpdate({required this.auctionId, required this.userCount});
 
   factory UserCountUpdate.fromJson(Map<String, dynamic> json) {
     return UserCountUpdate(
@@ -19,10 +18,7 @@ class UserCountUpdate {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'auctionId': auctionId,
-      'userCount': userCount,
-    };
+    return {'auctionId': auctionId, 'userCount': userCount};
   }
 
   @override
@@ -114,18 +110,18 @@ class CommentEvent {
   final SocketComment newComment;
   final List<SocketComment> allComments;
 
-  const CommentEvent({
-    required this.newComment,
-    required this.allComments,
-  });
+  const CommentEvent({required this.newComment, required this.allComments});
 
   factory CommentEvent.fromJson(Map<String, dynamic> json) {
     return CommentEvent(
-      newComment:
-          SocketComment.fromJson(json['newComment'] as Map<String, dynamic>),
+      newComment: SocketComment.fromJson(
+        json['newComment'] as Map<String, dynamic>,
+      ),
       allComments: (json['comments'] as List<dynamic>)
-          .map((comment) =>
-              SocketComment.fromJson(comment as Map<String, dynamic>))
+          .map(
+            (comment) =>
+                SocketComment.fromJson(comment as Map<String, dynamic>),
+          )
           .toList(),
     );
   }
@@ -173,11 +169,7 @@ class SocketUser {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'number': number,
-    };
+    return {'id': id, 'name': name, 'number': number};
   }
 
   @override
@@ -256,11 +248,7 @@ class SocketErrorEvent {
   final String? code;
   final Map<String, dynamic>? details;
 
-  const SocketErrorEvent({
-    required this.message,
-    this.code,
-    this.details,
-  });
+  const SocketErrorEvent({required this.message, this.code, this.details});
 
   factory SocketErrorEvent.fromJson(Map<String, dynamic> json) {
     return SocketErrorEvent(
@@ -319,10 +307,7 @@ class AuctionEndedEvent {
 
   Map<String, dynamic> toJson() {
     return {
-      'winningUser': {
-        'name': winnerName,
-        if (winnerId != null) 'id': winnerId,
-      },
+      'winningUser': {'name': winnerName, if (winnerId != null) 'id': winnerId},
       'auctionId': auctionId,
       if (finalBidAmount != null) 'finalBidAmount': finalBidAmount,
     };
@@ -344,4 +329,49 @@ class AuctionEndedEvent {
   @override
   String toString() =>
       'AuctionEndedEvent(winner: $winnerName, auctionId: $auctionId)';
+}
+
+/// Bid placed event model
+class BidPlacedEvent {
+  final AuctionBid newBid;
+  // final List<AuctionBid> auctionBids; // Backend might not return full list always, or maybe it does. Check socket.service.ts: it returns auctionBids.
+  // Actually, let's keep it simple and match backend return { newBid, auctionBids, currentPrice, expiryDate }
+  final List<AuctionBid> auctionBids;
+  final num? currentPrice;
+  final DateTime? expiryDate;
+
+  const BidPlacedEvent({
+    required this.newBid,
+    required this.auctionBids,
+    this.currentPrice,
+    this.expiryDate,
+  });
+
+  factory BidPlacedEvent.fromJson(Map<String, dynamic> json) {
+    return BidPlacedEvent(
+      newBid: AuctionBid.fromJson(json['newBid'] as Map<String, dynamic>),
+      auctionBids:
+          (json['auctionBids'] as List<dynamic>?)
+              ?.map((e) => AuctionBid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      currentPrice: json['currentPrice'] as num?,
+      expiryDate: json['expiryDate'] != null
+          ? DateTime.parse(json['expiryDate'] as String)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'newBid': newBid.toJson(),
+      'auctionBids': auctionBids.map((e) => e.toJson()).toList(),
+      'currentPrice': currentPrice,
+      'expiryDate': expiryDate?.toIso8601String(),
+    };
+  }
+
+  @override
+  String toString() =>
+      'BidPlacedEvent(newBid: ${newBid.bid}, expiryDate: $expiryDate)';
 }

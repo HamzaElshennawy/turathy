@@ -11,8 +11,8 @@ class AuctionModel {
   num? minBidPrice;
   num? quantity;
   num? bidPrice;
-  String? expiryDate;
-  String? startDate;
+  DateTime? expiryDate;
+  DateTime? startDate;
   bool? isLive;
   bool? isExpired;
   bool? isCanceled;
@@ -145,8 +145,12 @@ class AuctionModel {
     minBidPrice = json['minBidPrice'];
     quantity = json['quantity'];
     bidPrice = json['bidPrice'];
-    expiryDate = json['expiryDate'];
-    startDate = json['startDate'];
+    expiryDate = json['expiryDate'] != null
+        ? DateTime.parse(json['expiryDate'] as String).toLocal()
+        : null;
+    startDate = json['startDate'] != null
+        ? DateTime.parse(json['startDate'] as String).toLocal()
+        : null;
     isLive = json['isLive'];
     isExpired = json['isExpired'];
     isCanceled = json['isCanceled'];
@@ -207,8 +211,8 @@ class AuctionModel {
     data['minBidPrice'] = minBidPrice;
     data['quantity'] = quantity;
     data['bidPrice'] = bidPrice;
-    data['expiryDate'] = expiryDate;
-    data['startDate'] = startDate;
+    data['expiryDate'] = expiryDate?.toIso8601String();
+    data['startDate'] = startDate?.toIso8601String();
     data['isLive'] = isLive;
     data['isExpired'] = isExpired;
     data['isCanceled'] = isCanceled;

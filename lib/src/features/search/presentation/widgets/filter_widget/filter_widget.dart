@@ -13,15 +13,15 @@ class FilterWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedColorIndex =
-        ref.watch(filterWidgetControllerProvider.notifier).selectedColorIndex;
-    final selectedSizeIndex =
-        ref.watch(filterWidgetControllerProvider.notifier).selectedSizeIndex;
+    //final selectedColorIndex =
+    //    ref.watch(filterWidgetControllerProvider.notifier).selectedColorIndex;
+    //final selectedSizeIndex =
+    //    ref.watch(filterWidgetControllerProvider.notifier).selectedSizeIndex;
     final selectedCategoryIndex = ref
         .watch(filterWidgetControllerProvider.notifier)
         .selectedCategoryIndex;
-    final isAllOffersSelected =
-        ref.watch(filterWidgetControllerProvider).isAllOffersSelected;
+    //final isAllOffersSelected =
+    //    ref.watch(filterWidgetControllerProvider).isAllOffersSelected;
 
     return Expanded(
       child: Column(
@@ -73,23 +73,26 @@ class FilterWidget extends ConsumerWidget {
                   // }),
                   // gapH16,
                   _displayFilters(
-                      AppStrings.categories.tr(),
-                      ref
-                          .read(filterWidgetControllerProvider.notifier)
-                          .categories
-                          .map((e) {
-                        if (context.locale.languageCode == "en") {
-                          return e.name ?? '';
-                        } else {
-                          return e.name ?? '';
-                        }
-                      }).toList(),
-                      [selectedCategoryIndex],
-                      context, (index) {
+                    AppStrings.categories.tr(),
                     ref
                         .read(filterWidgetControllerProvider.notifier)
-                        .selectCategory(index);
-                  }),
+                        .categories
+                        .map((e) {
+                          if (context.locale.languageCode == "en") {
+                            return e.name ?? '';
+                          } else {
+                            return e.name ?? '';
+                          }
+                        })
+                        .toList(),
+                    [selectedCategoryIndex],
+                    context,
+                    (index) {
+                      ref
+                          .read(filterWidgetControllerProvider.notifier)
+                          .selectCategory(index);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -98,42 +101,44 @@ class FilterWidget extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.only(top: 16.0),
             child: FilledButton(
-                onPressed: () {
-                  ref.invalidate(searchProductsProvider);
-                  Navigator.of(context).pop();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                  child: Text(
-                    AppStrings.applyFilters.tr(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
+              onPressed: () {
+                ref.invalidate(searchProductsProvider);
+                Navigator.of(context).pop();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                child: Text(
+                  AppStrings.applyFilters.tr(),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
-                )),
+                ),
+              ),
+            ),
           ),
           // clear filters
           gapH8,
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-                onPressed: () {
-                  ref
-                      .read(filterWidgetControllerProvider.notifier)
-                      .clearFilters();
-                  ref.invalidate(searchProductsProvider);
-                  Navigator.of(context).pop();
-                },
-                child: Text(
-                  AppStrings.clearFilters.tr(),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                )),
+              onPressed: () {
+                ref
+                    .read(filterWidgetControllerProvider.notifier)
+                    .clearFilters();
+                ref.invalidate(searchProductsProvider);
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                AppStrings.clearFilters.tr(),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -141,8 +146,13 @@ class FilterWidget extends ConsumerWidget {
   }
 }
 
-Widget _displayFilters(String filterTitle, List<String> filters,
-    List<int> selectedFilters, BuildContext context, void Function(int) onTap) {
+Widget _displayFilters(
+  String filterTitle,
+  List<String> filters,
+  List<int> selectedFilters,
+  BuildContext context,
+  void Function(int) onTap,
+) {
   return Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,

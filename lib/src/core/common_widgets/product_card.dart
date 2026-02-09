@@ -23,7 +23,7 @@ class ProductCard extends StatefulWidget {
 
 class _ProductCardState extends State<ProductCard> {
   Timer? _timer;
-  Duration _remainingTime = Duration.zero;
+  //Duration _remainingTime = Duration.zero;
 
   @override
   void initState() {

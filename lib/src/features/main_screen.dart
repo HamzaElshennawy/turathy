@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -118,7 +119,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
     final authController = ref.watch(authControllerProvider);
 
-    final bool isSignedIn = authController.valueOrNull != null;
+    //final bool isSignedIn = authController.valueOrNull != null;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -374,7 +375,13 @@ class _UserAvatar extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             )
-          : null,
+          : CachedNetworkImage(
+              imageUrl: image!,
+              fit: BoxFit.cover,
+              placeholder: (context, url) =>
+                  const Center(child: CircularProgressIndicator()),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
+            ),
     );
   }
 }

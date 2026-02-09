@@ -169,6 +169,6 @@ final unreadNotificationsCountProvider = Provider<int>((ref) {
   return notificationsAsync.when(
     data: (response) => response.unreadCount,
     loading: () => 0,
-    error: (_, __) => 0,
+    error: (_, _) => 0,
   );
 });

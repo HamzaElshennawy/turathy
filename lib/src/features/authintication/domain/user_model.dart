@@ -6,7 +6,7 @@ class UserModel {
   final String? createdAt;
   final String? updatedAt;
 
-//<editor-fold desc="Data Methods">
+  //<editor-fold desc="Data Methods">
   const UserModel({
     this.id,
     this.name,
@@ -40,12 +40,12 @@ class UserModel {
   @override
   String toString() {
     return 'UserModel{'
-            ' id: $id,'
-            ' name: $name,'
-            ' password: $password,'
-            ' phoneNumber: $phoneNumber,' +
-        ' createdAt: $createdAt,' +
-        ' updatedAt: $updatedAt,' +
+        ' id: $id,'
+        ' name: $name,'
+        ' password: $password,'
+        ' phoneNumber: $phoneNumber,'
+        ' createdAt: $createdAt,'
+        ' updatedAt: $updatedAt,'
         '}';
   }
 
@@ -89,5 +89,5 @@ class UserModel {
     );
   }
 
-//</editor-fold>
+  //</editor-fold>
 }

@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/common_widgets/async_value_widget.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
@@ -9,7 +11,10 @@ import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
 
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
+import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bids_history_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_gallery_widget.dart';
+import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_info_table_widget.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
@@ -33,6 +38,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   late AuctionModel auction;
   RtcEngine? _engine;
   bool _isVideoReady = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -46,13 +52,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   @override
   void dispose() {
     socketActions.leaveAuction(widget.auctionId, CachedVariables.userId!);
+    _audioPlayer.dispose();
     super.dispose();
   }
 
   void _placeBid(int quantity, num currentBid, {bool isMinBid = false}) {
     final lastAuctionProduct = ref.read(auctionProductChangeProvider);
     if (currentBid == 0) {
-      Navigator.of(context).pop();
       return;
     }
     if (currentBid ==
@@ -63,17 +69,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         CachedVariables.userId!,
         (currentBid).toDouble(),
       );
-      Navigator.of(context).pop();
       return;
     }
     socketActions.placeBid(
       auction.id ?? 0,
       CachedVariables.userId!,
-      (currentBid +
-              ((lastAuctionProduct?.bidPrice ?? auction.bidPrice!) * quantity))
-          .toDouble(),
+      currentBid.toDouble(),
     );
-    Navigator.of(context).pop();
   }
 
   @override
@@ -83,6 +85,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       ref.invalidate(auctionDetailsProvider(widget.auctionId));
       resetProductChangeStream(ref);
       resetNewBidStream(ref);
+
+      if (next.valueOrNull?.winnerId == CachedVariables.userId) {
+        _audioPlayer.play(AssetSource('sounds/win_bid_notification.wav'));
+        FCMService().showLocalNotification(
+          title: AppStrings.youWon.tr(),
+          body: '${AppStrings.youWon.tr()} ${auction.title ?? ""}',
+        );
+      } else {
+        _audioPlayer.play(AssetSource('sounds/lose_notification.wav'));
+      }
+
       showDialog(
         context: context,
         builder: (context) {
@@ -100,6 +113,27 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           );
         },
       );
+    });
+
+    // Listen for new bids to update timer and price
+    ref.listen(newBidEventProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event != null) {
+        // Play sound if bid is from another user
+        if (event.newBid.userId != CachedVariables.userId) {
+          _audioPlayer.play(AssetSource('sounds/higher_bid_notification.wav'));
+          HapticFeedback.lightImpact();
+        }
+
+        setState(() {
+          if (event.expiryDate != null) {
+            auction.expiryDate = event.expiryDate;
+          }
+          if (event.currentPrice != null) {
+            auction.actualPrice = event.currentPrice;
+          }
+        });
+      }
     });
 
     final auctionValue = ref.watch(auctionDetailsProvider(widget.auctionId));
@@ -168,17 +202,54 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                 : const SizedBox.shrink(),
                           ),
                         // Image Gallery
-                        AuctionGalleryWidget(
-                          images: [
-                            if (auction.imageUrl != null &&
-                                auction.imageUrl!.isNotEmpty)
-                              auction.imageUrl!,
-                            ...?auction.auctionImages,
-                          ],
+                        // Image Gallery
+                        Builder(
+                          builder: (context) {
+                            String? statusLabel;
+                            Color? statusColor;
+                            final int? currentUserId = CachedVariables.userId;
+                            final bool isEnded =
+                                auction.isExpired == true ||
+                                auction.isCanceled == true;
+
+                            if (isEnded) {
+                              if (auction.winningUserId == currentUserId) {
+                                statusLabel = AppStrings.youWon.tr();
+                                statusColor = Colors.green;
+                              } else if (auction.auctionBids?.any(
+                                    (bid) => bid.userId == currentUserId,
+                                  ) ??
+                                  false) {
+                                statusLabel = AppStrings.youLost.tr();
+                                statusColor = Colors.red;
+                              } else if (auction.winningUserId != null) {
+                                statusLabel = AppStrings.sold.tr();
+                                statusColor = Colors.blue;
+                              }
+                            }
+
+                            return AuctionGalleryWidget(
+                              images: [
+                                if (auction.imageUrl != null &&
+                                    auction.imageUrl!.isNotEmpty)
+                                  auction.imageUrl!,
+                                ...?auction.auctionImages,
+                              ],
+                              statusLabel: statusLabel,
+                              statusColor: statusColor,
+                            );
+                          },
                         ),
 
                         // Info Table
                         AuctionInfoTableWidget(auction: auction),
+
+                        gapH16,
+
+                        // Bid History
+                        AuctionBidsHistoryWidget(
+                          initialBids: auction.auctionBids ?? [],
+                        ),
 
                         gapH24,
                       ],
@@ -188,6 +259,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                 // Bidding Controls (Fixed at bottom)
                 AuctionBiddingControlsWidget(
                   auction: auction,
+                  expiryDate: auction.expiryDate,
                   onPlaceBid: (qty, price) {
                     _placeBid(qty, price);
                   },

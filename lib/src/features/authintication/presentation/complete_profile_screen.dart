@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,7 +5,6 @@ import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
 import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_images/app_images.dart';
-import 'auth_controller.dart';
 
 class CompleteProfileScreen extends ConsumerWidget {
   const CompleteProfileScreen({super.key});
@@ -48,12 +46,7 @@ class CompleteProfileScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Image.asset(
-                    AppImages.logo,
-                    height: 80,
-                  ),
-                ),
+                Center(child: Image.asset(AppImages.logo, height: 80)),
                 const SizedBox(height: 32),
 
                 // Form Fields
@@ -147,9 +140,9 @@ class CompleteProfileScreen extends ConsumerWidget {
       child: Text(
         text,
         textAlign: TextAlign.end,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.black87,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(color: Colors.black87),
       ),
     );
   }

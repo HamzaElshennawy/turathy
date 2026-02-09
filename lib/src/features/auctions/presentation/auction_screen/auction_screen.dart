@@ -40,7 +40,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
   void _calculateTimeLeft() {
     if (widget.auction.startDate != null) {
-      final startDate = DateTime.parse(widget.auction.startDate!);
+      final startDate = widget.auction.startDate!;
       final now = DateTime.now();
       if (startDate.isAfter(now)) {
         setState(() {
@@ -64,19 +64,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:${twoDigitMinutes}:${twoDigitSeconds}";
+    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
   }
 
-  String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final date = DateTime.parse(dateStr);
-      return DateFormat(
-        'd MMMM, h a',
-      ).format(date); // Example: 14 December, 10 AM
-    } catch (e) {
-      return dateStr;
-    }
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat(
+      'd MMMM, h a',
+    ).format(date); // Example: 14 December, 10 AM
   }
 
   Widget _buildInfoRow(String label, String value) {

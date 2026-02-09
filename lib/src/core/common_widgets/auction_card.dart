@@ -41,7 +41,7 @@ class _AuctionCardState extends State<AuctionCard> {
 
   void _calculateRemainingTime() {
     if (widget.product.expiryDate != null) {
-      final expiryDate = DateTime.parse(widget.product.expiryDate!);
+      final expiryDate = widget.product.expiryDate!;
       final now = DateTime.now();
       if (expiryDate.isAfter(now)) {
         setState(() {
@@ -203,12 +203,8 @@ class _AuctionCardState extends State<AuctionCard> {
                           Builder(
                             builder: (context) {
                               final now = DateTime.now();
-                              final startDate = DateTime.parse(
-                                widget.product.startDate!,
-                              );
-                              final expiryDate = DateTime.parse(
-                                widget.product.expiryDate!,
-                              );
+                              final startDate = widget.product.startDate!;
+                              final expiryDate = widget.product.expiryDate!;
 
                               if (startDate.isAfter(now)) {
                                 // Future Auction

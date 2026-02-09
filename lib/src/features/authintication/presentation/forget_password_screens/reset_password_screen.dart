@@ -40,11 +40,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Widget build(BuildContext context) {
     // form with enter code and new password and confirm password
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          AppStrings.resetPassword.tr(),
-        ),
-      ),
+      appBar: AppBar(title: Text(AppStrings.resetPassword.tr())),
       body: CustomScrollView(
         slivers: [
           SliverFillRemaining(
@@ -70,9 +66,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
+                          const SizedBox(height: 10),
                           WhiteRoundedTextFormField(
                             controller: _codeController,
                             hintText: AppStrings.code.tr(),
@@ -84,9 +78,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                               return null;
                             },
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
+                          const SizedBox(height: 10),
                           WhiteRoundedTextFormField(
                             controller: _newPasswordController,
                             hintText: AppStrings.newPassword.tr(),
@@ -99,9 +91,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                             },
                             keyboardType: TextInputType.visiblePassword,
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
+                          const SizedBox(height: 10),
                           WhiteRoundedTextFormField(
                             controller: _confirmPasswordController,
                             hintText: AppStrings.confirmPassword.tr(),
@@ -117,26 +107,28 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                             },
                             keyboardType: TextInputType.visiblePassword,
                           ),
-                          const SizedBox(
-                            height: 10,
-                          ),
+                          const SizedBox(height: 10),
                           PrimaryButton(
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
                                 final ok = await ref
-                                    .read(forgotPasswordControllerProvider
-                                        .notifier)
+                                    .read(
+                                      forgotPasswordControllerProvider.notifier,
+                                    )
                                     .changePassword(
                                       e164Phone: widget.phoneNumber,
                                       otp: _codeController.text.trim(),
-                                      password:
-                                          _newPasswordController.text.trim(),
+                                      password: _newPasswordController.text
+                                          .trim(),
                                     );
                                 if (!mounted) return;
                                 if (ok) {
-                                  Navigator.of(context).popUntil(
-                                    (route) => route.isFirst,
-                                  );
+                                  // ignore: use_build_context_synchronously
+                                  Navigator.of(
+                                    // ignore: use_build_context_synchronously
+                                    context,
+                                  ).popUntil((route) => route.isFirst);
+                                  // ignore: use_build_context_synchronously
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(

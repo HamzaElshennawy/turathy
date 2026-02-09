@@ -12,11 +12,13 @@ import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionModel auction;
   final Function(int qty, num price) onPlaceBid;
+  final DateTime? expiryDate;
 
   const AuctionBiddingControlsWidget({
     super.key,
     required this.auction,
     required this.onPlaceBid,
+    this.expiryDate,
   });
 
   @override
@@ -28,6 +30,7 @@ class _AuctionBiddingControlsWidgetState
     extends ConsumerState<AuctionBiddingControlsWidget> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
+  double _selectedMultiplier = 1.0; // 1.0, 1.5, or 2.0
 
   @override
   void initState() {
@@ -38,7 +41,8 @@ class _AuctionBiddingControlsWidgetState
   @override
   void didUpdateWidget(covariant AuctionBiddingControlsWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.auction.expiryDate != widget.auction.expiryDate) {
+    if (oldWidget.auction.expiryDate != widget.auction.expiryDate ||
+        oldWidget.expiryDate != widget.expiryDate) {
       _initializeTimer();
     }
   }
@@ -46,14 +50,14 @@ class _AuctionBiddingControlsWidgetState
   void _initializeTimer() {
     _timer?.cancel();
 
-    if (widget.auction.expiryDate != null) {
-      final expiryDateTime = DateTime.tryParse(widget.auction.expiryDate!);
-      if (expiryDateTime != null) {
+    final expiry = widget.expiryDate ?? widget.auction.expiryDate;
+
+    if (expiry != null) {
+      final expiryDateTime = expiry;
+      _updateRemainingTime(expiryDateTime);
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         _updateRemainingTime(expiryDateTime);
-        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-          _updateRemainingTime(expiryDateTime);
-        });
-      }
+      });
     }
   }
 
@@ -98,12 +102,22 @@ class _AuctionBiddingControlsWidgetState
     final auctionProduct = ref.watch(auctionProductChangeProvider);
     final lastBid = ref.watch(currentBidStateProvider);
 
-    num currentPrice = widget.auction.bidPrice ?? 0;
-    num minBid = widget.auction.minBidPrice ?? 0;
+    // bidPrice is the minimum bid increment, not the current price
+    num bidIncrement = widget.auction.bidPrice ?? 0;
+    // minBidPrice is the opening price (starting price)
+    num openingPrice = widget.auction.minBidPrice ?? 0;
+
+    // Current price is the last bid amount, or the opening price if no bids yet
+    num currentPrice =
+        lastBid?.bid ?? widget.auction.actualPrice ?? openingPrice;
 
     if (auctionProduct != null) {
-      currentPrice = auctionProduct.bidPrice;
-      minBid = auctionProduct.minBidPrice;
+      bidIncrement = auctionProduct.bidPrice;
+      openingPrice = auctionProduct.minBidPrice;
+      // If product changed, reset to opening price unless there's a new bid
+      if (lastBid == null) {
+        currentPrice = openingPrice;
+      }
     }
 
     final bool isAuctionEnded = _remainingTime == Duration.zero;
@@ -203,61 +217,105 @@ class _AuctionBiddingControlsWidgetState
           ),
           gapH16,
 
-          // Timer pill
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                _formatDuration(_remainingTime),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isAuctionEnded ? Colors.red : Colors.black87,
+          // Timer pill with progress bar for last 30 seconds
+          Builder(
+            builder: (context) {
+              final bool showProgressBar =
+                  _remainingTime.inSeconds <= 30 &&
+                  _remainingTime.inSeconds > 0;
+              final double progress = showProgressBar
+                  ? _remainingTime.inSeconds / 30.0
+                  : 0.0;
+
+              return Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-            ),
+                child: Stack(
+                  children: [
+                    // Progress bar (only visible in last 30 seconds)
+                    if (showProgressBar)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        width: MediaQuery.of(context).size.width * progress,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: _remainingTime.inSeconds <= 10
+                                ? [
+                                    const Color(0xFFD32F2F).withAlpha(180),
+                                    const Color(0xFFFF5252).withAlpha(150),
+                                  ]
+                                : [
+                                    const Color(0xFF2D4739).withAlpha(180),
+                                    const Color(0xFF4CAF50).withAlpha(150),
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    // Timer text
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Center(
+                        child: Text(
+                          _formatDuration(_remainingTime),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: showProgressBar
+                                ? Colors.white
+                                : (isAuctionEnded
+                                      ? Colors.red
+                                      : Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           gapH16,
 
-          // Quick Bid Buttons
+          // Quick Bid Buttons - 1x, 1.5x, 2x minBid
           Row(
             children: [
               Expanded(
-                child: _buildQuickBidButton(
-                  context,
-                  5,
-                  currentPrice,
-                  isAuctionEnded,
+                child: _buildBidMultiplierButton(
+                  multiplier: 1.0,
+                  bidIncrement: bidIncrement,
+                  currentPrice: currentPrice,
+                  isDisabled: isAuctionEnded,
                 ),
               ),
               gapW8,
               Expanded(
-                child: _buildQuickBidButton(
-                  context,
-                  10,
-                  currentPrice,
-                  isAuctionEnded,
+                child: _buildBidMultiplierButton(
+                  multiplier: 1.5,
+                  bidIncrement: bidIncrement,
+                  currentPrice: currentPrice,
+                  isDisabled: isAuctionEnded,
                 ),
               ),
               gapW8,
               Expanded(
-                child: _buildQuickBidButton(
-                  context,
-                  20,
-                  currentPrice,
-                  isAuctionEnded,
+                child: _buildBidMultiplierButton(
+                  multiplier: 2.0,
+                  bidIncrement: bidIncrement,
+                  currentPrice: currentPrice,
+                  isDisabled: isAuctionEnded,
                 ),
               ),
             ],
           ),
           gapH16,
 
-          // Main Bid Button
+          // Main Bid Button - uses selected multiplier
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -265,7 +323,9 @@ class _AuctionBiddingControlsWidgetState
               onPressed: isAuctionEnded
                   ? null
                   : () {
-                      widget.onPlaceBid(1, currentPrice + minBid);
+                      final bidAmount =
+                          currentPrice + (bidIncrement * _selectedMultiplier);
+                      widget.onPlaceBid(1, bidAmount);
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: isAuctionEnded
@@ -291,35 +351,47 @@ class _AuctionBiddingControlsWidgetState
     );
   }
 
-  Widget _buildQuickBidButton(
-    BuildContext context,
-    int amount,
-    num currentPrice,
-    bool isDisabled,
-  ) {
+  Widget _buildBidMultiplierButton({
+    required double multiplier,
+    required num bidIncrement,
+    required num currentPrice,
+    required bool isDisabled,
+  }) {
+    final bool isSelected = _selectedMultiplier == multiplier;
+    // Calculate total bid price (current + increment * multiplier)
+    final num totalBidPrice = currentPrice + (bidIncrement * multiplier);
+    final String label = totalBidPrice.toStringAsFixed(0);
+
     return GestureDetector(
       onTap: isDisabled
           ? null
           : () {
-              widget.onPlaceBid(1, currentPrice + amount);
+              setState(() {
+                _selectedMultiplier = multiplier;
+              });
             },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? const Color(0xFF2D4739) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isDisabled ? Colors.grey.shade300 : Colors.grey.shade400,
-            width: 1,
+            color: isDisabled
+                ? Colors.grey.shade300
+                : (isSelected ? const Color(0xFF2D4739) : Colors.grey.shade400),
+            width: isSelected ? 2 : 1,
           ),
         ),
         child: Center(
           child: Text(
-            '\$$amount',
+            label,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: isDisabled ? Colors.grey : Colors.black87,
+              color: isDisabled
+                  ? Colors.grey
+                  : (isSelected ? Colors.white : Colors.black87),
             ),
           ),
         ),

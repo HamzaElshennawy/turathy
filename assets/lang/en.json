@@ -1,4 +1,7 @@
 {
+  "youWon": "You Won",
+  "youLost": "You Lost",
+  "sold": "Sold",
   "appName": "turathy",
   "player": "player",
   "coach": "coach",
@@ -211,5 +214,9 @@
   "live": "Live",
   "public": "Public",
   "confirm": "Confirm",
-  "auctionDetails": "Auction Details"
+  "auctionDetails": "Auction Details",
+  "bidHistory": "Bid History",
+  "noBidsYet": "No bids yet",
+  "anonymous": "Anonymous",
+  "highest": "Highest"
 }

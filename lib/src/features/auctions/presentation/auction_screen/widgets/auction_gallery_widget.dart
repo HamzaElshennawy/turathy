@@ -4,8 +4,15 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 
 class AuctionGalleryWidget extends StatefulWidget {
   final List<String> images;
+  final String? statusLabel;
+  final Color? statusColor;
 
-  const AuctionGalleryWidget({super.key, required this.images});
+  const AuctionGalleryWidget({
+    super.key,
+    required this.images,
+    this.statusLabel,
+    this.statusColor,
+  });
 
   @override
   State<AuctionGalleryWidget> createState() => _AuctionGalleryWidgetState();
@@ -104,6 +111,39 @@ class _AuctionGalleryWidgetState extends State<AuctionGalleryWidget> {
                   ),
                 ),
               ),
+              if (widget.statusLabel != null)
+                Positioned.directional(
+                  textDirection: ui
+                      .TextDirection
+                      .ltr, // Force LTR for consistent positioning relative to image or use context direction
+                  start: 10,
+                  top: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: widget.statusColor ?? Colors.blue,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      widget.statusLabel!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

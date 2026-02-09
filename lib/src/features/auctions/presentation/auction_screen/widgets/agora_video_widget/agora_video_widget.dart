@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,13 +57,21 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onPermissionError: (permissionType) {
-            print("onPermissionError: $permissionType");
+            log(
+              "onPermissionError: $permissionType",
+              time: DateTime.now(),
+              level: 1,
+            );
           },
           onError: (err, msg) {
-            print("onError: $err, $msg");
+            log("onError: $err, $msg", time: DateTime.now(), level: 1);
           },
           onJoinChannelSuccess: (RtcConnection connection, int elapsed) async {
-            print("onJoinChannelSuccess ------------------");
+            log(
+              "onJoinChannelSuccess ------------------",
+              time: DateTime.now(),
+              level: 1,
+            );
             debugPrint("Local user ${connection.localUid} joined");
 
             if (!_localUserJoined) {
@@ -72,7 +82,11 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
           },
           onUserJoined:
               (RtcConnection connection, int remoteUid, int elapsed) async {
-                debugPrint("Remote user $remoteUid joined");
+                log(
+                  "Remote user $remoteUid joined",
+                  time: DateTime.now(),
+                  level: 1,
+                );
 
                 if (_remoteUid == null) {
                   setState(() {
@@ -86,7 +100,11 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
                 int remoteUid,
                 UserOfflineReasonType reason,
               ) {
-                debugPrint("Remote user $remoteUid left channel");
+                log(
+                  "Remote user $remoteUid left channel",
+                  time: DateTime.now(),
+                  level: 1,
+                );
                 if (_remoteUid != null) {
                   setState(() {
                     _remoteUid = null;
@@ -94,8 +112,10 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
                 }
               },
           onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
-            debugPrint(
+            log(
               '[onTokenPrivilegeWillExpire] connection: ${connection.toJson()}, token: $token',
+              time: DateTime.now(),
+              level: 1,
             );
           },
         ),
@@ -130,7 +150,7 @@ class _AgoraVideoWidgetState extends ConsumerState<AgoraVideoWidget> {
       }
     } catch (e, st) {
       // Handle errors
-      print("Error initializing Agora: $e $st");
+      log("Error initializing Agora: $e $st", time: DateTime.now(), level: 1);
       // Add error handling logic here
     }
   }

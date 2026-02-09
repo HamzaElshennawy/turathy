@@ -1,14 +1,10 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/products_list_widget.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/search_widget.dart';
 
 import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_strings/app_strings.dart';
-import '../../../auctions/data/auctions_repository.dart';
 import '../../../authintication/presentation/auth_controller.dart';
-import '../../data/category_repository.dart';
 import 'widgets/products_widget/live_auctions_widget.dart';
 
 class HomeScreen extends StatelessWidget {

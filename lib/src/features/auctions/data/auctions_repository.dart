@@ -248,9 +248,9 @@ class AgoraTokenRequest {
 
   @override
   String toString() {
-    return 'AgoraTokenRequest{' +
-        ' auctionID: $auctionID,' +
-        ' isPublisher: $isPublisher,' +
+    return 'AgoraTokenRequest{'
+        ' auctionID: $auctionID,'
+        ' isPublisher: $isPublisher,'
         '}';
   }
 
@@ -262,7 +262,7 @@ class AgoraTokenRequest {
   }
 
   Map<String, dynamic> toMap() {
-    return {'auctionID': this.auctionID, 'isPublisher': this.isPublisher};
+    return {'auctionID': auctionID, 'isPublisher': isPublisher};
   }
 
   factory AgoraTokenRequest.fromMap(Map<String, dynamic> map) {

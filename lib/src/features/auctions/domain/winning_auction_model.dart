@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class WinningAuctionModel {
   final int id;
@@ -44,10 +44,11 @@ class WinningAuctionModel {
         auctionStartDate == other.auctionStartDate &&
         winnerName == other.winnerName;
   }
-  
+
   // hash code for all fields
   @override
-  int get hashCode => id.hashCode ^
+  int get hashCode =>
+      id.hashCode ^
       userId.hashCode ^
       auctionId.hashCode ^
       product.hashCode ^
@@ -67,10 +68,12 @@ class WinningAuctionModel {
       product: json['product'] as String,
       price: (json['price'] as num).toDouble(),
       sold: json['sold'] as bool,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
       auctionTitle: json['auction']['title'] as String,
-      auctionStartDate: DateTime.parse(json['auction']['startDate'] as String),
+      auctionStartDate: DateTime.parse(
+        json['auction']['startDate'] as String,
+      ).toLocal(),
       winnerName: json['name'] as String,
     );
   }
@@ -93,12 +96,12 @@ class WinningAuctionModel {
     };
   }
 
-  String get formattedPrice => NumberFormat.currency(
-        symbol: 'SAR ',
-        decimalDigits: 2,
-      ).format(price);
+  String get formattedPrice =>
+      NumberFormat.currency(symbol: 'SAR ', decimalDigits: 2).format(price);
 
-  String get formattedCreatedAt => DateFormat('dd/MM/yyyy hh:mm a').format(createdAt);
+  String get formattedCreatedAt =>
+      DateFormat('dd/MM/yyyy hh:mm a').format(createdAt);
 
-  String get formattedStartDate => DateFormat('dd/MM/yyyy hh:mm a').format(auctionStartDate);
-} 
+  String get formattedStartDate =>
+      DateFormat('dd/MM/yyyy hh:mm a').format(auctionStartDate);
+}

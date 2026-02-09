@@ -1,4 +1,7 @@
 {
+  "youWon": "لقد فزت",
+  "youLost": "لقد خسرت",
+  "sold": "تم البيع",
   "appName": "تراثي",
   "player": "لاعب",
   "coach": "مدرب",
@@ -211,5 +214,9 @@
   "live": "مباشر",
   "public": "عام",
   "confirm": "تأكيد",
-  "auctionDetails": "تفاصيل المزاد"
+  "auctionDetails": "تفاصيل المزاد",
+  "bidHistory": "سجل المزايدات",
+  "noBidsYet": "لا توجد مزايدات بعد",
+  "anonymous": "مجهول",
+  "highest": "الأعلى"
 }
