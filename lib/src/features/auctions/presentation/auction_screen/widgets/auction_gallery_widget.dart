@@ -115,9 +115,9 @@ class _AuctionGalleryWidgetState extends State<AuctionGalleryWidget> {
                 Positioned.directional(
                   textDirection: ui
                       .TextDirection
-                      .ltr, // Force LTR for consistent positioning relative to image or use context direction
-                  start: 10,
-                  top: 10,
+                      .rtl, // Force LTR for consistent positioning relative to image or use context direction
+                  start: 30,
+                  top: 30,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,

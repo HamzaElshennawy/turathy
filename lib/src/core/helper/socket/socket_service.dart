@@ -110,6 +110,11 @@ class SocketService {
       _startHeartbeat();
     });
 
+    // Debug: Listen to all events
+    _socket!.onAny((event, data) {
+      log('SocketService: [DEBUG] Received ANY event: $event, data: $data');
+    });
+
     _socket!.onDisconnect((reason) {
       log('Socket disconnected: $reason');
       _updateConnectionStatus(
@@ -171,8 +176,12 @@ class SocketService {
   /// Initialize event controllers and listeners
   void _initializeEventControllers() {
     for (final event in SocketConfig.supportedEvents) {
-      _eventControllers[event] = StreamController<dynamic>.broadcast();
+      // Don't overwrite if already created (e.g. by getEventStream before connect)
+      if (!_eventControllers.containsKey(event)) {
+        _eventControllers[event] = StreamController<dynamic>.broadcast();
+      }
 
+      // Always attach the listener to the new socket instance
       _socket?.on(event, (data) {
         log('Received socket event: $event');
         _addEventData(event, data);
@@ -185,7 +194,10 @@ class SocketService {
     try {
       final controller = _eventControllers[event];
       if (controller != null && !controller.isClosed) {
+        log('SocketService: Adding data to controller for $event');
         controller.add(data);
+      } else {
+        log('SocketService: Controller for $event is null or closed');
       }
     } catch (error) {
       log('Error adding data to event stream $event: $error');
@@ -202,6 +214,25 @@ class SocketService {
 
   /// Get typed stream for specific event
   Stream<T> getEventStream<T>(String eventName, T Function(dynamic) parser) {
+    log('SocketService: getEventStream called for $eventName');
+
+    // Check if controller exists, if not, creating it doesn't help if we don't have a listener.
+    // However, _initializeEventControllers should have created it if it's in config.
+    // If it's dynamic, we might need to add listener here.
+
+    if (!_eventControllers.containsKey(eventName)) {
+      log(
+        'SocketService: No controller found for $eventName, creating one dynamically.',
+      );
+      _eventControllers[eventName] = StreamController<dynamic>.broadcast();
+      if (_socket != null) {
+        _socket!.on(eventName, (data) {
+          log('SocketService: Received dynamic event: $eventName data: $data');
+          _addEventData(eventName, data);
+        });
+      }
+    }
+
     final controller = _eventControllers[eventName];
     if (controller == null) {
       throw Exception('No stream controller found for event: $eventName');

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_provider.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -95,12 +96,16 @@ class AuctionsRepository {
   }
 
   // get user auctions
-  Future<List<AuctionModel>> getUserAuctions(String auctionType) async {
+  Future<List<AuctionModel>> getUserAuctions({
+    String type = 'Live',
+    String status = 'all',
+  }) async {
     final result = await DioHelper.getData(
       url: EndPoints.getUserAuctions,
       token: CachedVariables.token,
       query: {
-        'type': auctionType,
+        'type': type,
+        'status': status,
         'limit': '100',
         'user_id': CachedVariables.userId.toString(),
       },
@@ -139,6 +144,38 @@ class AuctionsRepository {
           result.data['error'] ??
           'An error occurred while fetching winning auctions';
       throw AuthException(message, result.statusCode);
+    }
+  }
+
+  Future<AuctionModel> addAuction(
+    Map<String, dynamic> auctionData,
+    List<dynamic> images,
+  ) async {
+    FormData formData = FormData.fromMap(auctionData);
+
+    // Backend uses FileInterceptor('image_url') - expects a single file
+    if (images.isNotEmpty && images.first != null) {
+      String fileName = images.first.path.split('/').last;
+      formData.files.add(
+        MapEntry(
+          'image_url',
+          await MultipartFile.fromFile(images.first.path, filename: fileName),
+        ),
+      );
+    }
+
+    final response = await DioHelper.postData(
+      url: EndPoints.addAuction,
+      data: formData,
+      token: CachedVariables.token,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return AuctionModel.fromJson(response.data['data']);
+    } else {
+      String message =
+          response.data['error'] ?? 'An error occurred while creating auction';
+      throw AuthException(message, response.statusCode);
     }
   }
 }
@@ -220,7 +257,9 @@ final agoraTokenProvider = FutureProvider.autoDispose
 
 final userAuctionsProvider = FutureProvider.autoDispose
     .family<List<AuctionModel>, String>((ref, type) async {
-      return ref.watch(productsRepositoryProvider).getUserAuctions(type);
+      return ref
+          .watch(productsRepositoryProvider)
+          .getUserAuctions(type: type, status: 'all');
     });
 
 final userWinningAuctionsProvider =

@@ -32,6 +32,9 @@ abstract class EndPoints {
 
   static String getWiningAuctions = "auctions/get-winnings";
 
+  // Host/Creator
+  static const String getUserProducts = "products/get-user-products";
+
   //live auction requests
   static const String addLiveAuctionRequest =
       "live-auction-requests/add-live-auction-request";

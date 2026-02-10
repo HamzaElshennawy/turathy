@@ -2,6 +2,7 @@ import '../../../core/helper/dio/end_points.dart';
 
 class ProductModel {
   final int id;
+  final int? userId;
   final String? title;
   final String? name;
   final String? description;
@@ -35,6 +36,7 @@ class ProductModel {
 
   const ProductModel({
     required this.id,
+    this.userId,
     required this.title,
     required this.name,
     required this.description,
@@ -60,6 +62,7 @@ class ProductModel {
       (other is ProductModel &&
           runtimeType == other.runtimeType &&
           id == other.id &&
+          userId == other.userId &&
           title == other.title &&
           name == other.name &&
           description == other.description &&
@@ -80,6 +83,7 @@ class ProductModel {
   @override
   int get hashCode =>
       id.hashCode ^
+      userId.hashCode ^
       title.hashCode ^
       name.hashCode ^
       description.hashCode ^
@@ -99,6 +103,7 @@ class ProductModel {
 
   ProductModel copyWith({
     int? id,
+    int? userId,
     String? title,
     String? name,
     String? description,
@@ -119,6 +124,7 @@ class ProductModel {
   }) {
     return ProductModel(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       title: title ?? this.title,
       name: name ?? this.name,
       description: description ?? this.description,
@@ -142,6 +148,7 @@ class ProductModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'user_id': userId,
       'title': title,
       'name': name,
       'description': description,
@@ -165,6 +172,7 @@ class ProductModel {
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       id: json['id'] as int,
+      userId: json['user_id'] as int?,
       title: json['title'] as String?,
       name: json['name'] as String?,
       description: json['description'] as String?,

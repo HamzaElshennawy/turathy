@@ -410,6 +410,8 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   }
 
   Widget _buildBottomBar() {
+    final bool isOwner = widget.product.userId == CachedVariables.userId;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -427,29 +429,61 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             children: [
-              // Buy Now Button
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    _handleBuyNow();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B5E20),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
+              if (isOwner)
+                // Owner info label
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue.shade700,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppStrings.yourProduct.tr(),
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    AppStrings.buyNow.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                )
+              else
+                // Buy Now Button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _handleBuyNow();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1B5E20),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: Text(
+                      AppStrings.buyNow.tr(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               gapW16,
 

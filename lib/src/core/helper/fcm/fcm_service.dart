@@ -138,10 +138,26 @@ class FCMService {
       log('FCM Token: $_fcmToken', time: DateTime.now(), level: 1);
 
       if (_fcmToken != null) {
+        log(
+          'FCM Token retrieved successfully: $_fcmToken',
+          time: DateTime.now(),
+          level: 1,
+        );
         await _registerTokenWithBackend(_fcmToken!);
+      } else {
+        log(
+          'FCM Token is null after getToken()',
+          time: DateTime.now(),
+          level: 1,
+        );
       }
-    } catch (e) {
-      log('Error getting FCM token: $e', time: DateTime.now(), level: 1);
+    } catch (e, stack) {
+      log(
+        'Error getting FCM token: $e',
+        time: DateTime.now(),
+        level: 1,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -157,23 +173,49 @@ class FCMService {
     final userId = CachedVariables.userId;
     if (userId == null) {
       log(
-        'User not logged in, skipping token registration',
+        'User not logged in, skipping token registration for now. Token will be registered after login.',
         time: DateTime.now(),
         level: 1,
       );
       return;
     }
 
+    log(
+      'Attempting to register FCM token with backend for user $userId...',
+      time: DateTime.now(),
+      level: 1,
+    );
+
     try {
-      final platform = Platform.isAndroid ? 'ANDROID' : 'IOS';
+      final platform = Platform.isAndroid
+          ? 'android'
+          : 'ios'; // Lowercase might be expected by backend, strict check?
+      // Keeping original 'ANDROID'/'IOS' based on existing code, but logging it.
+      final platformToSend = Platform.isAndroid ? 'ANDROID' : 'IOS';
+
+      log(
+        'Sending registration request: Token=$token, Platform=$platformToSend',
+        time: DateTime.now(),
+        level: 1,
+      );
+
       await NotificationsRepository.registerDevice(
         userId: userId,
         token: token,
-        platform: platform,
+        platform: platformToSend,
       );
-      log('FCM token registered with backend', time: DateTime.now(), level: 1);
-    } catch (e) {
-      log('Error registering FCM token: $e', time: DateTime.now(), level: 1);
+      log(
+        'FCM token registered with backend successfully',
+        time: DateTime.now(),
+        level: 1,
+      );
+    } catch (e, stack) {
+      log(
+        'Error registering FCM token with backend: $e',
+        time: DateTime.now(),
+        level: 1,
+        stackTrace: stack,
+      );
     }
   }
 
@@ -262,8 +304,16 @@ class FCMService {
 
   /// Register token after login
   Future<void> registerAfterLogin() async {
+    log('registerAfterLogin called', time: DateTime.now(), level: 1);
     if (_fcmToken != null) {
       await _registerTokenWithBackend(_fcmToken!);
+    } else {
+      log(
+        'FCM Token is null in registerAfterLogin, attempting to get it...',
+        time: DateTime.now(),
+        level: 1,
+      );
+      await _getToken();
     }
   }
 

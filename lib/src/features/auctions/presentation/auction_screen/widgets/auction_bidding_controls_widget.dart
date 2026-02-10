@@ -13,12 +13,22 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionModel auction;
   final Function(int qty, num price) onPlaceBid;
   final DateTime? expiryDate;
+  final bool isAuctionEnded;
+  final bool isOwner;
+  final int? winnerId;
+  final String? winnerName;
+  final num? finalPrice;
 
   const AuctionBiddingControlsWidget({
     super.key,
     required this.auction,
     required this.onPlaceBid,
     this.expiryDate,
+    this.isAuctionEnded = false,
+    this.isOwner = false,
+    this.winnerId,
+    this.winnerName,
+    this.finalPrice,
   });
 
   @override
@@ -107,9 +117,21 @@ class _AuctionBiddingControlsWidgetState
     // minBidPrice is the opening price (starting price)
     num openingPrice = widget.auction.minBidPrice ?? 0;
 
-    // Current price is the last bid amount, or the opening price if no bids yet
+    // Determine the latest bid from either real-time update or initial data
+    final AuctionBid? latestBid =
+        lastBid ??
+        (widget.auction.auctionBids != null &&
+                widget.auction.auctionBids!.isNotEmpty
+            ? widget.auction.auctionBids!.last
+            : null);
+
+    // Current price logic:
+    // 1. Real-time update (lastBid)
+    // 2. Initial data (latestBid from list)
+    // 3. Actual price (if set)
+    // 4. Opening price
     num currentPrice =
-        lastBid?.bid ?? widget.auction.actualPrice ?? openingPrice;
+        latestBid?.bid ?? widget.auction.actualPrice ?? openingPrice;
 
     if (auctionProduct != null) {
       bidIncrement = auctionProduct.bidPrice;
@@ -120,9 +142,26 @@ class _AuctionBiddingControlsWidgetState
       }
     }
 
-    final bool isAuctionEnded = _remainingTime == Duration.zero;
-    final bool isHighestBidder = lastBid?.user?.id == CachedVariables.userId;
-    final bool hasBeenOutbid = lastBid != null && !isHighestBidder;
+    if (widget.isAuctionEnded && widget.finalPrice != null) {
+      currentPrice = widget.finalPrice!;
+    }
+
+    final bool isAuctionEnded =
+        _remainingTime == Duration.zero || widget.isAuctionEnded;
+
+    // Check status based on the determine latest bid
+    final bool isHighestBidder = latestBid?.userId == CachedVariables.userId;
+
+    // Check if user has participated in the auction
+    final bool hasParticipated =
+        widget.auction.auctionBids?.any(
+          (bid) => bid.userId == CachedVariables.userId,
+        ) ??
+        false;
+
+    // A user is outbid if they participated but are not the highest bidder
+    final bool hasBeenOutbid = hasParticipated && !isHighestBidder;
+
     final int bidNumber = widget.auction.auctionBids?.length ?? 0;
 
     return Container(
@@ -221,10 +260,10 @@ class _AuctionBiddingControlsWidgetState
           Builder(
             builder: (context) {
               final bool showProgressBar =
-                  _remainingTime.inSeconds <= 30 &&
+                  _remainingTime.inSeconds <= 60 &&
                   _remainingTime.inSeconds > 0;
               final double progress = showProgressBar
-                  ? _remainingTime.inSeconds / 30.0
+                  ? _remainingTime.inSeconds / 60.0
                   : 0.0;
 
               return Container(
@@ -267,7 +306,7 @@ class _AuctionBiddingControlsWidgetState
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: showProgressBar
-                                ? Colors.white
+                                ? Colors.black
                                 : (isAuctionEnded
                                       ? Colors.red
                                       : Colors.black87),
@@ -283,72 +322,230 @@ class _AuctionBiddingControlsWidgetState
           gapH16,
 
           // Quick Bid Buttons - 1x, 1.5x, 2x minBid
-          Row(
-            children: [
-              Expanded(
-                child: _buildBidMultiplierButton(
-                  multiplier: 1.0,
-                  bidIncrement: bidIncrement,
-                  currentPrice: currentPrice,
-                  isDisabled: isAuctionEnded,
-                ),
+          if (widget.isOwner) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
               ),
-              gapW8,
-              Expanded(
-                child: _buildBidMultiplierButton(
-                  multiplier: 1.5,
-                  bidIncrement: bidIncrement,
-                  currentPrice: currentPrice,
-                  isDisabled: isAuctionEnded,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.blue.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppStrings.youAreAuctionOwner.tr(),
+                    style: TextStyle(
+                      color: Colors.blue.shade700,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              gapW8,
-              Expanded(
-                child: _buildBidMultiplierButton(
-                  multiplier: 2.0,
-                  bidIncrement: bidIncrement,
-                  currentPrice: currentPrice,
-                  isDisabled: isAuctionEnded,
+            ),
+          ] else if (!isAuctionEnded) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildBidMultiplierButton(
+                    multiplier: 1.0,
+                    bidIncrement: bidIncrement,
+                    currentPrice: currentPrice,
+                    isDisabled: isAuctionEnded,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          gapH16,
-
-          // Main Bid Button - uses selected multiplier
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: isAuctionEnded
-                  ? null
-                  : () {
-                      final bidAmount =
-                          currentPrice + (bidIncrement * _selectedMultiplier);
-                      widget.onPlaceBid(1, bidAmount);
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isAuctionEnded
-                    ? Colors.grey
-                    : const Color(0xFF2D4739),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                gapW8,
+                Expanded(
+                  child: _buildBidMultiplierButton(
+                    multiplier: 1.5,
+                    bidIncrement: bidIncrement,
+                    currentPrice: currentPrice,
+                    isDisabled: isAuctionEnded,
+                  ),
                 ),
-                elevation: 0,
-              ),
-              child: Text(
-                isAuctionEnded ? AppStrings.auctionEnded.tr() : 'زايد الآن',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                gapW8,
+                Expanded(
+                  child: _buildBidMultiplierButton(
+                    multiplier: 2.0,
+                    bidIncrement: bidIncrement,
+                    currentPrice: currentPrice,
+                    isDisabled: isAuctionEnded,
+                  ),
+                ),
+              ],
+            ),
+            gapH16,
+            // Main Bid Button - uses selected multiplier
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  final bidAmount =
+                      currentPrice + (bidIncrement * _selectedMultiplier);
+                  widget.onPlaceBid(1, bidAmount);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D4739),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'زايد الآن',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
-          ),
+          ] else
+            _buildResultContainer(currentPrice),
         ],
       ),
     );
+  }
+
+  Widget _buildResultContainer(num finalPrice) {
+    if (widget.winnerId != null) {
+      if (widget.winnerId == CachedVariables.userId) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green),
+          ),
+          child: Column(
+            children: [
+              Text(
+                AppStrings.youWon.tr(),
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              gapH4,
+              Text(
+                '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
+                style: const TextStyle(color: Colors.green, fontSize: 14),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Did the user bid? We can check locally via the `auction.auctionBids` or just
+        // generic logic. For now, if we lost, we lost.
+        // But if we never bid, "You Lost" might feel aggressive?
+        // Let's check if the user is in the bid list if available.
+        // Similar logic to AuctionGallery.
+        final bool userBid =
+            widget.auction.auctionBids?.any(
+              (bid) => bid.userId == CachedVariables.userId,
+            ) ??
+            false;
+
+        if (userBid) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  AppStrings.youLost.tr(),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                gapH4,
+                if (widget.winnerName != null)
+                  Text(
+                    '${'winner'.tr()}: ${widget.winnerName}',
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                Text(
+                  '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
+                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                ),
+              ],
+            ),
+          );
+        } else {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade400),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  AppStrings.auctionEnded.tr(),
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                gapH4,
+                if (widget.winnerName != null)
+                  Text(
+                    '${'winner'.tr()}: ${widget.winnerName}',
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                  ),
+                Text(
+                  '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } else {
+      // No winner (expired/cancelled)
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade400),
+        ),
+        child: Center(
+          child: Text(
+            AppStrings.auctionEnded.tr(),
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildBidMultiplierButton({

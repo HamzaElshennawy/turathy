@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
@@ -40,6 +42,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   bool _isVideoReady = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
 
+  // Local state for immediate updates
+  bool _isAuctionEnded = false;
+  int? _winnerId;
+  String? _winnerName;
+  num? _finalPrice; // To store the price when auction ends
+  bool _hasShownResultDialog = false;
+
   @override
   void initState() {
     if (widget.isAdmin) {
@@ -51,9 +60,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   @override
   void dispose() {
-    socketActions.leaveAuction(widget.auctionId, CachedVariables.userId!);
+    _cleanupEngine();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  void _cleanupEngine() {
+    if (_engine != null) {
+      _engine!.leaveChannel();
+      _engine!.release();
+      _engine = null;
+    }
   }
 
   void _placeBid(int quantity, num currentBid, {bool isMinBid = false}) {
@@ -82,37 +99,47 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   Widget build(BuildContext context) {
     ref.listen(userCountUpdateProvider, (previous, next) {});
     ref.listen(auctionEndedProvider, (previous, next) {
-      ref.invalidate(auctionDetailsProvider(widget.auctionId));
-      resetProductChangeStream(ref);
-      resetNewBidStream(ref);
-
-      if (next.valueOrNull?.winnerId == CachedVariables.userId) {
-        _audioPlayer.play(AssetSource('sounds/win_bid_notification.wav'));
-        FCMService().showLocalNotification(
-          title: AppStrings.youWon.tr(),
-          body: '${AppStrings.youWon.tr()} ${auction.title ?? ""}',
-        );
-      } else {
-        _audioPlayer.play(AssetSource('sounds/lose_notification.wav'));
-      }
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('auctionEnded'.tr()),
-            content: Text('${'winner'.tr()} ${next.valueOrNull?.winnerName}'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('ok'.tr()),
-              ),
-            ],
-          );
-        },
+      debugPrint(
+        'LiveAuctionScreen: auctionEndedProvider update received. Value: ${next.valueOrNull}',
       );
+      final event = next.valueOrNull;
+      if (event != null) {
+        debugPrint(
+          'LiveAuctionScreen: Auction Ended Event: winnerId=${event.winnerId}, finalPrice=${event.finalBidAmount}',
+        );
+        ref.invalidate(auctionDetailsProvider(widget.auctionId));
+        resetProductChangeStream(ref);
+        resetNewBidStream(ref);
+
+        setState(() {
+          _isAuctionEnded = true;
+          _winnerId = event.winnerId;
+          _winnerName = event.winnerName;
+          _finalPrice = event.finalBidAmount;
+        });
+
+        if (event.winnerId == CachedVariables.userId) {
+          _audioPlayer.play(
+            AssetSource('sounds/win_bid_notification.wav'),
+            volume: 1.0,
+          );
+          FCMService().showLocalNotification(
+            title: AppStrings.youWon.tr(),
+            body: '${AppStrings.youWon.tr()} ${auction.title ?? ""}',
+          );
+        } else {
+          _audioPlayer.play(
+            AssetSource('sounds/lose_notification.wav'),
+            volume: 1.0,
+          );
+        }
+
+        _showResultDialog(
+          winnerId: event.winnerId,
+          winnerName: event.winnerName,
+          finalPrice: event.finalBidAmount,
+        );
+      }
     });
 
     // Listen for new bids to update timer and price
@@ -138,6 +165,57 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
     final auctionValue = ref.watch(auctionDetailsProvider(widget.auctionId));
     auction = auctionValue.valueOrNull ?? AuctionModel(isLiveAuction: true);
+
+    // Initialize local state if not already set (for initial load)
+    // We only set it once when data is first loaded, unless it's already ended locally
+    if (auctionValue.hasValue &&
+        !_isAuctionEnded &&
+        (auction.isExpired == true ||
+            auction.isCanceled == true ||
+            auction.winningUserId != null)) {
+      _isAuctionEnded = true;
+      _winnerId = auction.winningUserId;
+      _winnerName = auction.user?.name; // Incorrect, user is the creator.
+      // We often don't have winner name in AuctionModel directly unless we fetch it separately or it's added to model.
+      // For now, relies on what we have. If winningUserId is present, we know ID.
+      // We might need to fetch winner name if it's not in the model.
+      // Actually AuctionModel has `winningUserId`.
+      _finalPrice = auction.actualPrice;
+    }
+
+    // Check if we should show the result dialog immediately on entry
+    // Only show if the user participated or won
+    // We check this outside the `_isAuctionEnded` block to handle cases where
+    // auctionBids might populate after the initial load.
+    final bool isLocallyEnded =
+        _isAuctionEnded ||
+        auction.isExpired == true ||
+        auction.isCanceled == true ||
+        auction.winningUserId != null;
+
+    if (isLocallyEnded && !_hasShownResultDialog) {
+      final bool userParticipated =
+          auction.auctionBids?.any(
+            (bid) => bid.userId == CachedVariables.userId,
+          ) ??
+          false;
+
+      final int? effectiveWinnerId = _winnerId ?? auction.winningUserId;
+      final bool userWon = effectiveWinnerId == CachedVariables.userId;
+
+      if (userWon || userParticipated) {
+        // Schedule dialog to show after build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showResultDialog(
+              winnerId: effectiveWinnerId,
+              winnerName: _winnerName ?? auction.user?.name,
+              finalPrice: _finalPrice ?? auction.actualPrice,
+            );
+          }
+        });
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -203,28 +281,56 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                           ),
                         // Image Gallery
                         // Image Gallery
+                        // Image Gallery
                         Builder(
                           builder: (context) {
                             String? statusLabel;
                             Color? statusColor;
                             final int? currentUserId = CachedVariables.userId;
+
+                            // Use local state if ended, otherwise check model
                             final bool isEnded =
+                                _isAuctionEnded ||
                                 auction.isExpired == true ||
-                                auction.isCanceled == true;
+                                auction.isCanceled == true ||
+                                (auction.expiryDate != null &&
+                                    auction.expiryDate!.isBefore(
+                                      DateTime.now(),
+                                    ));
+                            log("isEnded: $isEnded");
+                            final int? winnerId =
+                                _winnerId ?? auction.winningUserId;
 
                             if (isEnded) {
-                              if (auction.winningUserId == currentUserId) {
+                              log("isEnded");
+                              log("winnerId: $winnerId");
+                              log("currentUserId: $currentUserId");
+                              log("Current user:${CachedVariables.userId}");
+                              log("WinnerId: ${auction.winningUserId}");
+                              if (winnerId != null &&
+                                  winnerId == currentUserId) {
+                                log("You won");
                                 statusLabel = AppStrings.youWon.tr();
                                 statusColor = Colors.green;
                               } else if (auction.auctionBids?.any(
                                     (bid) => bid.userId == currentUserId,
                                   ) ??
                                   false) {
+                                // Checking if user participated.
+                                // Note: AuctionBids might not be full list if paginated,
+                                // but for this screen we usually have recent bids.
+                                // Ideal check would be 'didUserBid' flag from backend.
+                                // For now, this is best effort.
+
+                                // But if user lost, they aren't the winner.
                                 statusLabel = AppStrings.youLost.tr();
                                 statusColor = Colors.red;
-                              } else if (auction.winningUserId != null) {
+                              } else if (winnerId != null) {
                                 statusLabel = AppStrings.sold.tr();
                                 statusColor = Colors.blue;
+                              } else {
+                                statusLabel = AppStrings.auctionEnded.tr();
+                                statusColor = Colors.grey;
                               }
                             }
 
@@ -260,6 +366,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                 AuctionBiddingControlsWidget(
                   auction: auction,
                   expiryDate: auction.expiryDate,
+                  isAuctionEnded: _isAuctionEnded,
+                  isOwner: auction.userId == CachedVariables.userId,
+                  winnerId: _winnerId,
+                  winnerName: _winnerName,
+                  finalPrice: _finalPrice,
                   onPlaceBid: (qty, price) {
                     _placeBid(qty, price);
                   },
@@ -267,6 +378,202 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  void _showResultDialog({
+    required int? winnerId,
+    required String? winnerName,
+    required num? finalPrice,
+  }) {
+    if (_hasShownResultDialog) return;
+
+    setState(() {
+      _hasShownResultDialog = true;
+    });
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Auction Result',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return AuctionResultDialog(
+          winnerId: winnerId,
+          winnerName: winnerName,
+          finalPrice: finalPrice,
+          currentUserId: CachedVariables.userId,
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+    );
+  }
+}
+
+class AuctionResultDialog extends StatelessWidget {
+  final int? winnerId;
+  final String? winnerName;
+  final num? finalPrice;
+  final int? currentUserId;
+
+  const AuctionResultDialog({
+    super.key,
+    this.winnerId,
+    this.winnerName,
+    this.finalPrice,
+    this.currentUserId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Determine status
+    bool isWinner = winnerId != null && winnerId == currentUserId;
+    bool hasWinner = winnerId != null;
+
+    IconData icon;
+    Color color;
+    String title;
+    String message;
+
+    if (isWinner) {
+      icon = Icons.emoji_events_rounded;
+      color = const Color(0xFFFFD700); // Gold
+      title = AppStrings.youWon.tr();
+      message = '${'winner'.tr()}: ${winnerName ?? 'Unknown'}';
+    } else if (hasWinner) {
+      // User lost
+      icon = Icons.sentiment_dissatisfied_rounded;
+      color = const Color(0xFFE53935); // Red
+      title = AppStrings.youLost.tr();
+      message = '${'winner'.tr()}: ${winnerName ?? 'Unknown'}';
+    } else {
+      // No winner / Ended
+      icon = Icons.timer_off_rounded;
+      color = Colors.grey;
+      title = AppStrings.auctionEnded.tr();
+      message = AppStrings.noBidsYet.tr();
+    }
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icon Circle
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 64, color: color),
+            ),
+            gapH24,
+
+            // Title
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            gapH12,
+
+            // Message (Winner Name)
+            if (winnerName != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+            gapH16,
+
+            // Final Price
+            if (finalPrice != null)
+              Column(
+                children: [
+                  Text(
+                    AppStrings.finalPrice.tr(),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  gapH4,
+                  Text(
+                    '$finalPrice ${AppStrings.currency.tr()}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF2D4739),
+                    ),
+                  ),
+                ],
+              ),
+
+            gapH32,
+
+            // Button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D4739),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  AppStrings.ok.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

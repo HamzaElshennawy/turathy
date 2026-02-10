@@ -230,8 +230,9 @@ class AppStrings {
   static const String confirmBidMessage = "confirmBidMessage";
   static const String confirm = "confirm";
   static const String auctionEnded = "auctionEnded";
-  static const String winner = "winner";
-  static const String live = "live";
+  static const String winner = 'winner';
+  static const String finalPrice = 'finalPrice';
+  static const String live = 'live';
   static const String public = "public";
   static const String auctionDetails = "auctionDetails";
   static const String notSpecified = "notSpecified";
@@ -239,4 +240,52 @@ class AppStrings {
   static const String youWon = 'youWon';
   static const String youLost = 'youLost';
   static const String sold = 'sold';
+  static const String noBidsYet = 'noBidsYet';
+
+  // Host / Create Item Screen
+  static const String createAuction = 'createAuction';
+  static const String createProduct = 'createProduct';
+  static const String product = 'product';
+  static const String auction = 'auction';
+  static const String images = 'images';
+  static const String title = 'title';
+  static const String description = 'description';
+  static const String startingPrice = 'startingPrice';
+  static const String category = 'category';
+  static const String brandOptional = 'brandOptional';
+  static const String materialOptional = 'materialOptional';
+  static const String conditionOptional = 'conditionOptional';
+  static const String approximateAgeOptional = 'approximateAgeOptional';
+  static const String required_ = 'required_';
+  static const String pleaseSelectAtLeastOneImage =
+      'pleaseSelectAtLeastOneImage';
+  static const String pleaseSelectCategory = 'pleaseSelectCategory';
+  static const String itemCreatedSuccessfully = 'itemCreatedSuccessfully';
+  static const String hostDashboard = 'hostDashboard';
+  static const String myProducts = 'myProducts';
+  static const String addNewItem = 'addNewItem';
+  static const String noAuctionsCreatedYet = 'noAuctionsCreatedYet';
+  static const String noProductsCreatedYet = 'noProductsCreatedYet';
+  static const String upcoming = 'upcoming';
+  static const String ended = 'ended';
+  static const String startPrice = 'startPrice';
+  static const String untitledAuction = 'untitledAuction';
+  static const String untitledProduct = 'untitledProduct';
+  static const String errorLoadingCategories = 'errorLoadingCategories';
+
+  // Auction Creation Fields
+  static const String actualPrice = 'actualPrice';
+  static const String minBidPriceLabel = 'minBidPriceLabel';
+  static const String bidIncrement = 'bidIncrement';
+  static const String auctionQuantity = 'auctionQuantity';
+  static const String expiryDate = 'expiryDate';
+  static const String startDate = 'startDate';
+  static const String auctionTypeLabel = 'auctionTypeLabel';
+  static const String originOptional = 'originOptional';
+  static const String usageOptional = 'usageOptional';
+  static const String selectDate = 'selectDate';
+
+  // Owner Restrictions
+  static const String youAreAuctionOwner = 'youAreAuctionOwner';
+  static const String yourProduct = 'yourProduct';
 }
