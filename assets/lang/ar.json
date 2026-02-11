@@ -259,5 +259,7 @@
   "usageOptional": "الاستخدام (اختياري)",
   "selectDate": "اختر التاريخ",
   "youAreAuctionOwner": "أنت مالك هذا المزاد",
-  "yourProduct": "منتجك"
+  "yourProduct": "منتجك",
+  "noResultsFound": "لا توجد نتائج",
+  "likes": "المفضلة"
 }

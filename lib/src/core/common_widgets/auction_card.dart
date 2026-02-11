@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
+import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
+import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 
 import '../../features/auctions/domain/auction_model.dart';
 import '../../features/auctions/presentation/auction_screen/auction_screen.dart';
@@ -10,17 +14,17 @@ import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
 
-class AuctionCard extends StatefulWidget {
+class AuctionCard extends ConsumerStatefulWidget {
   final AuctionModel product;
   final String? heroTag;
 
   const AuctionCard({super.key, required this.product, this.heroTag});
 
   @override
-  State<AuctionCard> createState() => _AuctionCardState();
+  ConsumerState<AuctionCard> createState() => _AuctionCardState();
 }
 
-class _AuctionCardState extends State<AuctionCard> {
+class _AuctionCardState extends ConsumerState<AuctionCard> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
 
@@ -64,6 +68,12 @@ class _AuctionCardState extends State<AuctionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final favoritesState = ref.watch(favoritesControllerProvider);
+    final isLiked = favoritesState.maybeWhen(
+      data: (state) => state.likedAuctionIds.contains(widget.product.id),
+      orElse: () => false,
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
@@ -132,16 +142,33 @@ class _AuctionCardState extends State<AuctionCard> {
                   Positioned(
                     top: 12,
                     right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(200),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.favorite_border,
-                        color: Colors.grey[600],
-                        size: 24,
+                    child: InkWell(
+                      onTap: () {
+                        final user = ref.read(authControllerProvider).value;
+                        if (user == null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SignInScreen(),
+                            ),
+                          );
+                          return;
+                        }
+                        ref
+                            .read(favoritesControllerProvider.notifier)
+                            .toggleLikeAuction(widget.product);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(200),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isLiked ? Colors.red : Colors.grey[600],
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),

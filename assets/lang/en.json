@@ -259,5 +259,7 @@
   "usageOptional": "Usage (Optional)",
   "selectDate": "Select Date",
   "youAreAuctionOwner": "You are the owner of this auction",
-  "yourProduct": "Your Product"
+  "yourProduct": "Your Product",
+  "noResultsFound": "No Results Found",
+  "likes": "Likes"
 }

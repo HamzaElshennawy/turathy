@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
+import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
+import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 import 'package:turathy/src/features/products/presentation/product_screen.dart';
 
 import '../../features/products/domain/product_model.dart';
@@ -11,17 +15,17 @@ import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 
-class ProductCard extends StatefulWidget {
+class ProductCard extends ConsumerStatefulWidget {
   final ProductModel product;
   final String? heroTag;
 
   const ProductCard({super.key, required this.product, this.heroTag});
 
   @override
-  State<ProductCard> createState() => _ProductCardState();
+  ConsumerState<ProductCard> createState() => _ProductCardState();
 }
 
-class _ProductCardState extends State<ProductCard> {
+class _ProductCardState extends ConsumerState<ProductCard> {
   Timer? _timer;
   //Duration _remainingTime = Duration.zero;
 
@@ -82,6 +86,12 @@ class _ProductCardState extends State<ProductCard> {
 
   @override
   Widget build(BuildContext context) {
+    final favoritesState = ref.watch(favoritesControllerProvider);
+    final isLiked = favoritesState.maybeWhen(
+      data: (state) => state.likedProductIds.contains(widget.product.id),
+      orElse: () => false,
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
@@ -150,16 +160,33 @@ class _ProductCardState extends State<ProductCard> {
                   Positioned(
                     top: 12,
                     right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(200),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.favorite_border,
-                        color: Colors.grey[600],
-                        size: 24,
+                    child: InkWell(
+                      onTap: () {
+                        final user = ref.read(authControllerProvider).value;
+                        if (user == null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SignInScreen(),
+                            ),
+                          );
+                          return;
+                        }
+                        ref
+                            .read(favoritesControllerProvider.notifier)
+                            .toggleLikeProduct(widget.product);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(200),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isLiked ? Colors.red : Colors.grey[600],
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),

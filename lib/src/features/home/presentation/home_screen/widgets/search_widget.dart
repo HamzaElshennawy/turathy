@@ -1,9 +1,37 @@
+import 'dart:async';
+import 'dart:developer';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import '../controllers/search_provider.dart';
 
-class SearchWidget extends StatelessWidget {
+class SearchWidget extends ConsumerStatefulWidget {
   const SearchWidget({super.key});
+
+  @override
+  ConsumerState<SearchWidget> createState() => _SearchWidgetState();
+}
+
+class _SearchWidgetState extends ConsumerState<SearchWidget> {
+  final TextEditingController _controller = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      log('Updating search query state: "$query"');
+      ref.read(searchQueryProvider.notifier).state = query;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,9 +61,12 @@ class SearchWidget extends StatelessWidget {
                   color: Colors.grey.shade400,
                   size: 26,
                 ),
-                const SizedBox(width: 12),
+                gapW12,
                 Expanded(
                   child: TextField(
+                    textAlignVertical: TextAlignVertical.center,
+                    controller: _controller,
+                    onChanged: _onSearchChanged,
                     //textAlign: TextAlign.right, // Assuming RTL based on "ابحث"
                     decoration: InputDecoration(
                       hintText: AppStrings.search.tr(),
@@ -47,6 +78,16 @@ class SearchWidget extends StatelessWidget {
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
                       isDense: true,
+                      suffixIcon: _controller.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                _controller.clear();
+                                _onSearchChanged('');
+                                setState(() {});
+                              },
+                            )
+                          : null,
                     ),
                   ),
                 ),
@@ -55,7 +96,7 @@ class SearchWidget extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(width: 12),
+        gapW12,
 
         // Filter Button
         Container(

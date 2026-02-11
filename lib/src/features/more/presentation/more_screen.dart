@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
+import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
 import 'package:turathy/src/features/host/presentation/my_items_screen.dart';
 
 class MoreScreen extends ConsumerWidget {
@@ -95,6 +96,17 @@ class MoreScreen extends ConsumerWidget {
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 // TODO: Navigate to Products
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.favorite),
+              title: Text(AppStrings.likes.tr()),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const LikesScreen()),
+                );
               },
             ),
             const Divider(),

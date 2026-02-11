@@ -69,4 +69,12 @@ abstract class EndPoints {
   static const String addProduct = 'products/add-product';
   static const String editProduct = 'products/edit-product';
   static const String uploadProductImages = 'products/upload-images';
+
+  // Search
+  static const String search = 'search';
+
+  // Likes
+  static const String likes = 'likes';
+  static const String likedProducts = 'likes/products';
+  static const String likedAuctions = 'likes/auctions';
 }

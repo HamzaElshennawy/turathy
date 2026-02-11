@@ -241,6 +241,7 @@ class AppStrings {
   static const String youLost = 'youLost';
   static const String sold = 'sold';
   static const String noBidsYet = 'noBidsYet';
+  static const String noResultsFound = 'noResultsFound';
 
   // Host / Create Item Screen
   static const String createAuction = 'createAuction';
@@ -288,4 +289,5 @@ class AppStrings {
   // Owner Restrictions
   static const String youAreAuctionOwner = 'youAreAuctionOwner';
   static const String yourProduct = 'yourProduct';
+  static const String likes = 'likes';
 }
