@@ -79,3 +79,10 @@ final productsListProvider = FutureProvider<List<ProductModel>>((ref) async {
 final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   return ref.watch(productsRepositoryProvider).getMyProducts();
 });
+
+final productDetailsProvider = FutureProvider.family<ProductModel, int>((
+  ref,
+  productId,
+) async {
+  return ref.watch(productsRepositoryProvider).getProduct(productId);
+});

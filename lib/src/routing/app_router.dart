@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../features/authintication/presentation/sign_in_screen.dart';
 import '../features/authintication/presentation/sign_up_screen.dart';
 import '../features/main_screen.dart';
+import '../features/auctions/presentation/auction_screen/live_auction_screen.dart';
+import '../features/orders/presentation/orders_list_screen.dart';
+import '../features/products/presentation/product_details_wrapper.dart';
 import '../features/splash_screen/splash_screen.dart';
 import 'rout_constants.dart';
 
@@ -58,6 +61,24 @@ final goRouter = GoRouter(
     GoRoute(
       path: RouteConstants.signUp,
       builder: (context, state) => const SignUpScreen(),
+    ),
+    GoRoute(
+      path: RouteConstants.liveAuction,
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        return LiveAuctionScreen(auctionId: int.parse(id!));
+      },
+    ),
+    GoRoute(
+      path: RouteConstants.productDetails,
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        return ProductDetailsWrapper(productId: int.parse(id!));
+      },
+    ),
+    GoRoute(
+      path: RouteConstants.orders,
+      builder: (context, state) => const OrdersListScreen(),
     ),
   ],
 );

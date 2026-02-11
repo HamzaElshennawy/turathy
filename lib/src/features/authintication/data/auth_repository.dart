@@ -8,17 +8,26 @@ import '../domain/user_model.dart';
 
 class AuthRepository {
   static Future<UserModel> signIn(String phone, String password) async {
-    final result = await DioHelper.postData(url: EndPoints.login, data: {
-      'phone_number': phone,
-      'password': password,
-    });
+    final result = await DioHelper.postData(
+      url: EndPoints.login,
+      data: {'phone_number': phone, 'password': password},
+    );
     if (result.statusCode == 200 || result.statusCode == 201) {
       final user = UserModel.fromJson(result.data['data']);
+
+      // Cache token
+      final token = result.data['token'] ?? result.data['data']['token'];
+      if (token != null) {
+        await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
+        CachedVariables.token = token;
+      }
+
       await cacheData(user.copyWith(password: password));
       return user;
     } else {
       AppFunctions.logPrint(
-          message: 'code signIn ${result.statusCode} $result ');
+        message: 'code signIn ${result.statusCode} $result ',
+      );
       String message =
           result.data['error'] ?? 'An error occurred while signing in';
       throw AuthException(message, result.statusCode);
@@ -27,7 +36,9 @@ class AuthRepository {
 
   static Future<bool> createUser(UserModel user) async {
     final result = await DioHelper.postData(
-        url: EndPoints.userSignup, data: user.toJson());
+      url: EndPoints.userSignup,
+      data: user.toJson(),
+    );
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
@@ -37,14 +48,13 @@ class AuthRepository {
     }
   }
 
-  static Future<bool> verifyOtp(
-      {required String number, required String otp}) async {
+  static Future<bool> verifyOtp({
+    required String number,
+    required String otp,
+  }) async {
     final result = await DioHelper.postData(
       url: EndPoints.verifyOTP,
-      data: {
-        'number': number,
-        'otp': otp,
-      },
+      data: {'number': number, 'otp': otp},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
@@ -58,9 +68,7 @@ class AuthRepository {
   static Future<bool> resendOtp({required String number}) async {
     final result = await DioHelper.postData(
       url: EndPoints.resendOTP,
-      data: {
-        'number': number,
-      },
+      data: {'number': number},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
@@ -73,9 +81,7 @@ class AuthRepository {
   static Future<bool> requestOtp({required String number}) async {
     final result = await DioHelper.postData(
       url: EndPoints.requestOTP,
-      data: {
-        'number': number,
-      },
+      data: {'number': number},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
@@ -86,17 +92,14 @@ class AuthRepository {
     }
   }
 
-  static Future<bool> changePassword(
-      {required String number,
-      required String otp,
-      required String password}) async {
+  static Future<bool> changePassword({
+    required String number,
+    required String otp,
+    required String password,
+  }) async {
     final result = await DioHelper.postData(
       url: EndPoints.changePassword,
-      data: {
-        'number': number,
-        'otp': otp,
-        'password': password,
-      },
+      data: {'number': number, 'otp': otp, 'password': password},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
@@ -139,40 +142,51 @@ class AuthRepository {
     if (user != null) {
       if (user.id != null) {
         await CacheHelper.setData(
-                key: CachedKeys.userId, value: user.id.toString())
-            .then((value) async {
+          key: CachedKeys.userId,
+          value: user.id.toString(),
+        ).then((value) async {
           CachedVariables.userId = int.tryParse(
-              await CacheHelper.getData(key: CachedKeys.userId) ?? '');
+            await CacheHelper.getData(key: CachedKeys.userId) ?? '',
+          );
         });
       }
       if (user.phoneNumber != null) {
         await CacheHelper.setData(
-                key: CachedKeys.phoneNumber, value: user.phoneNumber!)
-            .then((value) async {
-          CachedVariables.phoneNumber =
-              await CacheHelper.getData(key: CachedKeys.phoneNumber);
+          key: CachedKeys.phoneNumber,
+          value: user.phoneNumber!,
+        ).then((value) async {
+          CachedVariables.phoneNumber = await CacheHelper.getData(
+            key: CachedKeys.phoneNumber,
+          );
         });
       }
       if (user.password != null) {
         await CacheHelper.setData(
-                key: CachedKeys.password, value: user.password!)
-            .then((value) async {
-          CachedVariables.password =
-              await CacheHelper.getData(key: CachedKeys.password);
+          key: CachedKeys.password,
+          value: user.password!,
+        ).then((value) async {
+          CachedVariables.password = await CacheHelper.getData(
+            key: CachedKeys.password,
+          );
         });
       }
     }
   }
 
   static Future<void> getLocalDetails() async {
-    CachedVariables.userId =
-        int.tryParse(await CacheHelper.getData(key: CachedKeys.userId) ?? '');
-    CachedVariables.phoneNumber =
-        await CacheHelper.getData(key: CachedKeys.phoneNumber);
-    CachedVariables.password =
-        await CacheHelper.getData(key: CachedKeys.password);
-    CachedVariables.onBoard =
-        await CacheHelper.getData(key: CachedKeys.onBoard);
+    CachedVariables.userId = int.tryParse(
+      await CacheHelper.getData(key: CachedKeys.userId) ?? '',
+    );
+    CachedVariables.phoneNumber = await CacheHelper.getData(
+      key: CachedKeys.phoneNumber,
+    );
+    CachedVariables.password = await CacheHelper.getData(
+      key: CachedKeys.password,
+    );
+    CachedVariables.onBoard = await CacheHelper.getData(
+      key: CachedKeys.onBoard,
+    );
+    CachedVariables.token = await CacheHelper.getData(key: CachedKeys.fcmToken);
   }
 
   static Future<void> clearLocalDetails() async {
@@ -185,6 +199,7 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.phoneNumber);
     await CacheHelper.deleteData(key: CachedKeys.password);
     await CacheHelper.deleteData(key: CachedKeys.onBoard);
+    await CacheHelper.deleteData(key: CachedKeys.fcmToken);
   }
 }
 

@@ -8,6 +8,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../../features/notifications/data/notifications_repository.dart';
 import '../cache/cached_variables.dart';
+import 'package:turathy/src/routing/app_router.dart';
+import 'package:turathy/src/routing/rout_constants.dart';
+import 'dart:convert';
 
 /// Background message handler - must be a top-level function
 @pragma('vm:entry-point')
@@ -288,8 +291,7 @@ class FCMService {
       time: DateTime.now(),
       level: 1,
     );
-    // TODO: Navigate to specific screen based on message data
-    // Example: if message.data['type'] == 'auction', navigate to auction details
+    _navigateBasedOnData(message.data);
   }
 
   /// Handle local notification tap
@@ -299,7 +301,48 @@ class FCMService {
       time: DateTime.now(),
       level: 1,
     );
-    // TODO: Navigate based on payload
+
+    if (response.payload != null) {
+      try {
+        final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+        _navigateBasedOnData(data);
+      } catch (e) {
+        log('Error parsing notification payload: $e');
+      }
+    }
+  }
+
+  /// Navigate based on notification data
+  void _navigateBasedOnData(Map<String, dynamic> data) {
+    // Ensure we are on the main thread and context is available if needed,
+    // but GoRouter works without context if using the global instance.
+    log('Navigating based on data: $data');
+
+    // Check for specific types or keys
+    // Adjust keys (auction_id, product_id, order_id) based on actual backend payload
+
+    if (data.containsKey('auction_id') || data['type'] == 'AUCTION') {
+      final auctionId = data['auction_id'];
+      if (auctionId != null) {
+        goRouter.pushNamed(
+          RouteConstants.liveAuction,
+          pathParameters: {'id': auctionId.toString()},
+        );
+      }
+    } else if (data.containsKey('product_id') || data['type'] == 'PRODUCT') {
+      final productId = data['product_id'];
+      if (productId != null) {
+        goRouter.pushNamed(
+          RouteConstants.productDetails,
+          pathParameters: {'id': productId.toString()},
+        );
+      }
+    } else if (data.containsKey('order_id') ||
+        data['type'] == 'ORDER' ||
+        data['type'] == 'ORDER_STATUS') {
+      // Currently just navigating to orders list
+      goRouter.pushNamed(RouteConstants.orders);
+    }
   }
 
   /// Register token after login

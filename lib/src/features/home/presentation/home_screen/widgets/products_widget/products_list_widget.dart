@@ -23,7 +23,7 @@ class ProductsListWidget extends StatelessWidget {
         ),
         gapH4,
         SizedBox(
-          height: MediaQuery.of(context).size.width * .75,
+          height: MediaQuery.of(context).size.width * .8,
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(productsListProvider);

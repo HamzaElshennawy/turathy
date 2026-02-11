@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/helper/cache/cached_variables.dart';
@@ -99,10 +100,22 @@ class NotificationsRepository {
     required String token,
     required String platform,
   }) async {
+    log(
+      'Registering device with backend: User=$userId, Token=$token, Platform=$platform',
+      name: 'NotificationsRepository',
+    );
     final result = await DioHelper.postData(
       url: EndPoints.registerDevice,
       data: {'user_id': userId, 'token': token, 'platform': platform},
       token: CachedVariables.token,
+    );
+    log(
+      'Register device response status: ${result.statusCode}',
+      name: 'NotificationsRepository',
+    );
+    log(
+      'Register device response data: ${result.data}',
+      name: 'NotificationsRepository',
     );
 
     if (result.statusCode == 200 || result.statusCode == 201) {
