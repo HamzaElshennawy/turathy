@@ -27,9 +27,14 @@ class OrderModel {
   final String? awbNo;
   final String? refNo;
   final String? paymentStatus;
+  final String? orderStatus;
   final String? paymentId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  final Map<String, dynamic>? product;
+  final Map<String, dynamic>? auction;
+  final int? productId;
 
   const OrderModel({
     required this.id,
@@ -57,8 +62,12 @@ class OrderModel {
     this.refNo,
     this.paymentStatus,
     this.paymentId,
+    this.orderStatus,
     this.createdAt,
     this.updatedAt,
+    this.product,
+    this.auction,
+    this.productId,
   });
 
   @override
@@ -91,8 +100,11 @@ class OrderModel {
           refNo == other.refNo &&
           paymentStatus == other.paymentStatus &&
           paymentId == other.paymentId &&
+          orderStatus == other.orderStatus &&
           createdAt == other.createdAt &&
-          updatedAt == other.updatedAt);
+          updatedAt == other.updatedAt &&
+          product == other.product &&
+          auction == other.auction);
 
   @override
   int get hashCode =>
@@ -121,8 +133,11 @@ class OrderModel {
       refNo.hashCode ^
       paymentStatus.hashCode ^
       paymentId.hashCode ^
+      orderStatus.hashCode ^
       createdAt.hashCode ^
-      updatedAt.hashCode;
+      updatedAt.hashCode ^
+      product.hashCode ^
+      auction.hashCode;
 
   OrderModel copyWith({
     int? id,
@@ -150,8 +165,12 @@ class OrderModel {
     String? refNo,
     String? paymentStatus,
     String? paymentId,
+    String? orderStatus,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Map<String, dynamic>? product,
+    Map<String, dynamic>? auction,
+    int? productId,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -179,8 +198,12 @@ class OrderModel {
       refNo: refNo ?? this.refNo,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       paymentId: paymentId ?? this.paymentId,
+      orderStatus: orderStatus ?? this.orderStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      product: product ?? this.product,
+      auction: auction ?? this.auction,
+      productId: productId ?? this.productId,
     );
   }
 
@@ -188,6 +211,7 @@ class OrderModel {
     return {
       'user_id': userId,
       'auction_id': auctionId,
+      'product_id': productId,
       'total': total,
       'date': DateFormat('yyyy-MM-dd', 'en_US').format(date),
       'cName': cName,
@@ -196,7 +220,7 @@ class OrderModel {
       'cMobile': cMobile,
       'cAddress': cAddress,
       'PCs': pCs,
-      'codAmt': codAmt,
+      'codAmt': num.tryParse(codAmt) ?? 0,
       'weight': weight,
       'itemDesc': itemDesc,
     };
@@ -205,19 +229,19 @@ class OrderModel {
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
       id: json['id'] as int,
-      userId: json['user_id'] as int,
-      auctionId: json['auction_id'] as int,
-      total: (json['total'] as num).toDouble(),
-      date: DateTime.parse(json['date'] as String),
-      cName: json['cName'] as String,
-      cCountry: json['cCountry'] as String,
-      cCity: json['cCity'] as String,
-      cMobile: json['cMobile'] as String,
-      cAddress: json['cAddress'] as String,
-      pCs: json['PCs'] as int,
-      codAmt: json['codAmt'].toString(),
-      weight: json['weight'] as String,
-      itemDesc: json['itemDesc'] as String,
+      userId: (json['user_id'] ?? 0) as int,
+      auctionId: (json['auction_id'] ?? 0) as int,
+      total: (json['total'] as num?)?.toDouble() ?? 0.0,
+      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+      cName: json['cName'] as String? ?? '',
+      cCountry: json['cCountry'] as String? ?? '',
+      cCity: json['cCity'] as String? ?? '',
+      cMobile: json['cMobile'] as String? ?? '',
+      cAddress: json['cAddress'] as String? ?? '',
+      pCs: (json['PCs'] ?? 1) as int,
+      codAmt: (json['codAmt'] ?? 0).toString(),
+      weight: (json['weight'] ?? '1').toString(),
+      itemDesc: json['itemDesc'] as String? ?? '',
       shipType: json['shipType'] as String?,
       sName: json['sName'] as String?,
       sContact: json['sContact'] as String?,
@@ -229,8 +253,16 @@ class OrderModel {
       refNo: json['refNo'] as String?,
       paymentStatus: json['paymentStatus'] as String?,
       paymentId: json['payment_id'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
+      orderStatus: json['orderStatus'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
+      product: json['product'],
+      auction: json['auction'],
+      productId: json['product_id'] as int?,
     );
   }
 
@@ -239,6 +271,7 @@ class OrderModel {
       id: winningAuction.id,
       userId: winningAuction.userId,
       auctionId: winningAuction.auctionId,
+      productId: null,
       total: winningAuction.price,
       date: DateTime.now(),
       cName: winningAuction.winnerName,
@@ -252,4 +285,4 @@ class OrderModel {
       itemDesc: winningAuction.product,
     );
   }
-} 
+}

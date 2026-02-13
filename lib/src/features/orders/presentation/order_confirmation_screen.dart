@@ -127,6 +127,48 @@ class OrderConfirmationScreen extends ConsumerWidget {
                   onPaymentResult: (result) =>
                       _handlePaymentResult(result, context, ref),
                 ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                  ),
+                  onPressed: () {
+                    Future.delayed(Duration.zero, () {
+                      _handlePaymentResult(
+                        PaymentResponse(
+                          id: 'simulated_${DateTime.now().millisecondsSinceEpoch}',
+                          status: PaymentStatus.paid,
+                          amount: (data.total * 100).toInt(),
+                          fee: 0,
+                          currency: 'SAR',
+                          refunded: 0,
+                          captured: (data.total * 100).toInt(),
+                          description:
+                              'Simulated Payment for Order #${data.id}',
+                          amountFormat: '${data.total} SAR',
+                          feeFormat: '0.00 SAR',
+                          refundedFormat: '0.00 SAR',
+                          capturedFormat: '${data.total} SAR',
+                          createdAt: DateTime.now().toIso8601String(),
+                          updatedAt: DateTime.now().toIso8601String(),
+                          source: CardPaymentResponseSource(
+                            company: CardCompany.visa,
+                            name: data.cName,
+                            number: 'XXXX-XXXX-XXXX-1234',
+                            gatewayId: 'simulated_gateway_id',
+                            message: 'Simulated Success',
+                            transactionUrl: 'https://example.com',
+                          ),
+                        ),
+                        context,
+                        ref,
+                      );
+                    });
+                  },
+                  child: const Text('Simulate Payment Success'),
+                ),
               ],
             ),
           );

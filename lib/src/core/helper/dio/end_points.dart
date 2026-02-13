@@ -45,6 +45,8 @@ abstract class EndPoints {
   //agora
   static const String getAgoraToken = "agora/token";
 
+  static const String getUserOrders = 'order/get-user-orders';
+
   static const String addOrder = '/order/add-order';
 
   // Notifications

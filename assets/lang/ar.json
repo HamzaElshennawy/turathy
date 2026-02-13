@@ -261,5 +261,7 @@
   "youAreAuctionOwner": "أنت مالك هذا المزاد",
   "yourProduct": "منتجك",
   "noResultsFound": "لا توجد نتائج",
-  "likes": "المفضلة"
+  "likes": "المفضلة",
+  "notificationAuctionWon": "لقد فزت بالمزاد",
+  "notificationAuctionWonMessage": "تهانينا! لقد فزت بالمزاد على المنتج"
 }

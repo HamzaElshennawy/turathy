@@ -261,5 +261,7 @@
   "youAreAuctionOwner": "You are the owner of this auction",
   "yourProduct": "Your Product",
   "noResultsFound": "No Results Found",
-  "likes": "Likes"
+  "likes": "Likes",
+  "notificationAuctionWon": "You won the auction",
+  "notificationAuctionWonMessage": "Congratulations! You won the auction on the product"
 }

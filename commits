@@ -1,0 +1,15 @@
+b21506b - HamzaElshennawy, 23 hours ago : add like and search functionality
+decf378 - HamzaElshennawy, 32 hours ago : add app icon fix push notifications not being recieved add click events to the incoming notification for more ux add cached variable for the FCM token
+02aecac - HamzaElshennawy, 2 days ago : feat: Implement core product and auction features including item creation, live bidding, and supporting services.
+8d90c6e - HamzaElshennawy, 3 days ago : move to server endpoints
+f176d91 - HamzaElshennawy, 3 days ago : fix auction screen with the correct implementation
+0f40d2c - HamzaElshennawy, 4 days ago : fix: update import paths from 'turathi' to 'turathy' across multiple files
+fba9827 - HamzaElshennawy, 4 days ago : feat: Implement initial product, cart, and auction features with their respective models, repositories, screens, and UI components, including localization support.
+cb624ab - HamzaElshennawy, 6 days ago : auctions screen
+8fe3840 - HamzaElshennawy, 6 days ago : notification system fix
+0071060 - HamzaElshennawy, 8 days ago : feat: Implement initial authentication flow including sign-in screen, controller, and core helpers.
+5b3dd1e - HamzaElshennawy, 9 days ago : feat: add notification services
+79a930f - HamzaElshennawy, 9 days ago : feat: Implement initial product listing, home screen, and internationalization setup.
+f4a200a - HamzaElshennawy, 9 days ago : core auction display widgets. bottom nav bar moreScreen
+02b4e35 - HamzaElshennawy, 9 days ago : feat: Set up initial application structure, add multi-platform assets, core feature screens, and localization.
+fda996e - HamzaElshennawy, 9 days ago : init commit

@@ -1,0 +1,106 @@
+commit b21506be4a7b68011a571803350d50b2e1c110c3
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Thu Feb 12 01:58:12 2026 +0200
+
+    add like and search functionality
+
+commit decf378386c6f6e17d278f74e75bece89560f7ab
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Wed Feb 11 17:28:45 2026 +0200
+
+    add app icon
+    fix push notifications not being recieved
+    add click events to the incoming notification for more ux
+    add cached variable for the FCM token
+
+commit 02aecacbdd1135ce76aaab7f4417ed255f4b488f
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Wed Feb 11 01:43:09 2026 +0200
+
+    feat: Implement core product and auction features including item creation, live bidding, and supporting services.
+
+commit 8d90c6e737421f4e59e4157fbe97f50f4187e3be
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Tue Feb 10 02:23:28 2026 +0200
+
+    move to server endpoints
+
+commit f176d9101fb0b76f2e00b3da20a9545e859521dc
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Tue Feb 10 01:21:22 2026 +0200
+
+    fix auction screen with the correct implementation
+
+commit 0f40d2c7b2f1e0600e574b2a317a6dfec88da7c8
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Mon Feb 9 01:35:13 2026 +0200
+
+    fix: update import paths from 'turathi' to 'turathy' across multiple files
+    
+    feat: add AuctionBiddingControlsWidget for managing auction bids with timer functionality
+    
+    feat: implement AuctionGalleryWidget for displaying auction images in a carousel
+    
+    feat: create AuctionInfoTableWidget to display detailed auction information
+    
+    fix: adjust layout and styles in StoreScreen for better UI/UX
+    
+    fix: update application name and identifiers from 'turathi' to 'turathy' in configuration files
+    
+    chore: update swagger.json to reflect new application name and description
+
+commit fba98278cdc3818b2f4ba7de85b4f19f8e882dc7
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Sun Feb 8 18:46:31 2026 +0200
+
+    feat: Implement initial product, cart, and auction features with their respective models, repositories, screens, and UI components, including localization support.
+
+commit cb624ab38dc8310ce5ed218e113e64ad877c7b70
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Sat Feb 7 03:02:55 2026 +0200
+
+    auctions screen
+
+commit 8fe3840964603a2e5babe4547ed7a77967da2619
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Fri Feb 6 21:15:25 2026 +0200
+
+    notification system fix
+
+commit 0071060461ba9d4d8a9c3ffabddad1d68d19ab9e
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Wed Feb 4 16:35:04 2026 +0200
+
+    feat: Implement initial authentication flow including sign-in screen, controller, and core helpers.
+
+commit 5b3dd1e55b2ad8303e9bb1c2b4b682e9dc7721b7
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Wed Feb 4 03:15:19 2026 +0200
+
+    feat: add notification services
+
+commit 79a930f56fc9ec545e1da4194b35cf5da3f6e9cd
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Tue Feb 3 22:05:22 2026 +0200
+
+    feat: Implement initial product listing, home screen, and internationalization setup.
+
+commit f4a200a7327f0f4cc6d252274f477c04b4de2fef
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Tue Feb 3 19:49:31 2026 +0200
+
+    core auction display widgets.
+    bottom nav bar
+    moreScreen
+
+commit 02b4e3554263f1a3962e9342c43589a624ebcbd3
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Tue Feb 3 18:15:47 2026 +0200
+
+    feat: Set up initial application structure, add multi-platform assets, core feature screens, and localization.
+
+commit fda996ef19370d139ab7662b36556126551c6664
+Author: HamzaElshennawy <elshennawyhamza@gmail.com>
+Date:   Tue Feb 3 15:35:47 2026 +0200
+
+    init commit

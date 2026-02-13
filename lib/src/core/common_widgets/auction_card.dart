@@ -73,6 +73,36 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
       data: (state) => state.likedAuctionIds.contains(widget.product.id),
       orElse: () => false,
     );
+    final bool isEnded =
+        _remainingTime == Duration.zero ||
+        widget.product.isExpired == true ||
+        widget.product.isCanceled == true ||
+        (widget.product.expiryDate != null &&
+            widget.product.expiryDate!.isBefore(DateTime.now()));
+
+    String? statusLabel;
+    Color? statusColor;
+    final int? currentUserId = ref.read(authControllerProvider).value?.id;
+    final int? winnerId = widget.product.winningUserId;
+
+    if (isEnded) {
+      if (winnerId != null && winnerId == currentUserId) {
+        statusLabel = AppStrings.youWon.tr();
+        statusColor = Colors.green;
+      } else if (widget.product.auctionBids?.any(
+            (bid) => bid.userId == currentUserId,
+          ) ??
+          false) {
+        statusLabel = AppStrings.youLost.tr();
+        statusColor = Colors.red;
+      } else if (winnerId != null) {
+        statusLabel = AppStrings.sold.tr();
+        statusColor = Colors.blue;
+      } else {
+        statusLabel = AppStrings.auctionEnded.tr();
+        statusColor = Colors.grey;
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -172,6 +202,37 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                       ),
                     ),
                   ),
+                  if (statusLabel != null)
+                    Positioned.directional(
+                      textDirection: Directionality.of(context),
+                      start: 12,
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor ?? Colors.blue,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -283,37 +344,38 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                     ),
                     gapH8,
                     // Bid Now Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  AuctionScreen(widget.product),
+                    if (!isEnded)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AuctionScreen(widget.product),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(
+                              0xFF1B5E20,
+                            ), // Dark green
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
                             ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(
-                            0xFF1B5E20,
-                          ), // Dark green
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          AppStrings.bidNow.tr(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          child: Text(
+                            AppStrings.bidNow.tr(),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
