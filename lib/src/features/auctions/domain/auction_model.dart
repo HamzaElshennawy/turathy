@@ -29,11 +29,6 @@ class AuctionModel {
   List<AuctionBid>? auctionBids;
   late bool isLiveAuction;
   List<String>? auctionImages;
-  String? material;
-  String? approximateAge;
-  String? condition;
-  String? origin;
-  String? usage;
 
   String get type => isLiveAuction ? 'live' : 'public';
 
@@ -64,11 +59,6 @@ class AuctionModel {
     this.auctionComments,
     this.auctionBids,
     this.auctionImages,
-    this.material,
-    this.approximateAge,
-    this.condition,
-    this.origin,
-    this.usage,
   });
 
   @override
@@ -98,12 +88,7 @@ class AuctionModel {
           category == other.category &&
           user == other.user &&
           auctionProducts == other.auctionProducts &&
-          isLiveAuction == other.isLiveAuction &&
-          material == other.material &&
-          approximateAge == other.approximateAge &&
-          condition == other.condition &&
-          origin == other.origin &&
-          usage == other.usage;
+          isLiveAuction == other.isLiveAuction;
 
   @override
   int get hashCode =>
@@ -129,12 +114,7 @@ class AuctionModel {
       category.hashCode ^
       user.hashCode ^
       auctionProducts.hashCode ^
-      isLiveAuction.hashCode ^
-      material.hashCode ^
-      approximateAge.hashCode ^
-      condition.hashCode ^
-      origin.hashCode ^
-      usage.hashCode;
+      isLiveAuction.hashCode;
 
   AuctionModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -194,11 +174,6 @@ class AuctionModel {
       });
     }
     isLiveAuction = json['type'] == 'Live';
-    material = json['material'];
-    approximateAge = json['approximateAge'];
-    condition = json['condition'];
-    origin = json['origin'];
-    usage = json['usage'];
   }
 
   Map<String, dynamic> toJson() {
@@ -222,11 +197,7 @@ class AuctionModel {
     data['category_id'] = categoryId;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
-    data['material'] = material;
-    data['approximateAge'] = approximateAge;
-    data['condition'] = condition;
-    data['origin'] = origin;
-    data['usage'] = usage;
+
     if (category != null) {
       data['category'] = category!.toJson();
     }
@@ -243,7 +214,7 @@ class AuctionModel {
 
   @override
   String toString() {
-    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids, material: $material, approximateAge: $approximateAge, condition: $condition, origin: $origin, usage: $usage}';
+    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
   }
 }
 
@@ -322,6 +293,12 @@ class AuctionProducts {
   String? createdAt;
   String? updatedAt;
   String? imageUrl;
+  String? material;
+  String? approximateAge;
+  String? condition;
+  String? origin;
+  String? usage;
+  List<String>? images;
 
   AuctionProducts({
     this.id,
@@ -333,6 +310,12 @@ class AuctionProducts {
     this.createdAt,
     this.updatedAt,
     this.imageUrl,
+    this.material,
+    this.approximateAge,
+    this.condition,
+    this.origin,
+    this.usage,
+    this.images,
   });
 
   @override
@@ -348,7 +331,13 @@ class AuctionProducts {
           auctionId == other.auctionId &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt &&
-          imageUrl == other.imageUrl;
+          imageUrl == other.imageUrl &&
+          material == other.material &&
+          approximateAge == other.approximateAge &&
+          condition == other.condition &&
+          origin == other.origin &&
+          usage == other.usage &&
+          images == other.images;
 
   @override
   int get hashCode =>
@@ -360,7 +349,13 @@ class AuctionProducts {
       auctionId.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode ^
-      imageUrl.hashCode;
+      imageUrl.hashCode ^
+      material.hashCode ^
+      approximateAge.hashCode ^
+      condition.hashCode ^
+      origin.hashCode ^
+      usage.hashCode ^
+      images.hashCode;
 
   AuctionProducts.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -372,6 +367,16 @@ class AuctionProducts {
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     imageUrl = json['image'] != null ? EndPoints.baseUrl + json['image'] : '';
+    material = json['material'];
+    approximateAge = json['approximateAge'];
+    condition = json['condition'];
+    origin = json['origin'];
+    usage = json['usage'];
+    if (json['images'] != null) {
+      images = List<String>.from(
+        json['images'],
+      ).map((e) => EndPoints.baseUrl + e).toList();
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -385,6 +390,12 @@ class AuctionProducts {
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
     data['image'] = imageUrl;
+    data['material'] = material;
+    data['approximateAge'] = approximateAge;
+    data['condition'] = condition;
+    data['origin'] = origin;
+    data['usage'] = usage;
+    data['images'] = images;
     return data;
   }
 }
@@ -392,6 +403,7 @@ class AuctionProducts {
 class AuctionBid {
   int? id;
   int? auctionId;
+  int? productId;
   int? userId;
   num? bid;
   String? createdAt;
@@ -401,6 +413,7 @@ class AuctionBid {
   AuctionBid({
     this.id,
     this.auctionId,
+    this.productId,
     this.userId,
     this.bid,
     this.createdAt,
@@ -411,6 +424,7 @@ class AuctionBid {
   AuctionBid.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     auctionId = json['auction_id'];
+    productId = json['product_id'];
     userId = json['user_id'];
     bid = json['bid'];
     createdAt = json['createdAt'];
@@ -422,6 +436,7 @@ class AuctionBid {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['id'] = id;
     data['auction_id'] = auctionId;
+    data['product_id'] = productId;
     data['user_id'] = userId;
     data['bid'] = bid;
     data['createdAt'] = createdAt;

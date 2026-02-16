@@ -166,6 +166,7 @@ class AppStrings {
   static const String startsAt = "startsAt";
   static const String endsAt = "endsAt";
   static const String countdownStartsIn = "countdownStartsIn";
+  static const String currentItem = "currentItem";
   // Validation - phone numbers
   static const String phoneRequired = "phoneRequired";
   static const String phoneInvalidInternational = "phoneInvalidInternational";
@@ -290,4 +291,5 @@ class AppStrings {
   static const String youAreAuctionOwner = 'youAreAuctionOwner';
   static const String yourProduct = 'yourProduct';
   static const String likes = 'likes';
+  static const String nextItem = 'nextItem';
 }

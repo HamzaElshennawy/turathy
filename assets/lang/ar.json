@@ -263,5 +263,6 @@
   "noResultsFound": "لا توجد نتائج",
   "likes": "المفضلة",
   "notificationAuctionWon": "لقد فزت بالمزاد",
-  "notificationAuctionWonMessage": "تهانينا! لقد فزت بالمزاد على المنتج"
+  "notificationAuctionWonMessage": "تهانينا! لقد فزت بالمزاد على المنتج",
+  "currentItem": "البند الحالي"
 }

@@ -18,6 +18,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final int? winnerId;
   final String? winnerName;
   final num? finalPrice;
+  final bool isViewOnly;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -29,6 +30,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.winnerId,
     this.winnerName,
     this.finalPrice,
+    this.isViewOnly = false,
   });
 
   @override
@@ -260,10 +262,10 @@ class _AuctionBiddingControlsWidgetState
           Builder(
             builder: (context) {
               final bool showProgressBar =
-                  _remainingTime.inSeconds <= 60 &&
+                  _remainingTime.inSeconds <= 30 &&
                   _remainingTime.inSeconds > 0;
               final double progress = showProgressBar
-                  ? _remainingTime.inSeconds / 60.0
+                  ? _remainingTime.inSeconds / 30.0
                   : 0.0;
 
               return Container(
@@ -322,7 +324,27 @@ class _AuctionBiddingControlsWidgetState
           gapH16,
 
           // Quick Bid Buttons - 1x, 1.5x, 2x minBid
-          if (widget.isOwner) ...[
+          if (widget.isViewOnly) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: const Center(
+                child: Text(
+                  "Not currently live", // You might want to translate this
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ] else if (widget.isOwner) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),

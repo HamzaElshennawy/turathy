@@ -353,7 +353,7 @@ class SocketService {
   }
 
   /// Place bid
-  void emitPlaceBid(int auctionId, int userId, double amount) {
+  void emitPlaceBid(int auctionId, int userId, double amount, int productId) {
     if (amount <= 0) {
       throw ArgumentError('Bid amount must be positive');
     }
@@ -362,6 +362,7 @@ class SocketService {
       'auctionId': auctionId,
       'userId': userId,
       'amount': amount,
+      'productId': productId,
     });
   }
 

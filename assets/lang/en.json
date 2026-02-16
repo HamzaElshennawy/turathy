@@ -263,5 +263,6 @@
   "noResultsFound": "No Results Found",
   "likes": "Likes",
   "notificationAuctionWon": "You won the auction",
-  "notificationAuctionWonMessage": "Congratulations! You won the auction on the product"
+  "notificationAuctionWonMessage": "Congratulations! You won the auction on the product",
+  "currentItem": "Current Item"
 }

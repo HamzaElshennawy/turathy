@@ -32,6 +32,7 @@ abstract class SocketConfig {
     'newBid',
     'auctionCanceled',
     'auctionEnded',
+    'auctionItemEnded',
     'auction_change_product',
     'error',
   ];

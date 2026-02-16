@@ -117,7 +117,7 @@ class _AuctionGalleryWidgetState extends State<AuctionGalleryWidget> {
                       .TextDirection
                       .rtl, // Force LTR for consistent positioning relative to image or use context direction
                   start: 30,
-                  top: 30,
+                  top: 10,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,

@@ -105,6 +105,16 @@ final auctionEndedProvider = StreamProvider.autoDispose<AuctionEndedEvent>((
   );
 });
 
+/// Auction item ended event stream
+final auctionItemEndedProvider =
+    StreamProvider.autoDispose<AuctionItemEndedEvent>((ref) {
+      final service = ref.watch(socketServiceProvider);
+      return service.getEventStream<AuctionItemEndedEvent>(
+        'auctionItemEnded',
+        (data) => AuctionItemEndedEvent.fromJson(data as Map<String, dynamic>),
+      );
+    });
+
 /// Auction product change event stream
 final auctionProductChangeProvider =
     StateProvider.autoDispose<AuctionProductChangeEvent?>((ref) {
@@ -175,9 +185,14 @@ class SocketActions {
   }
 
   /// Place bid
-  Future<void> placeBid(int auctionId, int userId, double amount) async {
+  Future<void> placeBid(
+    int auctionId,
+    int userId,
+    double amount,
+    int productId,
+  ) async {
     await _ensureConnected();
-    _service.emitPlaceBid(auctionId, userId, amount);
+    _service.emitPlaceBid(auctionId, userId, amount, productId);
   }
 
   /// Cancel auction

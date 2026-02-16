@@ -24,18 +24,53 @@ class AuctionScreen extends ConsumerStatefulWidget {
 class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
+  bool _isGridView = false; // State for toggling view
+  List<AuctionProducts> _filteredProducts = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _filteredProducts = widget.auction.auctionProducts ?? [];
     _calculateTimeLeft();
     _startTimer();
   }
 
   @override
+  void didUpdateWidget(AuctionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.auction.auctionProducts != oldWidget.auction.auctionProducts) {
+      setState(() {
+        _filteredProducts = widget.auction.auctionProducts ?? [];
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _filterProducts(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredProducts = widget.auction.auctionProducts ?? [];
+      } else {
+        _filteredProducts =
+            widget.auction.auctionProducts
+                ?.where(
+                  (product) =>
+                      product.product?.toLowerCase().contains(
+                        query.toLowerCase(),
+                      ) ??
+                      false,
+                )
+                .toList() ??
+            [];
+      }
+    });
   }
 
   void _calculateTimeLeft() {
@@ -187,39 +222,48 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: () {
-                          if (CachedVariables.userId == null) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => SignInScreen(),
-                              ),
-                            );
-                            return;
-                          }
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => LiveAuctionScreen(
-                                auctionId: widget.auction.id ?? 0,
-                                isAdmin:
-                                    widget.auction.userId ==
-                                    CachedVariables.userId,
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _timeLeft > Duration.zero
+                            ? null
+                            : () {
+                                if (CachedVariables.userId == null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => SignInScreen(),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => LiveAuctionScreen(
+                                      auctionId: widget.auction.id ?? 0,
+                                      isAdmin:
+                                          widget.auction.userId ==
+                                          CachedVariables.userId,
+                                    ),
+                                  ),
+                                );
+                              },
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           side: BorderSide(
-                            color: Theme.of(context).primaryColor,
+                            color: _timeLeft > Duration.zero
+                                ? Colors.grey
+                                : Theme.of(context).primaryColor,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          foregroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: _timeLeft > Duration.zero
+                              ? Colors.grey
+                              : Theme.of(context).primaryColor,
                         ),
                         child: Text(
-                          AppStrings.joinNow.tr(),
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          _timeLeft > Duration.zero
+                              ? AppStrings.upcoming
+                                    .tr() // "Upcoming"
+                              : AppStrings.joinNow.tr(),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ), // "Bid Now"
                       ),
                     ),
@@ -241,6 +285,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         gapW8,
                         Expanded(
                           child: TextField(
+                            controller: _searchController,
+                            onChanged: _filterProducts,
                             decoration: InputDecoration(
                               hintText: AppStrings.search.tr(),
                               suffixIcon: const Icon(Icons.search),
@@ -264,25 +310,63 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         ),
 
                         gapW8,
+                        // Grid Toggle
                         Container(
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
+                            color: _isGridView
+                                ? Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.1)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: _isGridView
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade300,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.grid_view),
-                            onPressed: () {},
+                            icon: Icon(
+                              Icons.grid_view,
+                              color: _isGridView
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade600,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isGridView = true;
+                              });
+                            },
                           ),
                         ),
                         gapW8,
+                        // List Toggle
                         Container(
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
+                            color: !_isGridView
+                                ? Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.1)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: !_isGridView
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade300,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.list),
-                            onPressed: () {},
+                            icon: Icon(
+                              Icons.list,
+                              color: !_isGridView
+                                  ? Theme.of(context).primaryColor
+                                  : Colors.grey.shade600,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isGridView = false;
+                              });
+                            },
                           ),
                         ),
                       ],
@@ -297,102 +381,204 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       ),
                     ),
                     gapH8,
-                    if (widget.auction.auctionProducts != null)
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: widget.auction.auctionProducts!.length,
-                        separatorBuilder: (context, index) => gapH8,
-                        itemBuilder: (context, index) {
-                          final product =
-                              widget.auction.auctionProducts![index];
-                          return Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade200),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Product Image
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      product.imageUrl ?? '',
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                width: 80,
-                                                height: 80,
-                                                color: Colors.grey[200],
-                                                child: const Icon(
-                                                  Icons.image_not_supported,
-                                                ),
-                                              ),
-                                    ),
+                    if (_filteredProducts.isNotEmpty)
+                      _isGridView
+                          ? GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _filteredProducts.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    childAspectRatio: 0.75, // Adjust as needed
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
                                   ),
-                                  gapW12,
-                                  // Product Details
-                                  Expanded(
-                                    child: Column(
+                              itemBuilder: (context, index) {
+                                final product = _filteredProducts[index];
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      // Product Image
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(8),
+                                              ),
+                                          child: Image.network(
+                                            product.imageUrl ?? '',
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) => Container(
+                                                  color: Colors.grey[200],
+                                                  child: const Icon(
+                                                    Icons.image_not_supported,
+                                                  ),
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${AppStrings.itemNumber.tr()}: ${product.id}',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
+                                            ),
+                                            gapH4,
+                                            Text(
+                                              product.product ?? '',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            gapH4,
+                                            Text(
+                                              '${product.minBidPrice}\$',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _filteredProducts.length,
+                              separatorBuilder: (context, index) => gapH8,
+                              itemBuilder: (context, index) {
+                                final product = _filteredProducts[index];
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          '${AppStrings.itemNumber.tr()}: ${product.id}',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall,
+                                        // Product Image
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          child: Image.network(
+                                            product.imageUrl ?? '',
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) => Container(
+                                                  width: 80,
+                                                  height: 80,
+                                                  color: Colors.grey[200],
+                                                  child: const Icon(
+                                                    Icons.image_not_supported,
+                                                  ),
+                                                ),
+                                          ),
                                         ),
-                                        gapH4,
-                                        Text(
-                                          product.product ?? '',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
+                                        gapW12,
+                                        // Product Details
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${AppStrings.itemNumber.tr()}: ${product.id}',
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.bodySmall,
                                               ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                              gapH4,
+                                              Text(
+                                                product.product ?? '',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        //gapH4,
-                                        //Text(
-                                        //  product.actualPrice ??
-                                        //      '', // Description placeholder
-                                        //  style: Theme.of(context)
-                                        //      .textTheme
-                                        //      .bodySmall
-                                        //      ?.copyWith(color: Colors.grey),
-                                        //  maxLines: 1,
-                                        //  overflow: TextOverflow.ellipsis,
-                                        //),
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8.0,
+                                          ),
+                                          child: Text(
+                                            '${product.minBidPrice}\$',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(
-                                      '${product.minBidPrice}\$',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                                );
+                              },
+                            )
+                    else
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            AppStrings.noResultsFound.tr(),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey),
+                          ),
+                        ),
                       ),
                   ],
                 ),

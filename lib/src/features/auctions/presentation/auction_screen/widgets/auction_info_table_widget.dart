@@ -5,11 +5,24 @@ import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 class AuctionInfoTableWidget extends StatelessWidget {
   final AuctionModel auction;
+  final AuctionProducts? currentProduct;
 
-  const AuctionInfoTableWidget({super.key, required this.auction});
+  const AuctionInfoTableWidget({
+    super.key,
+    required this.auction,
+    this.currentProduct,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Use passed product or find active product based on name, or fallback
+    final activeProduct =
+        currentProduct ??
+        auction.auctionProducts?.firstWhere(
+          (p) => p.product == auction.currentProduct,
+          orElse: () => AuctionProducts(),
+        );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -17,7 +30,7 @@ class AuctionInfoTableWidget extends StatelessWidget {
         children: [
           Center(
             child: Text(
-              auction.title ?? '',
+              activeProduct?.product ?? auction.title ?? '',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
@@ -35,32 +48,33 @@ class AuctionInfoTableWidget extends StatelessWidget {
           _buildInfoRow(
             context,
             'productType'.tr(),
-            auction.type.tr(),
-          ), // Using type name if available or mapping
+            auction.type
+                .tr(), // Type usually remains with auction, or could be product specific
+          ),
           _buildInfoRow(
             context,
             'material'.tr(),
-            auction.material ?? 'notSpecified'.tr(),
+            activeProduct?.material ?? 'notSpecified'.tr(),
           ),
           _buildInfoRow(
             context,
             'approximateAge'.tr(),
-            auction.approximateAge ?? 'notSpecified'.tr(),
+            activeProduct?.approximateAge ?? 'notSpecified'.tr(),
           ),
           _buildInfoRow(
             context,
             'productCondition'.tr(),
-            auction.condition ?? 'notSpecified'.tr(),
+            activeProduct?.condition ?? 'notSpecified'.tr(),
           ),
           _buildInfoRow(
             context,
             'origin'.tr(),
-            auction.origin ?? 'notSpecified'.tr(),
+            activeProduct?.origin ?? 'notSpecified'.tr(),
           ),
           _buildInfoRow(
             context,
             'usage'.tr(),
-            auction.usage ?? 'notSpecified'.tr(),
+            activeProduct?.usage ?? 'notSpecified'.tr(),
           ),
         ],
       ),
@@ -71,7 +85,8 @@ class AuctionInfoTableWidget extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           SizedBox(
             width: 100,

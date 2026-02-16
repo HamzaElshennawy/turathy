@@ -375,3 +375,40 @@ class BidPlacedEvent {
   String toString() =>
       'BidPlacedEvent(newBid: ${newBid.bid}, expiryDate: $expiryDate)';
 }
+
+/// Auction item ended event model (for multi-item auctions)
+class AuctionItemEndedEvent {
+  final AuctionModel auction;
+  final AuctionProducts? nextItem;
+  final SocketUser? winner;
+
+  const AuctionItemEndedEvent({
+    required this.auction,
+    this.nextItem,
+    this.winner,
+  });
+
+  factory AuctionItemEndedEvent.fromJson(Map<String, dynamic> json) {
+    return AuctionItemEndedEvent(
+      auction: AuctionModel.fromJson(json['auction'] as Map<String, dynamic>),
+      nextItem: json['nextItem'] != null
+          ? AuctionProducts.fromJson(json['nextItem'] as Map<String, dynamic>)
+          : null,
+      winner: json['winner'] != null
+          ? SocketUser.fromJson(json['winner'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'auction': auction.toJson(),
+      'nextItem': nextItem?.toJson(),
+      'winner': winner?.toJson(),
+    };
+  }
+
+  @override
+  String toString() =>
+      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.product}, winner: ${winner?.name})';
+}
