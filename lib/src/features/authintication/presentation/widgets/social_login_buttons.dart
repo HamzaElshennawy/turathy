@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_sizes.dart';
 
-class SocialLoginButtons extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../auth_controller.dart';
+
+class SocialLoginButtons extends ConsumerWidget {
   const SocialLoginButtons({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -20,7 +23,7 @@ class SocialLoginButtons extends StatelessWidget {
             height: 24,
           ),
           onTap: () {
-            // Placeholder: Implement Google Sign In
+            ref.read(authControllerProvider.notifier).signInWithGoogle();
           },
         ),
         gapW16,
@@ -31,10 +34,7 @@ class SocialLoginButtons extends StatelessWidget {
             'assets/icons/apple.svg',
             width: 24,
             height: 24,
-            colorFilter: const ColorFilter.mode(
-              Colors.black,
-              BlendMode.srcIn,
-            ),
+            colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
           ),
           onTap: () {
             // Placeholder: Implement Apple Sign In
@@ -74,12 +74,7 @@ class _SocialButton extends StatelessWidget {
             children: [
               icon,
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
         ),

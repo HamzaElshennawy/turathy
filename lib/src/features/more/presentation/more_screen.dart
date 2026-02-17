@@ -136,7 +136,32 @@ class MoreScreen extends ConsumerWidget {
                   color: Colors.red,
                 ),
                 onTap: () {
-                  ref.read(authControllerProvider.notifier).signOut();
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(AppStrings.signOut.tr()),
+                      content: Text(AppStrings.areYouSureToSignOut.tr()),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text(
+                            AppStrings.cancel.tr(),
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            ref.read(authControllerProvider.notifier).signOut();
+                          },
+                          child: Text(
+                            AppStrings.signOut.tr(),
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 },
               ),
             if (user != null) const Divider(),

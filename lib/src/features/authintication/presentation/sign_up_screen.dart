@@ -36,6 +36,28 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     final state = ref.watch(authControllerProvider);
     final countryCode = ref.watch(countryCodeProvider);
 
+    // Using a listener to handle navigation and errors
+    ref.listen(authControllerProvider, (previous, next) {
+      if (next.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else if (next.value != null) {
+        final isGoogle = ref
+            .read(authControllerProvider.notifier)
+            .isGoogleSignInProcessing;
+        if (isGoogle) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+            (route) => false,
+          );
+        }
+      }
+    });
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -226,10 +248,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         children: [
                           TextButton(
                             onPressed: () {
-                              Navigator.of(context).pushReplacement(
+                              Navigator.of(context).pushAndRemoveUntil(
                                 MaterialPageRoute(
                                   builder: (context) => SignInScreen(),
                                 ),
+                                (route) => false,
                               );
                             },
                             child: Text(

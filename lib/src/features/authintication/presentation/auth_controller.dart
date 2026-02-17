@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/cache/cached_variables.dart';
@@ -18,6 +19,8 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   final formKey = GlobalKey<FormState>();
 
   AuthController() : super(const AsyncValue.data(null));
+
+  bool isGoogleSignInProcessing = false;
 
   UserModel? get currentUser => state.value;
 
@@ -97,6 +100,48 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   //   state = const AsyncValue.data(null);
   //   return true;
   // }
+
+  Future<void> signInWithGoogle() async {
+    state = const AsyncValue.loading();
+    isGoogleSignInProcessing = true; // Set flag to true
+    try {
+      final googleSignIn = GoogleSignIn();
+      final googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // User canceled the sign-in
+        state = const AsyncValue.data(null);
+        isGoogleSignInProcessing = false; // Reset flag
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        state = AsyncValue.error(
+          'Failed to get Google ID Token',
+          StackTrace.empty,
+        );
+        isGoogleSignInProcessing = false; // Reset flag
+        return;
+      }
+
+      state = await AsyncValue.guard(
+        () => AuthRepository.googleSignIn(idToken),
+      );
+
+      if (state.hasValue && !state.hasError) {
+        await FCMService().registerAfterLogin();
+        // Navigation is handled by the UI listener based on the flag
+      } else {
+        isGoogleSignInProcessing = false; // Reset flag if error
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      isGoogleSignInProcessing = false; // Reset flag
+    }
+  }
 }
 
 // provider

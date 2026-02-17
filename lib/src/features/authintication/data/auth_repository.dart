@@ -34,6 +34,53 @@ class AuthRepository {
     }
   }
 
+  static Future<UserModel> googleSignIn(String token) async {
+    final result = await DioHelper.postData(
+      url:
+          'auth/google-login', // EndPoints.googleLogin (I should add this to EndPoints ideally but hardcoding for now or I'll update EndPoints too)
+      data: {'token': token},
+    );
+
+    if (result.statusCode == 200 || result.statusCode == 201) {
+      final user = UserModel.fromJson(result.data['data']);
+
+      // Cache token
+      final token = result.data['token'] ?? result.data['data']['token'];
+      if (token != null) {
+        await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
+        CachedVariables.token = token;
+      }
+
+      await cacheData(user); // No password to cache
+      return user;
+    } else {
+      AppFunctions.logPrint(
+        message: 'code googleSignIn ${result.statusCode} $result ',
+      );
+      String message =
+          result.data['error'] ??
+          'An error occurred while signing in with Google';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
+  static Future<UserModel> getUser(int id) async {
+    final result = await DioHelper.getData(
+      url: EndPoints.getUser(id),
+      token: CachedVariables.token,
+    );
+
+    if (result.statusCode == 200) {
+      final user = UserModel.fromJson(result.data['data']);
+      await cacheData(user);
+      return user;
+    } else {
+      String message =
+          result.data['error'] ?? 'An error occurred while fetching user data';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
   static Future<bool> createUser(UserModel user) async {
     final result = await DioHelper.postData(
       url: EndPoints.userSignup,

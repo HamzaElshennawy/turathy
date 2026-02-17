@@ -36,7 +36,8 @@ class AppStrings {
   static const String editProfile = "editProfile";
   static const String name = "name";
   static const String signOut = "signOut";
-  static const String areYouSureToSignOut = "areYouSureToSignOut";
+  static const String areYouSureToSignOut =
+      "areYouSureToSignOut"; // Kept for ProfileScreen compatibility
   static const String cancel = "cancel";
   static const String holdPressToDeleteAccount = "holdPressToDeleteAccount";
   static const String deleteAccount = "deleteAccount";

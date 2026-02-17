@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
 import '../../../../../../core/constants/app_sizes.dart';
 import '../../../../../../core/constants/app_strings/app_strings.dart';
-import '../../../../../main_screen.dart';
+// import '../../../../../main_screen.dart';
 import '../../../../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
 import '../../../../../auctions/data/auctions_repository.dart';
 import '../../../../data/category_repository.dart';
@@ -30,64 +30,61 @@ class CategoriesWidget extends ConsumerWidget {
             SizedBox(
               height: 80,
               child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemBuilder: (context, index) => Card(
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) => Card(
+                  shape: const CircleBorder(),
+                  elevation: 1,
+                  shadowColor: Theme.of(context).colorScheme.primary,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      // ref.read(mainScreenIndexProvider.notifier).state = 1;
+                      ref
+                          .read(filterWidgetControllerProvider.notifier)
+                          .selectCategory(index);
+                      ref.invalidate(searchProductsProvider);
+                    },
+                    child: Container(
+                      width: 80,
+                      alignment: Alignment.bottomCenter,
+                      decoration: ShapeDecoration(
                         shape: const CircleBorder(),
-                        elevation: 1,
-                        shadowColor: Theme.of(context).colorScheme.primary,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            ref.read(pageControllerProvider).animateToPage(1,
-                                duration: const Duration(milliseconds: 200),
-                                curve: Curves.easeIn);
-                            ref
-                                .read(filterWidgetControllerProvider.notifier)
-                                .selectCategory(index);
-                            ref.invalidate(searchProductsProvider);
-                          },
-                          child: Container(
-                            width: 80,
-                            alignment: Alignment.bottomCenter,
-                            decoration: ShapeDecoration(
-                                shape: const CircleBorder(),
-                                image: DecorationImage(
-                                    image: NetworkImage(
-                                        categories[index].picUrl ?? ''),
-                                    fit: BoxFit.cover)),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.6),
-                                borderRadius: const BorderRadius.all(
-                                    Radius.circular(100)),
-                                // borderRadius: const BorderRadius.vertical(
-                                //     bottom: Radius.circular(8)),
-                              ),
-                              child: Text(
-                                (context.locale == const Locale('ar')
-                                        ? categories[index].name
-                                        : categories[index].name) ??
-                                    "",
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onPrimary),
-                              ),
-                            ),
-                          ),
+                        image: DecorationImage(
+                          image: NetworkImage(categories[index].picUrl ?? ''),
+                          fit: BoxFit.cover,
                         ),
                       ),
-                  separatorBuilder: (context, index) => gapW4,
-                  itemCount: categories.length),
-            )
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.6),
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(100),
+                          ),
+                          // borderRadius: const BorderRadius.vertical(
+                          //     bottom: Radius.circular(8)),
+                        ),
+                        child: Text(
+                          (context.locale == const Locale('ar')
+                                  ? categories[index].name
+                                  : categories[index].name) ??
+                              "",
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                separatorBuilder: (context, index) => gapW4,
+                itemCount: categories.length,
+              ),
+            ),
           ],
         );
       },
@@ -100,10 +97,7 @@ class CategoriesWidget extends ConsumerWidget {
             containerShape: BoxShape.rectangle,
           ),
           gapH8,
-          ShimmerWidget(
-            width: 80,
-            height: 80,
-          ),
+          ShimmerWidget(width: 80, height: 80),
         ],
       ),
     );

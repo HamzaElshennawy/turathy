@@ -17,6 +17,7 @@ import 'otp_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/social_login_buttons.dart';
 import 'country_code_provider.dart';
+import '../../main_screen.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -49,16 +50,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           ),
         );
       } else if (next.value != null) {
-        final phone = ref
+        final isGoogle = ref
             .read(authControllerProvider.notifier)
-            .phoneController
-            .text
-            .trim();
-        final e164 = '$countryCode$phone';
+            .isGoogleSignInProcessing;
+        if (isGoogle) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+            (route) => false,
+          );
+        } else {
+          final phone = ref
+              .read(authControllerProvider.notifier)
+              .phoneController
+              .text
+              .trim();
+          final e164 = '$countryCode$phone';
 
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: e164)),
-        );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: e164)),
+          );
+        }
       }
     });
 

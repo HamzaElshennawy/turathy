@@ -11,7 +11,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../authintication/presentation/auth_controller.dart';
 import '../../authintication/presentation/sign_in_screen.dart';
-import '../../main_screen.dart';
+// import '../../main_screen.dart';
 import '../controller/theme_controller.dart';
 import 'widgets/language_widget/language_widget.dart';
 
@@ -62,7 +62,7 @@ class ProfileScreen extends ConsumerWidget {
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
                                   children: [
-// Theme selection dropdown removed as per user request
+                                    // Theme selection dropdown removed as per user request
                                     gapH8,
                                     Row(
                                       mainAxisAlignment:
@@ -74,19 +74,29 @@ class ProfileScreen extends ConsumerWidget {
                                           onChanged: (value) {
                                             if (value) {
                                               ref
-                                                  .read(themeControllerProvider
-                                                      .notifier)
-                                                  .setTheme(theme.copyWith(
-                                                      mode: ThemeMode.dark));
+                                                  .read(
+                                                    themeControllerProvider
+                                                        .notifier,
+                                                  )
+                                                  .setTheme(
+                                                    theme.copyWith(
+                                                      mode: ThemeMode.dark,
+                                                    ),
+                                                  );
                                             } else {
                                               ref
-                                                  .read(themeControllerProvider
-                                                      .notifier)
-                                                  .setTheme(theme.copyWith(
-                                                      mode: ThemeMode.light));
+                                                  .read(
+                                                    themeControllerProvider
+                                                        .notifier,
+                                                  )
+                                                  .setTheme(
+                                                    theme.copyWith(
+                                                      mode: ThemeMode.light,
+                                                    ),
+                                                  );
                                             }
                                           },
-                                        )
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -95,9 +105,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 8,
-                        ),
+                        const SizedBox(height: 8),
                         // language
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,10 +113,11 @@ class ProfileScreen extends ConsumerWidget {
                             Text(AppStrings.changeLanguage.tr()),
                             Card(
                               child: Container(
-                                  alignment: Alignment.center,
-                                  padding: const EdgeInsets.all(8),
-                                  width: double.infinity,
-                                  child: const LanguageWidget()),
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(8),
+                                width: double.infinity,
+                                child: const LanguageWidget(),
+                              ),
                             ),
                           ],
                         ),
@@ -130,7 +139,6 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             Card(
                               // color: Theme.of(context).cardColor,
-
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: isSignedIn
@@ -152,17 +160,21 @@ class ProfileScreen extends ConsumerWidget {
                                                         children: [
                                                           Text(
                                                             '${AppStrings.name.tr()} : ',
-                                                            style: Theme.of(
-                                                                    context)
-                                                                .textTheme
-                                                                .titleMedium,
+                                                            style:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .titleMedium,
                                                           ),
                                                           Text(
                                                             '${data.name}',
-                                                            style: Theme.of(
-                                                                    context)
-                                                                .textTheme
-                                                                .bodyMedium,
+                                                            style:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .bodyMedium,
                                                           ),
                                                         ],
                                                       ),
@@ -173,17 +185,21 @@ class ProfileScreen extends ConsumerWidget {
                                                         children: [
                                                           Text(
                                                             '${AppStrings.phone.tr()} : ',
-                                                            style: Theme.of(
-                                                                    context)
-                                                                .textTheme
-                                                                .titleMedium,
+                                                            style:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .titleMedium,
                                                           ),
                                                           Text(
                                                             data.phoneNumber!,
-                                                            style: Theme.of(
-                                                                    context)
-                                                                .textTheme
-                                                                .bodyMedium,
+                                                            style:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .textTheme
+                                                                    .bodyMedium,
                                                           ),
                                                         ],
                                                       ),
@@ -198,78 +214,90 @@ class ProfileScreen extends ConsumerWidget {
                                               Expanded(
                                                 child: PrimaryButton(
                                                   onPressed: () async {
-                                                    final result =
-                                                        await showDialog(
+                                                    final result = await showDialog(
                                                       context: context,
                                                       // sign out dialog
                                                       builder: (context) =>
                                                           AlertDialog(
-                                                        title: Text(AppStrings
-                                                            .signOut
-                                                            .tr()),
-                                                        content: Text(AppStrings
-                                                            .areYouSureToSignOut
-                                                            .tr()),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                            },
-                                                            child: Text(
-                                                                AppStrings
-                                                                    .cancel
-                                                                    .tr()),
+                                                            title: Text(
+                                                              AppStrings.signOut
+                                                                  .tr(),
+                                                            ),
+                                                            content: Text(
+                                                              AppStrings
+                                                                  .areYouSureToSignOut
+                                                                  .tr(),
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  Navigator.of(
+                                                                    context,
+                                                                  ).pop();
+                                                                },
+                                                                child: Text(
+                                                                  AppStrings
+                                                                      .cancel
+                                                                      .tr(),
+                                                                ),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  Navigator.of(
+                                                                    context,
+                                                                  ).pop(true);
+                                                                },
+                                                                child: Text(
+                                                                  AppStrings
+                                                                      .signOut
+                                                                      .tr(),
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(true);
-                                                            },
-                                                            child: Text(
-                                                                AppStrings
-                                                                    .signOut
-                                                                    .tr()),
-                                                          ),
-                                                        ],
-                                                      ),
                                                     );
 
                                                     if (result == true) {
                                                       // todo : sign out
+                                                      // ref
+                                                      //         .read(
+                                                      //           mainScreenIndexProvider
+                                                      //               .notifier,
+                                                      //         )
+                                                      //         .state =
+                                                      //     0;
                                                       ref
                                                           .read(
-                                                              pageControllerProvider)
-                                                          .jumpToPage(0);
-                                                      ref
-                                                          .read(
-                                                              authControllerProvider
-                                                                  .notifier)
+                                                            authControllerProvider
+                                                                .notifier,
+                                                          )
                                                           .signOut()
-                                                          .then(
-                                                        (value) {
-                                                          print(
-                                                              'value : $value');
-                                                          if (value &&
-                                                              context.mounted) {
-                                                            Navigator.of(
-                                                                    context)
-                                                                .push(
-                                                                    MaterialPageRoute(
-                                                              builder: (context) =>
-                                                                  SignInScreen(),
-                                                            ));
-                                                          }
-                                                        },
-                                                      );
+                                                          .then((value) {
+                                                            print(
+                                                              'value : $value',
+                                                            );
+                                                            if (value &&
+                                                                context
+                                                                    .mounted) {
+                                                              Navigator.of(
+                                                                context,
+                                                              ).push(
+                                                                MaterialPageRoute(
+                                                                  builder:
+                                                                      (
+                                                                        context,
+                                                                      ) =>
+                                                                          SignInScreen(),
+                                                                ),
+                                                              );
+                                                            }
+                                                          });
                                                     }
                                                   },
                                                   isLoading: false,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .error,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.error,
                                                   text: AppStrings.signOut.tr(),
                                                   svgPath: AppIcons.signOut,
                                                 ),
@@ -279,68 +307,77 @@ class ProfileScreen extends ConsumerWidget {
                                                 child: PrimaryButton(
                                                   onPressed: () {
                                                     ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                            content: Text(AppStrings
-                                                                .holdPressToDeleteAccount
-                                                                .tr())));
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          AppStrings
+                                                              .holdPressToDeleteAccount
+                                                              .tr(),
+                                                        ),
+                                                      ),
+                                                    );
                                                   },
                                                   onLongPress: () async {
-                                                    final result =
-                                                        await showDialog(
+                                                    final result = await showDialog(
                                                       context: context,
                                                       // delete account dialog
                                                       builder: (context) =>
                                                           AlertDialog(
-                                                        title: Text(
-                                                          AppStrings
-                                                              .deleteAccount
-                                                              .tr(),
-                                                        ),
-                                                        content: Text(
-                                                          AppStrings
-                                                              .areYouSureToDeleteAccount
-                                                              .tr(),
-                                                        ),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                            },
-                                                            child: Text(
-                                                                AppStrings
-                                                                    .cancel
-                                                                    .tr()),
+                                                            title: Text(
+                                                              AppStrings
+                                                                  .deleteAccount
+                                                                  .tr(),
+                                                            ),
+                                                            content: Text(
+                                                              AppStrings
+                                                                  .areYouSureToDeleteAccount
+                                                                  .tr(),
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  Navigator.of(
+                                                                    context,
+                                                                  ).pop();
+                                                                },
+                                                                child: Text(
+                                                                  AppStrings
+                                                                      .cancel
+                                                                      .tr(),
+                                                                ),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  Navigator.of(
+                                                                    context,
+                                                                  ).pop(true);
+                                                                },
+                                                                child: Text(
+                                                                  AppStrings
+                                                                      .delete
+                                                                      .tr(),
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(true);
-                                                            },
-                                                            child: Text(
-                                                                AppStrings
-                                                                    .delete
-                                                                    .tr()),
-                                                          ),
-                                                        ],
-                                                      ),
                                                     );
 
                                                     if (result == true) {
                                                       // todo : delete account
-                                                      ref
-                                                          .read(
-                                                              pageControllerProvider)
-                                                          .jumpToPage(0);
+                                                      // ref
+                                                      //         .read(
+                                                      //           mainScreenIndexProvider
+                                                      //               .notifier,
+                                                      //         )
+                                                      //         .state =
+                                                      //     0;
                                                     }
                                                   },
                                                   isLoading: false,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .error,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.error,
                                                   text: AppStrings.deleteAccount
                                                       .tr(),
                                                   svgPath:
@@ -362,10 +399,12 @@ class ProfileScreen extends ConsumerWidget {
                                           PrimaryButton(
                                             onPressed: () {
                                               Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          SignInScreen()));
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      SignInScreen(),
+                                                ),
+                                              );
                                             },
                                             text: AppStrings.signIn.tr(),
                                             isLoading: false,
@@ -373,22 +412,20 @@ class ProfileScreen extends ConsumerWidget {
                                         ],
                                       ),
                               ),
-                            )
+                            ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 8,
-                        ),
+                        const SizedBox(height: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              AppStrings.contactUs.tr(),
-                            ),
+                            Text(AppStrings.contactUs.tr()),
                             Card(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0, vertical: 12),
+                                  horizontal: 8.0,
+                                  vertical: 12,
+                                ),
                                 child: Column(
                                   children: [
                                     SizedBox(
@@ -434,22 +471,20 @@ class ProfileScreen extends ConsumerWidget {
                                   ],
                                 ),
                               ),
-                            )
+                            ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 8,
-                        ),
+                        const SizedBox(height: 8),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              AppStrings.legalInformation.tr(),
-                            ),
+                            Text(AppStrings.legalInformation.tr()),
                             Card(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0, vertical: 12),
+                                  horizontal: 8.0,
+                                  vertical: 12,
+                                ),
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: Wrap(
@@ -458,30 +493,31 @@ class ProfileScreen extends ConsumerWidget {
                                     children: [
                                       InkWell(
                                         onTap: () {},
-                                        child:
-                                            Text(AppStrings.privacyPolicy.tr()),
+                                        child: Text(
+                                          AppStrings.privacyPolicy.tr(),
+                                        ),
                                       ),
                                       gapH8,
                                       InkWell(
                                         onTap: () {},
                                         child: Text(
-                                            AppStrings.termsAndConditions.tr()),
+                                          AppStrings.termsAndConditions.tr(),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
-                            )
+                            ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 10,
-                        ),
+                        const SizedBox(height: 10),
                         Text(
-                            '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value}'),
+                          '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value}',
+                        ),
                         gapH12,
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),

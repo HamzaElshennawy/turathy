@@ -12,7 +12,20 @@
           "package_name": "com.deepblue.turathi"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "214584571316-osfuf00kle9jr64m2jgrtm5tchfir7c8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.deepblue.turathi",
+            "certificate_hash": "cbdd5de4c5d87bbb579342c8753b66c95f0008c2"
+          }
+        },
+        {
+          "client_id": "214584571316-0e25d07432f64jo817isd9hkusq87ppd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCAuitVzTn9HPqq2jEGA8hXp90E8pszfXU"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "214584571316-0e25d07432f64jo817isd9hkusq87ppd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "214584571316-hkfc0qgd3kd5spbici9gh8ji856h7rh5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.deepblue.turathi"
+              }
+            }
+          ]
         }
       }
     }
