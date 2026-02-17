@@ -22,7 +22,7 @@ class AuthRepository {
         CachedVariables.token = token;
       }
 
-      await cacheData(user.copyWith(password: password));
+      await cacheData(user.copyWith(password: password, phone_number: phone));
       return user;
     } else {
       AppFunctions.logPrint(
@@ -185,7 +185,6 @@ class AuthRepository {
 
   // local storage
   static Future<void> cacheData(UserModel? user) async {
-    AppFunctions.logPrint(message: 'cacheData user $user');
     if (user != null) {
       if (user.id != null) {
         await CacheHelper.setData(
@@ -197,13 +196,13 @@ class AuthRepository {
           );
         });
       }
-      if (user.phoneNumber != null) {
+      if (user.phone_number != null) {
         await CacheHelper.setData(
-          key: CachedKeys.phoneNumber,
-          value: user.phoneNumber!,
+          key: CachedKeys.phone_number,
+          value: user.phone_number!,
         ).then((value) async {
-          CachedVariables.phoneNumber = await CacheHelper.getData(
-            key: CachedKeys.phoneNumber,
+          CachedVariables.phone_number = await CacheHelper.getData(
+            key: CachedKeys.phone_number,
           );
         });
       }
@@ -224,8 +223,8 @@ class AuthRepository {
     CachedVariables.userId = int.tryParse(
       await CacheHelper.getData(key: CachedKeys.userId) ?? '',
     );
-    CachedVariables.phoneNumber = await CacheHelper.getData(
-      key: CachedKeys.phoneNumber,
+    CachedVariables.phone_number = await CacheHelper.getData(
+      key: CachedKeys.phone_number,
     );
     CachedVariables.password = await CacheHelper.getData(
       key: CachedKeys.password,
@@ -240,10 +239,10 @@ class AuthRepository {
     CachedVariables.token = null;
     CachedVariables.userId = null;
     CachedVariables.email = null;
-    CachedVariables.phoneNumber = null;
+    CachedVariables.phone_number = null;
     CachedVariables.password = null;
     await CacheHelper.deleteData(key: CachedKeys.userId);
-    await CacheHelper.deleteData(key: CachedKeys.phoneNumber);
+    await CacheHelper.deleteData(key: CachedKeys.phone_number);
     await CacheHelper.deleteData(key: CachedKeys.password);
     await CacheHelper.deleteData(key: CachedKeys.onBoard);
     await CacheHelper.deleteData(key: CachedKeys.fcmToken);

@@ -93,7 +93,7 @@ class _InputEmailForgotPasswordScreenState
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => ResetPasswordScreen(
-                                        phoneNumber: e164,
+                                        phone_number: e164,
                                       ),
                                     ),
                                   );

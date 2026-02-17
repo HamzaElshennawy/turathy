@@ -267,5 +267,16 @@
   "currentItem": "البند الحالي",
   "welcomeBackMessage": "اهلا بعودتك , نحن في انتظار مزاداتك القادمة",
   "letsWinAuctions": "هيا بنا لنفوز بالمزادات",
-  "createNewAccount": "انشاء حساب جديد"
+  "createNewAccount": "انشاء حساب جديد",
+  "priceRange": "نطاق السعر",
+  "minPriceLabel": "أقل سعر",
+  "maxPriceLabel": "أعلى سعر",
+  "condition": "الحالة",
+  "age": "العمر",
+  "lessThan10Years": "أقل من 10 سنوات",
+  "tenToFiftyYears": "10-50 سنة",
+  "plus50Years": "+50 سنة",
+  "newCondition": "جديد",
+  "usedCondition": "مستعمل",
+  "antiqueCondition": "أنتيك"
 }

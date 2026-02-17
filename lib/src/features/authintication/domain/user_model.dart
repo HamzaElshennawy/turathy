@@ -3,7 +3,7 @@ class UserModel {
   final String? name;
   final String? password; // Raw password for signup/local cache
   final String? passwordHashed; // Hashed password from DB
-  final String? phoneNumber;
+  final String? phone_number;
   final bool? isAdmin;
   final bool? isSuperAdmin;
   final bool? isVerified;
@@ -16,7 +16,7 @@ class UserModel {
     this.name,
     this.password,
     this.passwordHashed,
-    this.phoneNumber,
+    this.phone_number,
     this.isAdmin,
     this.isSuperAdmin,
     this.isVerified,
@@ -33,7 +33,7 @@ class UserModel {
           name == other.name &&
           password == other.password &&
           passwordHashed == other.passwordHashed &&
-          phoneNumber == other.phoneNumber &&
+          phone_number == other.phone_number &&
           isAdmin == other.isAdmin &&
           isSuperAdmin == other.isSuperAdmin &&
           isVerified == other.isVerified &&
@@ -46,7 +46,7 @@ class UserModel {
       name.hashCode ^
       password.hashCode ^
       passwordHashed.hashCode ^
-      phoneNumber.hashCode ^
+      phone_number.hashCode ^
       isAdmin.hashCode ^
       isSuperAdmin.hashCode ^
       isVerified.hashCode ^
@@ -60,7 +60,7 @@ class UserModel {
         ' name: $name,'
         ' password: $password,'
         ' passwordHashed: $passwordHashed,'
-        ' phone_number: $phoneNumber,'
+        ' phone_number: $phone_number,'
         ' isAdmin: $isAdmin,'
         ' isSuperAdmin: $isSuperAdmin,'
         ' isVerified: $isVerified,'
@@ -74,7 +74,7 @@ class UserModel {
     String? name,
     String? password,
     String? passwordHashed,
-    String? phoneNumber,
+    String? phone_number,
     bool? isAdmin,
     bool? isSuperAdmin,
     bool? isVerified,
@@ -86,7 +86,7 @@ class UserModel {
       name: name ?? this.name,
       password: password ?? this.password,
       passwordHashed: passwordHashed ?? this.passwordHashed,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
+      phone_number: phone_number ?? this.phone_number,
       isAdmin: isAdmin ?? this.isAdmin,
       isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
       isVerified: isVerified ?? this.isVerified,
@@ -101,7 +101,7 @@ class UserModel {
       'name': name,
       'password': password,
       'passwordHashed': passwordHashed,
-      'phone_number': phoneNumber,
+      'phone_number': phone_number,
       'isAdmin': isAdmin,
       'isSuperAdmin': isSuperAdmin,
       'isVerified': isVerified,
@@ -116,7 +116,7 @@ class UserModel {
       name: map['name'] as String?,
       password: map['password'] as String?, // Might be null from DB
       passwordHashed: map['passwordHashed'] as String?,
-      phoneNumber: map['phone_number'] as String?,
+      phone_number: map['phone_number'] as String?,
       isAdmin: map['isAdmin'] as bool?,
       isSuperAdmin: map['isSuperAdmin'] as bool?,
       isVerified: map['isVerified'] as bool?,

@@ -7,6 +7,9 @@ import 'package:turathy/src/features/home/presentation/home_screen/controllers/s
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/auth_controller.dart';
+import 'package:turathy/src/features/home/presentation/home_screen/widgets/categories_widget/category_widget.dart';
+import 'package:turathy/src/features/search/presentation/widgets/filter_widget/filter_widget_controller.dart';
+import 'package:turathy/src/features/search/presentation/widgets/search_list_widget.dart';
 import 'widgets/products_widget/live_auctions_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -49,16 +52,41 @@ class HomeScreen extends ConsumerWidget {
           Expanded(
             child: searchQuery.isNotEmpty
                 ? const SearchResultsWidget()
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        //CategoriesWidget(),
-                        //gapH12,
-                        LiveAuctionsWidget(),
-                        //Expanded(child: OpenAuctionsWidget()),
-                        ProductsListWidget(),
-                      ],
+                : Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const CategoriesWidget(),
+                          gapH12,
+                          Consumer(
+                            builder: (context, ref, child) {
+                              //final filterState = ref.watch(
+                              //  filterWidgetControllerProvider,
+                              //);
+                              //if ((filterState.selectedCategoryID != -1 &&
+                              //        filterState.selectedCategoryID != null) ||
+                              //    (filterState.selectedColor != null &&
+                              //        filterState.selectedColor!.isNotEmpty) ||
+                              //    (filterState.selectedSize != null &&
+                              //        filterState.selectedSize!.isNotEmpty) ||
+                              //    filterState.isAllOffersSelected) {
+                              //  return SizedBox(
+                              //    height:
+                              //        MediaQuery.of(context).size.height * 0.6,
+                              //    child: const SearchListWidget(),
+                              //  );
+                              //}
+                              return Column(
+                                children: [
+                                  LiveAuctionsWidget(),
+                                  ProductsListWidget(),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
           ),

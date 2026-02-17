@@ -6,6 +6,8 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/home/data/category_repository.dart';
 import 'package:turathy/src/features/products/data/products_repository.dart';
+import '../../search/presentation/widgets/filter_widget/filter_widget.dart';
+import '../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
 import 'package:turathy/src/features/home/domain/category_model.dart';
 
 class StoreScreen extends ConsumerStatefulWidget {
@@ -17,7 +19,6 @@ class StoreScreen extends ConsumerStatefulWidget {
 
 class _StoreScreenState extends ConsumerState<StoreScreen> {
   final TextEditingController _searchController = TextEditingController();
-  int? _selectedCategoryId;
 
   @override
   void dispose() {
@@ -29,6 +30,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
   Widget build(BuildContext context) {
     final productsAsyncValue = ref.watch(productsListProvider);
     final categoriesAsyncValue = ref.watch(getAllCategoriesProvider);
+    final filterState = ref.watch(filterWidgetControllerProvider);
 
     return Scaffold(
       body: CustomScrollView(
@@ -48,7 +50,14 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                     IconButton(
                       icon: const Icon(Icons.filter_list),
                       onPressed: () {
-                        // TODO: Implement filter dialog
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (context) => const FractionallySizedBox(
+                            heightFactor: 0.85,
+                            child: FilterWidget(),
+                          ),
+                        );
                       },
                     ),
                     Expanded(
@@ -62,7 +71,9 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                           ),
                         ),
                         onChanged: (value) {
-                          setState(() {});
+                          ref
+                              .read(filterWidgetControllerProvider.notifier)
+                              .setSearchText(value);
                         },
                       ),
                     ),
@@ -82,17 +93,14 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
               height: 50,
               child: categoriesAsyncValue.when(
                 data: (categories) {
-                  // Add "All" category at the beginning?
-                  // Or assume user can deselect.
-                  // Let's add specific category model logic if needed.
-                  // For now, list categories.
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: categories.length,
                     itemBuilder: (context, index) {
                       final category = categories[index];
-                      final isSelected = _selectedCategoryId == category.id;
+                      final isSelected =
+                          filterState.selectedCategoryID == category.id;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
@@ -105,14 +113,14 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                           ),
                           selected: isSelected,
                           onSelected: (selected) {
-                            setState(() {
-                              _selectedCategoryId = selected
-                                  ? category.id
-                                  : null;
-                            });
+                            ref
+                                .read(filterWidgetControllerProvider.notifier)
+                                .selectCategory(index);
                           },
                           backgroundColor: Colors.grey.shade200,
-                          selectedColor: const Color(0xFF1B5E20),
+                          selectedColor: const Color(
+                            0xFF1B5E20,
+                          ), // TODO: Use theme color
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide.none,
@@ -136,25 +144,55 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
             data: (products) {
               // Filter products
               final filteredProducts = products.where((product) {
+                // 1. Search Text
+                final searchText = filterState.searchText ?? '';
                 final matchesSearch =
                     product.title?.toLowerCase().contains(
-                      _searchController.text.toLowerCase(),
+                      searchText.toLowerCase(),
                     ) ??
                     false;
+
+                // 2. Category
+                // Check if a category is selected (id != null and != -1)
                 final matchesCategory =
-                    _selectedCategoryId == null ||
+                    filterState.selectedCategoryID == null ||
+                    filterState.selectedCategoryID == -1 ||
                     product.category ==
                         categoriesAsyncValue.value
                             ?.firstWhere(
-                              (c) => c.id == _selectedCategoryId,
+                              (c) => c.id == filterState.selectedCategoryID,
                               orElse: () => CategoryModel(id: -1),
                             )
-                            .name; // Assuming filtering by name match or ID if possible.
-                // Note: ProductModel has `category` as String. CategoryModel has `name` (String) and `id` (int).
-                // We need to match efficiently. If backend provides category ID in product, use that.
-                // ProductModel has `category` string. Let's assume it matches category name.
+                            .name;
 
-                return matchesSearch && matchesCategory;
+                // 3. Price Range
+                final matchesMinPrice =
+                    filterState.minPrice == null ||
+                    (product.price != null &&
+                        product.price! >= filterState.minPrice!);
+                final matchesMaxPrice =
+                    filterState.maxPrice == null ||
+                    (product.price != null &&
+                        product.price! <= filterState.maxPrice!);
+
+                // 4. Condition
+                final matchesCondition =
+                    filterState.selectedCondition == null ||
+                    filterState.selectedCondition!.isEmpty ||
+                    product.condition == filterState.selectedCondition;
+
+                // 5. Age
+                final matchesAge =
+                    filterState.selectedAge == null ||
+                    filterState.selectedAge!.isEmpty ||
+                    product.approximateAge == filterState.selectedAge;
+
+                return matchesSearch &&
+                    matchesCategory &&
+                    matchesMinPrice &&
+                    matchesMaxPrice &&
+                    matchesCondition &&
+                    matchesAge;
               }).toList();
 
               if (filteredProducts.isEmpty) {
@@ -170,7 +208,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 8,
-                    childAspectRatio: 0.55, // Adjust card aspect ratio
+                    childAspectRatio: 0.55,
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
                     return ProductCard(product: filteredProducts[index]);

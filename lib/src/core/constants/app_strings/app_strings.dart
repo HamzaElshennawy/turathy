@@ -80,8 +80,8 @@ class AppStrings {
   static const String city = "city";
   static const String selectCityToProceed = "selectCityToProceed";
   static const String cashOnDelivery = "cashOnDelivery";
-  static const String phoneNumberCopiedToClipboard =
-      "phoneNumberCopiedToClipboard";
+  static const String phone_numberCopiedToClipboard =
+      "phone_numberCopiedToClipboard";
   static const String vodafoneCash = "vodafoneCash";
   static const String pleaseCopyThePhone = "pleaseCopyThePhone";
   static const String orderPlacedSuccessfully = "orderPlacedSuccessfully";
@@ -296,4 +296,19 @@ class AppStrings {
   static const String welcomeBackMessage = 'welcomeBackMessage';
   static const String letsWinAuctions = 'letsWinAuctions';
   static const String createNewAccount = 'createNewAccount';
+
+  // Filters
+  static const String priceRange = 'priceRange';
+  static const String minPriceLabel = 'minPriceLabel';
+  static const String maxPriceLabel = 'maxPriceLabel';
+  static const String condition = 'condition';
+  static const String age = 'age';
+
+  // Filter Options
+  static const String lessThan10Years = 'lessThan10Years';
+  static const String tenToFiftyYears = 'tenToFiftyYears';
+  static const String plus50Years = 'plus50Years';
+  static const String newCondition = 'newCondition';
+  static const String usedCondition = 'usedCondition';
+  static const String antiqueCondition = 'antiqueCondition';
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 onEnd: () {
                   AuthRepository.getLocalDetails().then((_) {
                     if (!mounted) return;
+                    log("[DEBUG] token: ${CachedVariables.token.toString()}");
+                    log("[DEBUG] userId: ${CachedVariables.userId.toString()}");
+                    log(
+                      "[DEBUG] phone_number: ${CachedVariables.phone_number.toString()}",
+                    );
+                    log(
+                      "[DEBUG] password: ${CachedVariables.password.toString()}",
+                    );
                     if (CachedVariables.token != null &&
                         CachedVariables.userId != null) {
                       // Try to restore session using token and userId (Google Sign-In)
@@ -62,39 +71,44 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                           .catchError((error) {
                             if (!mounted) return;
                             // Fallback to phone/password if available, otherwise sign in
-                            if (CachedVariables.phoneNumber != null &&
+                            if (CachedVariables.phone_number != null &&
                                 CachedVariables.password != null) {
                               ref
                                   .read(authControllerProvider.notifier)
                                   .signIn(
-                                    CachedVariables.phoneNumber!,
+                                    CachedVariables.phone_number!,
                                     CachedVariables.password!,
                                   );
-                              if (mounted) {
-                                GoRouter.of(context).go(RouteConstants.home);
-                              }
-                            } else {
-                              if (mounted) {
-                                GoRouter.of(context).go(RouteConstants.signIn);
-                              }
+                              //if (mounted) {
+                              //  GoRouter.of(context).go(RouteConstants.home);
+                              //}
                             }
+                            //else {
+                            //  if (mounted) {
+                            //    GoRouter.of(context).go(RouteConstants.signIn);
+                            //  }
+                            //}
                           });
-                    } else if (CachedVariables.phoneNumber != null &&
+                    } else if (CachedVariables.phone_number != null &&
                         CachedVariables.password != null) {
                       // Fallback for old sessions or manual login without robust token support (if any)
                       ref
                           .read(authControllerProvider.notifier)
                           .signIn(
-                            CachedVariables.phoneNumber!,
+                            CachedVariables.phone_number!,
                             CachedVariables.password!,
                           );
-                      if (mounted) {
-                        GoRouter.of(context).go(RouteConstants.home);
-                      }
-                    } else {
-                      if (mounted) {
-                        GoRouter.of(context).go(RouteConstants.signIn);
-                      }
+                      //if (mounted) {
+                      //  GoRouter.of(context).go(RouteConstants.home);
+                      //}
+                    }
+                    //else {
+                    //  if (mounted) {
+                    //    GoRouter.of(context).go(RouteConstants.signIn);
+                    //  }
+                    //}
+                    if (mounted) {
+                      GoRouter.of(context).go(RouteConstants.home);
                     }
                   });
                 },

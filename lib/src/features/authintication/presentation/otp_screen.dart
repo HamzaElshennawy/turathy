@@ -10,9 +10,9 @@ import '../../../core/constants/app_strings/app_strings.dart';
 import 'otp_controller.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
-  final String phoneNumber;
+  final String phone_number;
 
-  const OtpScreen({super.key, required this.phoneNumber});
+  const OtpScreen({super.key, required this.phone_number});
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -110,7 +110,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "أدخل الرمز المكون من 6 أرقام الذي ارسلناه إلى رقمك ${widget.phoneNumber}",
+                  "أدخل الرمز المكون من 6 أرقام الذي ارسلناه إلى رقمك ${widget.phone_number}",
                   textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
@@ -196,7 +196,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         // Manually validate to avoid form key issues with multiple fields if needed
                         // Or just call verify
                         final ok = await controller.verifyOtp(
-                          phoneNumber: widget.phoneNumber,
+                          phone_number: widget.phone_number,
                         );
                         if (ok && context.mounted) {
                           // Navigate safely
@@ -221,7 +221,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       ? null
                       : () async {
                           await controller.resendOtp(
-                            phoneNumber: widget.phoneNumber,
+                            phone_number: widget.phone_number,
                           );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

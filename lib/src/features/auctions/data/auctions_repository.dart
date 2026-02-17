@@ -233,7 +233,7 @@ final openAuctionsProvider = FutureProvider<List<AuctionModel>>((ref) async {
 
 // search products with filter provider
 final searchProductsProvider = FutureProvider<List<AuctionModel>>((ref) async {
-  final filters = ref.read(filterWidgetControllerProvider);
+  final filters = ref.watch(filterWidgetControllerProvider);
   final timer = Timer(const Duration(minutes: 10), () {
     ref.invalidateSelf();
   });

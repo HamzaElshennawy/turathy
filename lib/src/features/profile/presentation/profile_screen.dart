@@ -193,7 +193,7 @@ class ProfileScreen extends ConsumerWidget {
                                                                     .titleMedium,
                                                           ),
                                                           Text(
-                                                            data.phoneNumber!,
+                                                            data.phone_number!,
                                                             style:
                                                                 Theme.of(
                                                                       context,

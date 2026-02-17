@@ -1,5 +1,5 @@
 class CachedKeys {
-  static const String phoneNumber = "phoneNumber";
+  static const String phone_number = "phone_number";
   static const String password = "password";
   static const String userId = "userId";
   static const String onBoard = "onBoard";

@@ -41,7 +41,7 @@ class MoreScreen extends ConsumerWidget {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               Text(
-                user.phoneNumber ?? '', // Or email if available
+                user.phone_number ?? '', // Or email if available
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(color: Colors.grey),

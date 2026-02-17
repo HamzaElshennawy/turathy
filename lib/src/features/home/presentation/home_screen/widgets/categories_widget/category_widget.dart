@@ -7,7 +7,7 @@ import '../../../../../../core/constants/app_sizes.dart';
 import '../../../../../../core/constants/app_strings/app_strings.dart';
 // import '../../../../../main_screen.dart';
 import '../../../../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
-import '../../../../../auctions/data/auctions_repository.dart';
+
 import '../../../../data/category_repository.dart';
 
 class CategoriesWidget extends ConsumerWidget {
@@ -31,56 +31,78 @@ class CategoriesWidget extends ConsumerWidget {
               height: 80,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) => Card(
-                  shape: const CircleBorder(),
-                  elevation: 1,
-                  shadowColor: Theme.of(context).colorScheme.primary,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () {
-                      // ref.read(mainScreenIndexProvider.notifier).state = 1;
+                itemBuilder: (context, index) {
+                  final isSelected =
                       ref
-                          .read(filterWidgetControllerProvider.notifier)
-                          .selectCategory(index);
-                      ref.invalidate(searchProductsProvider);
-                    },
-                    child: Container(
-                      width: 80,
-                      alignment: Alignment.bottomCenter,
-                      decoration: ShapeDecoration(
-                        shape: const CircleBorder(),
-                        image: DecorationImage(
-                          image: NetworkImage(categories[index].picUrl ?? ''),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                          .watch(filterWidgetControllerProvider)
+                          .selectedCategoryID ==
+                      categories[index].id;
+                  return Card(
+                    shape: const CircleBorder(),
+                    elevation: 1,
+                    shadowColor: Theme.of(context).colorScheme.primary,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        // ref.read(mainScreenIndexProvider.notifier).state = 1;
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .selectCategory(index);
+                      },
                       child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.6),
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(100),
+                        width: 80,
+                        alignment: Alignment.bottomCenter,
+                        decoration: ShapeDecoration(
+                          shape: isSelected
+                              ? CircleBorder(
+                                  side: BorderSide(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    width: 2,
+                                  ),
+                                )
+                              : const CircleBorder(),
+                          image: DecorationImage(
+                            image: NetworkImage(categories[index].picUrl ?? ''),
+                            fit: BoxFit.cover,
                           ),
-                          // borderRadius: const BorderRadius.vertical(
-                          //     bottom: Radius.circular(8)),
                         ),
-                        child: Text(
-                          (context.locale == const Locale('ar')
-                                  ? categories[index].name
-                                  : categories[index].name) ??
-                              "",
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              ),
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withOpacity(0.8)
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withOpacity(0.6),
+                            borderRadius: const BorderRadius.all(
+                              Radius.circular(100),
+                            ),
+                          ),
+                          child: Text(
+                            (context.locale == const Locale('ar')
+                                    ? categories[index].name
+                                    : categories[index].name) ??
+                                "",
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
                 separatorBuilder: (context, index) => gapW4,
                 itemCount: categories.length,
               ),

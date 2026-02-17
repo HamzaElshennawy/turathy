@@ -1,42 +1,22 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../home/data/category_repository.dart';
 import '../../../../home/domain/category_model.dart';
 import '../../../domain/filter_state.dart';
 
 class FilterWidgetController extends StateNotifier<FilterState> {
-  final List<String> colors = [
-    '0xffFF0000'.toLowerCase(),
-    '0xffFFA500'.toLowerCase(),
-    '0xffFFFF00'.toLowerCase(),
-    '0xff00FF00'.toLowerCase(),
-    '0xff0000FF'.toLowerCase(),
-    '0xff800080'.toLowerCase(),
-    '0xffFFC0CB'.toLowerCase(),
-    '0xffFFFFFF'.toLowerCase(),
-    '0xff000000'.toLowerCase(),
-    '0xff808080'.toLowerCase(),
-    '0xffFFD700'.toLowerCase(),
-    '0xffA52A2A'.toLowerCase(),
+  final List<String> ages = [
+    AppStrings.lessThan10Years.tr(),
+    AppStrings.tenToFiftyYears.tr(),
+    AppStrings.plus50Years.tr(),
   ];
-  final List<String> sizes = [
-    'XS',
-    'S',
-    'M',
-    'L',
-    'XL',
-    'XXL',
-    'XXXL',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
+  final List<String> conditions = [
+    AppStrings.newCondition.tr(),
+    AppStrings.usedCondition.tr(),
+    AppStrings.antiqueCondition.tr(),
   ];
   final List<CategoryModel> categories;
 
@@ -44,33 +24,42 @@ class FilterWidgetController extends StateNotifier<FilterState> {
 
   FilterWidgetController(this.categories) : super(FilterState());
 
-  int get selectedColorIndex {
-    return colors.indexOf(state.selectedColor ?? '');
+  int get selectedAgeIndex {
+    return ages.indexOf(state.selectedAge ?? '');
   }
 
-  int get selectedSizeIndex {
-    return sizes.indexOf(state.selectedSize ?? '');
+  int get selectedConditionIndex {
+    return conditions.indexOf(state.selectedCondition ?? '');
   }
 
   int get selectedCategoryIndex {
-    return categories
-        .indexWhere((element) => element.id == state.selectedCategoryID);
+    return categories.indexWhere(
+      (element) => element.id == state.selectedCategoryID,
+    );
   }
 
-  void selectColor(int index) {
-    if (colors[index] == state.selectedColor) {
-      state = state.copyWith(selectedColor: '');
+  void selectAge(int index) {
+    if (ages[index] == state.selectedAge) {
+      state = state.copyWith(selectedAge: '');
     } else {
-      state = state.copyWith(selectedColor: colors[index]);
+      state = state.copyWith(selectedAge: ages[index]);
     }
   }
 
-  void selectSize(int index) {
-    if (state.selectedSize == sizes[index]) {
-      state = state.copyWith(selectedSize: '');
+  void selectCondition(int index) {
+    if (state.selectedCondition == conditions[index]) {
+      state = state.copyWith(selectedCondition: '');
     } else {
-      state = state.copyWith(selectedSize: sizes[index]);
+      state = state.copyWith(selectedCondition: conditions[index]);
     }
+  }
+
+  void setMinPrice(double? price) {
+    state = state.copyWith(minPrice: price);
+  }
+
+  void setMaxPrice(double? price) {
+    state = state.copyWith(maxPrice: price);
   }
 
   void selectCategory(int index) {
@@ -102,6 +91,7 @@ class FilterWidgetController extends StateNotifier<FilterState> {
 
 final filterWidgetControllerProvider =
     StateNotifierProvider<FilterWidgetController, FilterState>((ref) {
-  return FilterWidgetController(
-      ref.watch(getAllCategoriesProvider).value ?? []);
-});
+      return FilterWidgetController(
+        ref.watch(getAllCategoriesProvider).value ?? [],
+      );
+    });

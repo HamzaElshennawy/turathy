@@ -41,16 +41,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
   void initState() {
     pageController = ref.read(pageControllerProvider);
     super.initState();
-    pageController.addListener(() {
-      setState(() {
-        _selectedIndex = pageController.page!.toInt();
-      });
+    pageController.addListener(_handlePageChange);
+  }
+
+  void _handlePageChange() {
+    if (!mounted) return;
+    setState(() {
+      _selectedIndex = pageController.page!.toInt();
     });
   }
 
   @override
   void dispose() {
-    // TODO: implement dispose
+    pageController.removeListener(_handlePageChange);
     super.dispose();
   }
 

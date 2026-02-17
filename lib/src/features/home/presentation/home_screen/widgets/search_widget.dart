@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/search/presentation/widgets/filter_widget/filter_widget.dart';
 import '../controllers/search_provider.dart';
 
 class SearchWidget extends ConsumerStatefulWidget {
@@ -116,7 +117,20 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
           ),
           child: IconButton(
             onPressed: () {
-              // TODO: Implement filter action
+              showModalBottomSheet(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                sheetAnimationStyle: AnimationStyle(
+                  duration: Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                builder: (context) => const FilterWidget(),
+              );
             },
             icon: Icon(
               Icons.tune_rounded, // Better match for filter icon

@@ -14,7 +14,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   );
   final nameController = TextEditingController();
   final phoneController = TextEditingController(
-    text: CachedVariables.phoneNumber,
+    text: CachedVariables.phone_number,
   );
   final formKey = GlobalKey<FormState>();
 
@@ -24,10 +24,10 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 
   UserModel? get currentUser => state.value;
 
-  Future<void> signIn(String fullPhoneNumber, String password) async {
+  Future<void> signIn(String fullphone_number, String password) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => AuthRepository.signIn(fullPhoneNumber, password),
+      () => AuthRepository.signIn(fullphone_number, password),
     );
 
     if (state.hasValue && !state.hasError) {
@@ -44,13 +44,13 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   //   }
   // }
 
-  Future<bool> signUp(String fullPhoneNumber) async {
+  Future<bool> signUp(String fullphone_number) async {
     state = const AsyncValue.loading();
     if (formKey.currentState!.validate()) {
       var user = UserModel(
         password: passwordController.text,
         name: nameController.text,
-        phoneNumber: fullPhoneNumber,
+        phone_number: fullphone_number,
       );
       final result = await AsyncValue.guard(
         () => AuthRepository.createUser(user),

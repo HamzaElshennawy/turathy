@@ -11,9 +11,9 @@ import '../../../../core/constants/app_strings/app_strings.dart';
 import 'forgot_password_controller.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
-  final String phoneNumber;
+  final String phone_number;
 
-  const ResetPasswordScreen({super.key, required this.phoneNumber});
+  const ResetPasswordScreen({super.key, required this.phone_number});
 
   @override
   ConsumerState<ResetPasswordScreen> createState() =>
@@ -60,7 +60,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       child: Column(
                         children: [
                           Text(
-                            '${AppStrings.enterCodeAndPassword.tr()} (${widget.phoneNumber})',
+                            '${AppStrings.enterCodeAndPassword.tr()} (${widget.phone_number})',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -116,7 +116,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                                       forgotPasswordControllerProvider.notifier,
                                     )
                                     .changePassword(
-                                      e164Phone: widget.phoneNumber,
+                                      e164Phone: widget.phone_number,
                                       otp: _codeController.text.trim(),
                                       password: _newPasswordController.text
                                           .trim(),

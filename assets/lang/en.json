@@ -267,5 +267,16 @@
   "currentItem": "Current Item",
   "welcomeBackMessage": "Welcome back, we are waiting for your upcoming auctions",
   "letsWinAuctions": "Let's win auctions",
-  "createNewAccount": "Create New Account"
+  "createNewAccount": "Create New Account",
+  "priceRange": "Price Range",
+  "minPriceLabel": "Min Price",
+  "maxPriceLabel": "Max Price",
+  "condition": "Condition",
+  "age": "Age",
+  "lessThan10Years": "Less than 10 years",
+  "tenToFiftyYears": "10-50 years",
+  "plus50Years": "+50 years",
+  "newCondition": "New",
+  "usedCondition": "Used",
+  "antiqueCondition": "Antique"
 }

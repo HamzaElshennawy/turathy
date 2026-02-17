@@ -192,25 +192,25 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 isLoading: state.isLoading,
                                 text: AppStrings.createAccount.tr(),
                                 onPressed: () async {
-                                  final fullPhoneNumber =
+                                  final fullphone_number =
                                       '$countryCode${controller.phoneController.text}';
-                                  await controller.signUp(fullPhoneNumber).then(
-                                    (value) async {
-                                      if (value) {
-                                        if (context.mounted) {
-                                          Navigator.of(
-                                            context,
-                                          ).pushAndRemoveUntil(
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const MainScreen(),
-                                            ),
-                                            (route) => false,
-                                          );
+                                  await controller
+                                      .signUp(fullphone_number)
+                                      .then((value) async {
+                                        if (value) {
+                                          if (context.mounted) {
+                                            Navigator.of(
+                                              context,
+                                            ).pushAndRemoveUntil(
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const MainScreen(),
+                                              ),
+                                              (route) => false,
+                                            );
+                                          }
                                         }
-                                      }
-                                    },
-                                  );
+                                      });
                                 },
                               ),
                             ),

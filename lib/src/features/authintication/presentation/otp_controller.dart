@@ -10,32 +10,41 @@ class OtpController extends StateNotifier<AsyncValue<void>> {
 
   OtpController() : super(const AsyncValue.data(null));
 
-  Future<bool> verifyOtp({required String phoneNumber}) async {
+  Future<bool> verifyOtp({required String phone_number}) async {
     state = const AsyncValue.loading();
-    final result = await AsyncValue.guard(() => AuthRepository.verifyOtp(
-          number: phoneNumber,
-          otp: otpController.text.trim(),
-        ));
+    final result = await AsyncValue.guard(
+      () => AuthRepository.verifyOtp(
+        number: phone_number,
+        otp: otpController.text.trim(),
+      ),
+    );
     if (result.hasError) {
       AppFunctions.logPrint(
-          message: 'verifyOtp error: ${result.error} ${result.stackTrace}');
+        message: 'verifyOtp error: ${result.error} ${result.stackTrace}',
+      );
       state = AsyncValue.error(
-          result.error.toString(), result.stackTrace ?? StackTrace.empty);
+        result.error.toString(),
+        result.stackTrace ?? StackTrace.empty,
+      );
       return false;
     }
     state = const AsyncValue.data(null);
     return result.value ?? false;
   }
 
-  Future<bool> resendOtp({required String phoneNumber}) async {
+  Future<bool> resendOtp({required String phone_number}) async {
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard(
-        () => AuthRepository.resendOtp(number: phoneNumber));
+      () => AuthRepository.resendOtp(number: phone_number),
+    );
     if (result.hasError) {
       AppFunctions.logPrint(
-          message: 'resendOtp error: ${result.error} ${result.stackTrace}');
+        message: 'resendOtp error: ${result.error} ${result.stackTrace}',
+      );
       state = AsyncValue.error(
-          result.error.toString(), result.stackTrace ?? StackTrace.empty);
+        result.error.toString(),
+        result.stackTrace ?? StackTrace.empty,
+      );
       return false;
     }
     state = const AsyncValue.data(null);
@@ -45,4 +54,5 @@ class OtpController extends StateNotifier<AsyncValue<void>> {
 
 final otpControllerProvider =
     StateNotifierProvider.autoDispose<OtpController, AsyncValue<void>>(
-        (ref) => OtpController());
+      (ref) => OtpController(),
+    );

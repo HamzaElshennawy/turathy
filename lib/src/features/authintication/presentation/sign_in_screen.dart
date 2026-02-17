@@ -67,7 +67,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           final e164 = '$countryCode$phone';
 
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: e164)),
+            MaterialPageRoute(builder: (_) => OtpScreen(phone_number: e164)),
           );
         }
       }
