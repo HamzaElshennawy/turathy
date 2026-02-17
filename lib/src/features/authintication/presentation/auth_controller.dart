@@ -21,10 +21,10 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 
   UserModel? get currentUser => state.value;
 
-  Future<void> signIn(String phone, String password) async {
+  Future<void> signIn(String fullPhoneNumber, String password) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => AuthRepository.signIn(phone, password),
+      () => AuthRepository.signIn(fullPhoneNumber, password),
     );
 
     if (state.hasValue && !state.hasError) {
@@ -41,14 +41,13 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   //   }
   // }
 
-  Future<bool> signUp() async {
+  Future<bool> signUp(String fullPhoneNumber) async {
     state = const AsyncValue.loading();
     if (formKey.currentState!.validate()) {
       var user = UserModel(
         password: passwordController.text,
         name: nameController.text,
-        //phoneNumber: '+966${phoneController.text}',
-        phoneNumber: '12${phoneController.text}',
+        phoneNumber: fullPhoneNumber,
       );
       final result = await AsyncValue.guard(
         () => AuthRepository.createUser(user),

@@ -292,4 +292,7 @@ class AppStrings {
   static const String yourProduct = 'yourProduct';
   static const String likes = 'likes';
   static const String nextItem = 'nextItem';
+  static const String welcomeBackMessage = 'welcomeBackMessage';
+  static const String letsWinAuctions = 'letsWinAuctions';
+  static const String createNewAccount = 'createNewAccount';
 }

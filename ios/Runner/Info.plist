@@ -52,5 +52,9 @@
 		</array>
 		<key>FirebaseAppDelegateProxyEnabled</key>
 		<false />
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>This app needs access to location when open to auto-detect your country code.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>This app needs access to location when in the background to auto-detect your country code.</string>
 	</dict>
 </plist>

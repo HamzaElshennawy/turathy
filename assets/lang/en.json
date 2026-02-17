@@ -264,5 +264,8 @@
   "likes": "Likes",
   "notificationAuctionWon": "You won the auction",
   "notificationAuctionWonMessage": "Congratulations! You won the auction on the product",
-  "currentItem": "Current Item"
+  "currentItem": "Current Item",
+  "welcomeBackMessage": "Welcome back, we are waiting for your upcoming auctions",
+  "letsWinAuctions": "Let's win auctions",
+  "createNewAccount": "Create New Account"
 }

@@ -264,5 +264,8 @@
   "likes": "المفضلة",
   "notificationAuctionWon": "لقد فزت بالمزاد",
   "notificationAuctionWonMessage": "تهانينا! لقد فزت بالمزاد على المنتج",
-  "currentItem": "البند الحالي"
+  "currentItem": "البند الحالي",
+  "welcomeBackMessage": "اهلا بعودتك , نحن في انتظار مزاداتك القادمة",
+  "letsWinAuctions": "هيا بنا لنفوز بالمزادات",
+  "createNewAccount": "انشاء حساب جديد"
 }

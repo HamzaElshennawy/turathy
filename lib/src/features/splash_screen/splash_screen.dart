@@ -12,6 +12,7 @@ import '../../core/helper/cache/cached_variables.dart';
 import '../../routing/rout_constants.dart';
 import '../authintication/data/auth_repository.dart';
 import '../authintication/presentation/auth_controller.dart';
+import '../authintication/presentation/country_code_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -29,6 +30,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(countryCodeProvider.notifier).autoDetectCountry();
+    });
     Timer(const Duration(milliseconds: 600), () {
       setState(() {
         logoScale = 1;

@@ -1,7 +1,10 @@
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/features/main_screen.dart';
 
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
@@ -12,14 +15,26 @@ import '../../../utils/validators.dart';
 import 'auth_controller.dart';
 import 'sign_in_screen.dart';
 import 'widgets/social_login_buttons.dart';
+import 'country_code_provider.dart';
 
-class SignUpScreen extends ConsumerWidget {
+class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     var controller = ref.read(authControllerProvider.notifier);
     final state = ref.watch(authControllerProvider);
+    final countryCode = ref.watch(countryCodeProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -31,27 +46,22 @@ class SignUpScreen extends ConsumerWidget {
               child: ResponsiveCenter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 16.0),
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 20),
                       // Logo
-                      Center(
-                        child: Image.asset(
-                          AppImages.logo,
-                          height: 100,
-                        ),
-                      ),
+                      Center(child: Image.asset(AppImages.logo, height: 100)),
                       const SizedBox(height: 40),
 
                       // Title
                       Text(
-                        "انشاء حساب جديد", // "Create New Account"
+                        AppStrings.createNewAccount.tr(),
                         textAlign: TextAlign.end,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
+                        style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
@@ -60,11 +70,11 @@ class SignUpScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       // Subtitle
                       Text(
-                        "هيا بنا لنفوز بالمزادات", // "Let's win auctions" - approx translation or from design
+                        AppStrings.letsWinAuctions.tr(),
                         textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
 
@@ -73,9 +83,9 @@ class SignUpScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Name Field (Required by backend)
+                            // Name Field
                             Text(
-                              AppStrings.name.tr(), // Name
+                              AppStrings.name.tr(),
                               textAlign: TextAlign.end,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
@@ -86,14 +96,15 @@ class SignUpScreen extends ConsumerWidget {
                               validator: Validators.required,
                               hintText: AppStrings.name,
                               prefixIcon: const Icon(Icons.person),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             const SizedBox(height: 16),
 
                             // Phone Field
                             Text(
-                              "رقم الجوال", // Phone
+                              AppStrings.mobileNumber.tr(),
                               textAlign: TextAlign.end,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
@@ -103,21 +114,37 @@ class SignUpScreen extends ConsumerWidget {
                               child: WhiteRoundedTextFormField(
                                 controller: controller.phoneController,
                                 keyboardType: TextInputType.phone,
-                                validator: Validators.ksaLocalPhoneValidator,
-                                inputFormatters:
-                                    Validators.ksaLocalPhoneInputFormatters,
+                                validator: Validators.required,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 hintText: '5XXXXXXXX',
-                                prefix: '+966',
-                                prefixIcon: const Icon(Icons.phone),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade300),
+                                prefixIcon: CountryCodePicker(
+                                  key: ValueKey(countryCode),
+                                  onChanged: (country) {
+                                    if (country.dialCode != null) {
+                                      ref
+                                          .read(countryCodeProvider.notifier)
+                                          .setCountryCode(country.dialCode!);
+                                    }
+                                  },
+                                  initialSelection: countryCode,
+                                  favorite: const ['+966', 'SA'],
+                                  showCountryOnly: false,
+                                  showOnlyCountryWhenClosed: false,
+                                  alignLeft: false,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 16),
 
-                            // Password Field (Required by backend)
+                            // Password Field
                             Text(
-                              AppStrings.password.tr(), // Password
+                              AppStrings.password.tr(),
                               textAlign: TextAlign.end,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
@@ -128,8 +155,9 @@ class SignUpScreen extends ConsumerWidget {
                               validator: Validators.passwordValidator,
                               hintText: AppStrings.password,
                               prefixIcon: const Icon(Icons.lock),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
 
                             const SizedBox(height: 32),
@@ -140,21 +168,27 @@ class SignUpScreen extends ConsumerWidget {
                               height: 50,
                               child: PrimaryButton(
                                 isLoading: state.isLoading,
-                                text: "انشاء الحساب", // "Create Account"
+                                text: AppStrings.createAccount.tr(),
                                 onPressed: () async {
-                                  await controller.signUp().then((value) async {
-                                    if (value) {
-                                      if (context.mounted) {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                SignInScreen(),
-                                          ),
-                                        );
+                                  final fullPhoneNumber =
+                                      '$countryCode${controller.phoneController.text}';
+                                  await controller.signUp(fullPhoneNumber).then(
+                                    (value) async {
+                                      if (value) {
+                                        if (context.mounted) {
+                                          Navigator.of(
+                                            context,
+                                          ).pushAndRemoveUntil(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const MainScreen(),
+                                            ),
+                                            (route) => false,
+                                          );
+                                        }
                                       }
-                                    }
-                                  });
+                                    },
+                                  );
                                 },
                               ),
                             ),
@@ -170,8 +204,10 @@ class SignUpScreen extends ConsumerWidget {
                           Expanded(child: Divider(color: Colors.grey.shade300)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text("أو",
-                                style: TextStyle(color: Colors.grey.shade600)),
+                            child: Text(
+                              AppStrings.or.tr(),
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
                           ),
                           Expanded(child: Divider(color: Colors.grey.shade300)),
                         ],
@@ -205,8 +241,9 @@ class SignUpScreen extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            AppStrings.alreadyHaveAnAccount
-                                .tr(context: context),
+                            AppStrings.alreadyHaveAnAccount.tr(
+                              context: context,
+                            ),
                             style: const TextStyle(color: Colors.grey),
                           ),
                         ],

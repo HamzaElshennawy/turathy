@@ -1,6 +1,8 @@
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/common_widgets/primary_button.dart';
@@ -14,16 +16,28 @@ import 'auth_controller.dart';
 import 'otp_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/social_login_buttons.dart';
+import 'country_code_provider.dart';
 
-class SignInScreen extends ConsumerWidget {
-  final _formKey = GlobalKey<FormState>();
-
-  SignInScreen({super.key});
+class SignInScreen extends ConsumerStatefulWidget {
+  const SignInScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends ConsumerState<SignInScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
     final controller = ref.read(authControllerProvider.notifier);
+    final countryCode = ref.watch(countryCodeProvider);
 
     // Using a listener to handle navigation and errors
     ref.listen(authControllerProvider, (previous, next) {
@@ -40,8 +54,7 @@ class SignInScreen extends ConsumerWidget {
             .phoneController
             .text
             .trim();
-        //final e164 = '+966$phone';
-        final e164 = '12$phone';
+        final e164 = '$countryCode$phone';
 
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => OtpScreen(phoneNumber: e164)),
@@ -91,7 +104,7 @@ class SignInScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       // Subtitle
                       Text(
-                        "اهلا بعودتك , نحن في انتظار مزاداتك القادمة", // "Welcome back..."
+                        AppStrings.welcomeBackMessage.tr(),
                         textAlign: TextAlign.end,
                         style: Theme.of(
                           context,
@@ -106,7 +119,7 @@ class SignInScreen extends ConsumerWidget {
                           children: [
                             // Phone Number Label
                             Text(
-                              "رقم الجوال", // Phone Number
+                              AppStrings.mobileNumber.tr(),
                               textAlign: TextAlign.end,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
@@ -116,11 +129,29 @@ class SignInScreen extends ConsumerWidget {
                               child: WhiteRoundedTextFormField(
                                 controller: controller.phoneController,
                                 keyboardType: TextInputType.phone,
-                                validator: Validators.ksaLocalPhoneValidator,
-                                inputFormatters:
-                                    Validators.ksaLocalPhoneInputFormatters,
+                                validator: Validators.required,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 hintText: '5XXXXXXXXXX',
-                                //prefix: '+966',
+                                prefixIcon: CountryCodePicker(
+                                  key: ValueKey(
+                                    countryCode,
+                                  ), // Force rebuild on change
+                                  onChanged: (country) {
+                                    if (country.dialCode != null) {
+                                      ref
+                                          .read(countryCodeProvider.notifier)
+                                          .setCountryCode(country.dialCode!);
+                                    }
+                                  },
+                                  initialSelection: countryCode,
+                                  favorite: const ['+966', 'SA'],
+                                  showCountryOnly: false,
+                                  showOnlyCountryWhenClosed: false,
+                                  alignLeft: false,
+                                  padding: EdgeInsets.zero,
+                                ),
                                 // Adjusted style to look cleaner (white bg, subtle border)
                                 borderSide: BorderSide(
                                   color: Colors.grey.shade300,
@@ -153,10 +184,6 @@ class SignInScreen extends ConsumerWidget {
                             // Actually, the user asked to "follow the structure of this app" + "change sign in to be like these designs".
                             // The design DOES NOT have a password field. It looks like an OTP flow.
                             // If I hide it, login will fail.
-                            // I will KEEP it but maybe mention it's required.
-                            // Wait, looking at the design again, there's "Sign In" button.
-                            // If I strictly follow design, I should remove password.
-                            // If I remove password, I can't call `signIn(phone, password)`.
                             // I will assume for this task I must keep it to make it work, so I'll add it.
                             WhiteRoundedTextFormField(
                               controller: controller.passwordController,
@@ -201,13 +228,11 @@ class SignInScreen extends ConsumerWidget {
                                         .phoneController
                                         .text
                                         .trim();
-                                    //final e164 = '+966$local';
-                                    final e164 = '12$local';
 
                                     ref
                                         .read(authControllerProvider.notifier)
                                         .signIn(
-                                          e164,
+                                          '$countryCode$local',
                                           controller.passwordController.text,
                                         );
                                   }
