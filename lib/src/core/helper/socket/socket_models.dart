@@ -283,59 +283,51 @@ class SocketErrorEvent {
 
 /// Auction ended event model
 class AuctionEndedEvent {
-  final String winnerName;
-  final int? winnerId;
+  final SocketUser? winningUser;
   final int auctionId;
+  final AuctionModel? auction;
   final num? finalBidAmount;
 
+  String get winnerName => winningUser?.name ?? 'Unknown';
+  int? get winnerId => winningUser?.id;
+
   const AuctionEndedEvent({
-    required this.winnerName,
-    this.winnerId,
+    this.winningUser,
     required this.auctionId,
+    this.auction,
     this.finalBidAmount,
   });
 
   factory AuctionEndedEvent.fromJson(Map<String, dynamic> json) {
-    final winningUser = json['winningUser'] as Map<String, dynamic>?;
     return AuctionEndedEvent(
-      winnerName: winningUser?['name'] as String? ?? 'Unknown',
-      winnerId: winningUser?['id'] as int?,
+      winningUser: json['winningUser'] != null
+          ? SocketUser.fromJson(json['winningUser'] as Map<String, dynamic>)
+          : null,
       auctionId: json['auctionId'] as int? ?? 0,
+      auction: json['auction'] != null
+          ? AuctionModel.fromJson(json['auction'] as Map<String, dynamic>)
+          : null,
       finalBidAmount: json['finalBidAmount'] as num?,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'winningUser': {'name': winnerName, if (winnerId != null) 'id': winnerId},
+      'winningUser': winningUser?.toJson(),
       'auctionId': auctionId,
+      'auction': auction?.toJson(),
       if (finalBidAmount != null) 'finalBidAmount': finalBidAmount,
     };
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AuctionEndedEvent &&
-          runtimeType == other.runtimeType &&
-          winnerName == other.winnerName &&
-          winnerId == other.winnerId &&
-          auctionId == other.auctionId;
-
-  @override
-  int get hashCode =>
-      winnerName.hashCode ^ winnerId.hashCode ^ auctionId.hashCode;
-
-  @override
   String toString() =>
-      'AuctionEndedEvent(winner: $winnerName, auctionId: $auctionId)';
+      'AuctionEndedEvent(winner: ${winningUser?.name}, auctionId: $auctionId)';
 }
 
 /// Bid placed event model
 class BidPlacedEvent {
   final AuctionBid newBid;
-  // final List<AuctionBid> auctionBids; // Backend might not return full list always, or maybe it does. Check socket.service.ts: it returns auctionBids.
-  // Actually, let's keep it simple and match backend return { newBid, auctionBids, currentPrice, expiryDate }
   final List<AuctionBid> auctionBids;
   final num? currentPrice;
   final DateTime? expiryDate;

@@ -119,21 +119,53 @@ class _AuctionBiddingControlsWidgetState
     // minBidPrice is the opening price (starting price)
     num openingPrice = widget.auction.minBidPrice ?? 0;
 
+    // Find the current product ID to filter bids correctly
+    // This prevents using bids from a previous item when joining a running auction
+    int? currentProductId;
+    if (widget.auction.auctionProducts != null &&
+        widget.auction.currentProduct != null) {
+      final currentProductObj = widget.auction.auctionProducts!.firstWhere(
+        (p) =>
+            (p.product?.trim().toLowerCase() ?? '') ==
+            (widget.auction.currentProduct?.trim().toLowerCase() ?? ''),
+        orElse: () => AuctionProducts(),
+      );
+      currentProductId = currentProductObj.id;
+    }
+
     // Determine the latest bid from either real-time update or initial data
-    final AuctionBid? latestBid =
-        lastBid ??
-        (widget.auction.auctionBids != null &&
-                widget.auction.auctionBids!.isNotEmpty
-            ? widget.auction.auctionBids!.last
-            : null);
+    // Filter initial bids by the current product to avoid using bids from previous items
+    final AuctionBid? latestBid = (() {
+      // Prefer real-time bid if it matches the current product
+      if (lastBid != null &&
+          (currentProductId == null || lastBid.productId == currentProductId)) {
+        return lastBid;
+      }
+
+      // Fall back to the highest bid from history for the current product
+      if (widget.auction.auctionBids != null &&
+          widget.auction.auctionBids!.isNotEmpty) {
+        final productBids = currentProductId != null
+            ? widget.auction.auctionBids!
+                  .where((b) => b.productId == currentProductId)
+                  .toList()
+            : widget.auction.auctionBids!;
+
+        if (productBids.isNotEmpty) {
+          // Sort descending by bid amount to get the highest
+          final sorted = [...productBids]
+            ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
+          return sorted.first;
+        }
+      }
+      return null;
+    })();
 
     // Current price logic:
-    // 1. Real-time update (lastBid)
-    // 2. Initial data (latestBid from list)
-    // 3. Actual price (if set)
-    // 4. Opening price
-    num currentPrice =
-        latestBid?.bid ?? widget.auction.actualPrice ?? openingPrice;
+    // 1. Real-time update (lastBid for current product)
+    // 2. Highest bid from history for current product
+    // 3. Opening price
+    num currentPrice = latestBid?.bid ?? openingPrice;
 
     if (auctionProduct != null) {
       bidIncrement = auctionProduct.bidPrice;

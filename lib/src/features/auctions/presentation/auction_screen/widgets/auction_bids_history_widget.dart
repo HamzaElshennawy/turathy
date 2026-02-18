@@ -5,10 +5,17 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 
+import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+
 class AuctionBidsHistoryWidget extends ConsumerWidget {
   final List<AuctionBid> initialBids;
+  final int? productId;
 
-  const AuctionBidsHistoryWidget({super.key, required this.initialBids});
+  const AuctionBidsHistoryWidget({
+    super.key,
+    required this.initialBids,
+    this.productId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,7 +23,15 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
     final newBid = ref.watch(currentBidStateProvider);
 
     // Combine initial bids with new bids (new bids on top)
-    final allBids = <AuctionBid>[if (newBid != null) newBid, ...initialBids];
+    // Filter by productId if provided
+    final allBids = <AuctionBid>[
+      if (newBid != null &&
+          (productId == null || newBid.productId == productId))
+        newBid,
+      ...initialBids.where(
+        (b) => productId == null || b.productId == productId,
+      ),
+    ];
 
     if (allBids.isEmpty) {
       return Padding(
@@ -50,10 +65,14 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
             itemBuilder: (context, index) {
               final bid = allBids[index];
               final isLatest = index == 0;
+              final isMyBid =
+                  CachedVariables.userId != null &&
+                  bid.userId == CachedVariables.userId;
+              final showHighlight = isLatest && isMyBid;
 
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: isLatest
+                decoration: showHighlight
                     ? BoxDecoration(
                         color: Colors.green.withAlpha(20),
                         borderRadius: BorderRadius.circular(8),
@@ -66,13 +85,15 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
                       // User avatar
                       CircleAvatar(
                         radius: 18,
-                        backgroundColor: isLatest
+                        backgroundColor: showHighlight
                             ? const Color(0xFF2D4739)
                             : Colors.grey[300],
                         child: Text(
                           (bid.user?.name ?? 'U')[0].toUpperCase(),
                           style: TextStyle(
-                            color: isLatest ? Colors.white : Colors.grey[700],
+                            color: showHighlight
+                                ? Colors.white
+                                : Colors.grey[700],
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -86,7 +107,7 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
                             Text(
                               bid.user?.name ?? 'anonymous'.tr(),
                               style: TextStyle(
-                                fontWeight: isLatest
+                                fontWeight: showHighlight
                                     ? FontWeight.bold
                                     : FontWeight.w500,
                                 fontSize: 14,
@@ -109,12 +130,12 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isLatest
+                          color: showHighlight
                               ? const Color(0xFF2D4739)
                               : Colors.black87,
                         ),
                       ),
-                      if (isLatest) ...[
+                      if (showHighlight) ...[
                         gapW8,
                         Container(
                           padding: const EdgeInsets.symmetric(

@@ -186,7 +186,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
                     // 2. Auction Info
                     Text(
-                      'Auction Information', // AppStrings.auctionInformation.tr()
+                      AppStrings.auctionInformation
+                          .tr(), // AppStrings.auctionInformation.tr()
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),

@@ -278,5 +278,6 @@
   "plus50Years": "+50 years",
   "newCondition": "New",
   "usedCondition": "Used",
-  "antiqueCondition": "Antique"
+  "antiqueCondition": "Antique",
+  "auctionInformation": "Auction Information"
 }

@@ -119,10 +119,77 @@ class NotificationsScreen extends ConsumerWidget {
                   // Silently fail for mark as read
                 }
               }
-              // TODO: Handle notification tap navigation based on type
+              _handleNotificationTap(context, notification);
             },
           );
         },
+      ),
+    );
+  }
+
+  void _handleNotificationTap(
+    BuildContext context,
+    NotificationModel notification,
+  ) {
+    // Check if notification has data for navigation
+    final data = notification.data;
+    final type = notification.type;
+
+    if (type == 'AUCTION_STARTED' ||
+        type == 'NEW_BID' ||
+        type == 'OUTBID' ||
+        type == 'AUCTION_WON' ||
+        type == 'AUCTION_ENDING_SOON') {
+      // Try to get auction ID from data
+      String? auctionId;
+      if (data != null && data.containsKey('auction_id')) {
+        auctionId = data['auction_id'].toString();
+      } else if (data != null && data.containsKey('id')) {
+        auctionId = data['id'].toString();
+      }
+
+      if (auctionId != null) {
+        context.pushNamed(
+          RouteConstants.liveAuction,
+          pathParameters: {'id': auctionId},
+        );
+      }
+    } else if (type == 'ORDER_STATUS') {
+      context.pushNamed(RouteConstants.orders);
+    } else if (type == 'BROADCAST') {
+      _showNotificationDialog(context, notification);
+    } else if (data != null) {
+      // Fallback checking data directly if type doesn't match
+      if (data.containsKey('auction_id')) {
+        context.pushNamed(
+          RouteConstants.liveAuction,
+          pathParameters: {'id': data['auction_id'].toString()},
+        );
+      } else if (data.containsKey('order_id')) {
+        context.pushNamed(RouteConstants.orders);
+      } else {
+        _showNotificationDialog(context, notification);
+      }
+    } else {
+      _showNotificationDialog(context, notification);
+    }
+  }
+
+  void _showNotificationDialog(
+    BuildContext context,
+    NotificationModel notification,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(notification.title),
+        content: SingleChildScrollView(child: Text(notification.body)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppStrings.ok.tr()),
+          ),
+        ],
       ),
     );
   }

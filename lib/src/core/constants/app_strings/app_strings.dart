@@ -168,6 +168,7 @@ class AppStrings {
   static const String endsAt = "endsAt";
   static const String countdownStartsIn = "countdownStartsIn";
   static const String currentItem = "currentItem";
+  static const String auctionInformation = "auctionInformation";
   // Validation - phone numbers
   static const String phoneRequired = "phoneRequired";
   static const String phoneInvalidInternational = "phoneInvalidInternational";

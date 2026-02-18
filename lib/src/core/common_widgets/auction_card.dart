@@ -276,14 +276,14 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Price
-                        Text(
-                          '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
+                        //Text(
+                        //  '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
+                        //  style: const TextStyle(
+                        //    fontSize: 18,
+                        //    fontWeight: FontWeight.bold,
+                        //    color: Colors.black87,
+                        //  ),
+                        //),
                         // Remaining Time
                         // Time Display
                         if (widget.product.expiryDate != null &&
