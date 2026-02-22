@@ -6,6 +6,7 @@ import 'package:turathy/src/features/authintication/presentation/auth_controller
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
 import 'package:turathy/src/features/host/presentation/my_items_screen.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -110,6 +111,21 @@ class MoreScreen extends ConsumerWidget {
               },
             ),
             const Divider(),
+            if (user != null) ...[
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: Text(AppStrings.myPayments.tr()),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const MyPaymentsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+            ],
             ListTile(
               leading: const Icon(Icons.dashboard_customize_outlined),
               title: Text(AppStrings.hostDashboard.tr()),

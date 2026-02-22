@@ -8,7 +8,9 @@ import '../domain/order_model.dart';
 
 class OrderRepository {
   Future<OrderModel> createOrder(OrderModel order) async {
-    final bool isProductOrder = order.productId != null && order.productId != 0;
+    final bool isProductOrder =
+        (order.productId != null && order.productId != 0) &&
+        (order.auctionId == 0);
     final String url = isProductOrder
         ? EndPoints.addProductOrder
         : EndPoints.addOrder;
@@ -66,6 +68,21 @@ class OrderRepository {
       throw AuthException(message, result.statusCode);
     }
   }
+
+  Future<OrderModel> updateOrder(OrderModel order) async {
+    final result = await DioHelper.postData(
+      url: EndPoints.baseUrl + 'order/update-order',
+      token: CachedVariables.token,
+      data: {...order.toJson(), 'order_id': order.id},
+    );
+    if (result.statusCode == 200) {
+      return OrderModel.fromJson(result.data['data']);
+    } else {
+      String message =
+          result.data['error'] ?? 'An error occurred while updating the order';
+      throw AuthException(message, result.statusCode);
+    }
+  }
 }
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
@@ -75,6 +92,11 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 final createOrderProvider = FutureProvider.autoDispose
     .family<OrderModel, OrderModel>((ref, order) async {
       return ref.watch(orderRepositoryProvider).createOrder(order);
+    });
+
+final updateOrderProvider = FutureProvider.autoDispose
+    .family<OrderModel, OrderModel>((ref, order) async {
+      return ref.watch(orderRepositoryProvider).updateOrder(order);
     });
 
 final getUserOrdersProvider = FutureProvider.autoDispose

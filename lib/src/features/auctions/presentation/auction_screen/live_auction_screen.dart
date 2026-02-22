@@ -19,6 +19,9 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_gallery_widget.dart';
 import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_info_table_widget.dart';
+import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
+import 'package:turathy/src/features/orders/domain/order_model.dart';
+import '../../domain/winning_auction_model.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
 
@@ -96,9 +99,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       return;
     }
 
-    // Safely find the product ID
     final productToBidOn = auction.auctionProducts?.firstWhere(
-      (element) => _isSameProduct(element.product, auction.currentProduct),
+      (element) =>
+          element.product == auction.currentProduct ||
+          element.id == auction.currentProductId,
       orElse: () => AuctionProducts(),
     );
 
@@ -303,9 +307,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     // Sync auction pricing fields with the current product's pricing
     if (auction.auctionProducts != null &&
         auction.auctionProducts!.isNotEmpty) {
-      // Find the product that matches the current_product name
+      // Find the product that matches the current_product name or ID
       final currentProductObj = auction.auctionProducts!.firstWhere(
-        (p) => _isSameProduct(p.product, auction.currentProduct),
+        (p) =>
+            p.product == auction.currentProduct ||
+            p.id == auction.currentProductId,
         orElse: () => auction.auctionProducts![0],
       );
 
@@ -414,15 +420,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         child: AsyncValueWidget(
           value: auctionValue,
           data: (auction) {
-            // Find active product (Selected OR Live)
             final activeProduct =
                 _selectedProduct ??
                 auction.auctionProducts?.firstWhere((p) {
-                  final isActive = _isSameProduct(
-                    p.product,
-                    auction.currentProduct,
-                  );
-                  return isActive;
+                  return p.product == auction.currentProduct ||
+                      p.id == auction.currentProductId;
                 }, orElse: () => AuctionProducts());
 
             return Column(
@@ -514,15 +516,22 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                               itemCount: auction.auctionProducts!.length,
                               itemBuilder: (context, index) {
                                 final item = auction.auctionProducts![index];
-                                final bool isLive = _isSameProduct(
-                                  item.product,
-                                  auction.currentProduct,
-                                );
-                                final bool isSelected = _isSameProduct(
-                                  item.product,
-                                  (_selectedProduct?.product ??
-                                      auction.currentProduct),
-                                );
+                                final bool isLive =
+                                    item.product == auction.currentProduct ||
+                                    item.id == auction.currentProductId;
+                                final bool isSelected =
+                                    item.id ==
+                                    (_selectedProduct?.id ??
+                                        (auction.auctionProducts
+                                                ?.firstWhere(
+                                                  (p) =>
+                                                      p.product ==
+                                                      auction.currentProduct,
+                                                  orElse: () =>
+                                                      AuctionProducts(),
+                                                )
+                                                .id ??
+                                            auction.currentProductId));
 
                                 return GestureDetector(
                                   onTap: () {
@@ -919,10 +928,15 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                   isAuctionEnded: _isAuctionEnded,
                   isViewOnly:
                       _selectedProduct != null &&
-                      !_isSameProduct(
-                        _selectedProduct?.product,
-                        auction.currentProduct,
-                      ),
+                      _selectedProduct?.id !=
+                          (auction.auctionProducts
+                                  ?.firstWhere(
+                                    (p) => p.product == auction.currentProduct,
+                                    orElse: () => AuctionProducts(),
+                                  )
+                                  .id ??
+                              auction.currentProductId),
+                  selectedProduct: _selectedProduct,
                   isOwner: auction.userId == CachedVariables.userId,
                   winnerId: _winnerId,
                   winnerName: _winnerName,
@@ -946,7 +960,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       return;
 
     final index = auction.auctionProducts!.indexWhere(
-      (p) => _isSameProduct(p.product, auction.currentProduct),
+      (p) =>
+          p.product == auction.currentProduct ||
+          p.id == auction.currentProductId,
     );
 
     if (index != -1 && _scrollController.hasClients) {
@@ -1024,6 +1040,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           winnerName: winnerName,
           finalPrice: finalPrice,
           currentUserId: CachedVariables.userId,
+          auction: auction,
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -1041,6 +1058,7 @@ class AuctionResultDialog extends StatelessWidget {
   final String? winnerName;
   final num? finalPrice;
   final int? currentUserId;
+  final AuctionModel auction;
 
   const AuctionResultDialog({
     super.key,
@@ -1048,6 +1066,7 @@ class AuctionResultDialog extends StatelessWidget {
     this.winnerName,
     this.finalPrice,
     this.currentUserId,
+    required this.auction,
   });
 
   @override
@@ -1173,24 +1192,77 @@ class AuctionResultDialog extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D4739),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  AppStrings.ok.tr(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              child: isWinner
+                  ? ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        final winningModel = WinningAuctionModel(
+                          id: 0,
+                          userId: currentUserId ?? 0,
+                          auctionId: auction.id ?? 0,
+                          product: auction.currentProduct ?? '',
+                          productId:
+                              auction.auctionProducts
+                                  ?.firstWhere(
+                                    (p) => p.product == auction.currentProduct,
+                                    orElse: () => AuctionProducts(),
+                                  )
+                                  .id ??
+                              auction.currentProductId ??
+                              0,
+                          price: (finalPrice ?? 0).toDouble(),
+                          sold: false,
+                          createdAt: DateTime.now(),
+                          updatedAt: DateTime.now(),
+                          auctionTitle: auction.title ?? '',
+                          auctionStartDate: auction.startDate ?? DateTime.now(),
+                          winnerName: winnerName ?? '',
+                        );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => OrderConfirmationScreen(
+                              order: OrderModel.fromWinningAuction(
+                                winningModel,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.receipt_long, color: Colors.white),
+                      label: Text(
+                        AppStrings.continueToOrder.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D4739),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D4739),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        AppStrings.ok.tr(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),

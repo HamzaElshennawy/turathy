@@ -66,6 +66,7 @@ dependencies:
   geolocator: ^14.0.2
   geocoding: ^4.0.0
   google_sign_in: ^6.2.1
+  file_picker: ^10.3.10
 
 dev_dependencies:
   flutter_test:

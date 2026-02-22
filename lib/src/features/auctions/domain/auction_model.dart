@@ -7,6 +7,7 @@ class AuctionModel {
   String? title;
   String? description;
   String? currentProduct;
+  int? currentProductId;
   num? actualPrice;
   num? minBidPrice;
   num? quantity;
@@ -37,6 +38,7 @@ class AuctionModel {
     this.title,
     this.description,
     this.currentProduct,
+    this.currentProductId,
     this.actualPrice,
     this.minBidPrice,
     this.quantity,
@@ -70,6 +72,7 @@ class AuctionModel {
           title == other.title &&
           description == other.description &&
           currentProduct == other.currentProduct &&
+          currentProductId == other.currentProductId &&
           actualPrice == other.actualPrice &&
           minBidPrice == other.minBidPrice &&
           quantity == other.quantity &&
@@ -96,6 +99,7 @@ class AuctionModel {
       title.hashCode ^
       description.hashCode ^
       currentProduct.hashCode ^
+      currentProductId.hashCode ^
       actualPrice.hashCode ^
       minBidPrice.hashCode ^
       quantity.hashCode ^
@@ -121,6 +125,7 @@ class AuctionModel {
     title = json['title'];
     description = json['description'];
     currentProduct = json['current_product'];
+    currentProductId = json['current_product_id'];
     actualPrice = json['actualPrice'];
     minBidPrice = json['minBidPrice'];
     quantity = json['quantity'];
@@ -182,6 +187,7 @@ class AuctionModel {
     data['title'] = title;
     data['description'] = description;
     data['current_product'] = currentProduct;
+    data['current_product_id'] = currentProductId;
     data['actualPrice'] = actualPrice;
     data['minBidPrice'] = minBidPrice;
     data['quantity'] = quantity;
@@ -214,7 +220,7 @@ class AuctionModel {
 
   @override
   String toString() {
-    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
+    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, currentProductId: $currentProductId, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
   }
 }
 

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../../features/auctions/domain/winning_auction_model.dart';
+import '../../features/orders/presentation/order_confirmation_screen.dart';
 import '../../features/orders/domain/order_model.dart';
-import '../../features/orders/presentation/shipping_details_screen.dart';
+import '../../features/auctions/presentation/auction_screen/my_payments_screen.dart';
 import '../constants/app_strings/app_strings.dart';
 import 'custom_card.dart';
 import 'primary_button.dart';
@@ -11,10 +12,7 @@ import 'primary_button.dart';
 class WinningAuctionCard extends StatelessWidget {
   final WinningAuctionModel winningAuction;
 
-  const WinningAuctionCard({
-    super.key,
-    required this.winningAuction,
-  });
+  const WinningAuctionCard({super.key, required this.winningAuction});
 
   @override
   Widget build(BuildContext context) {
@@ -38,36 +36,37 @@ class WinningAuctionCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: winningAuction.sold 
-                    ? theme.colorScheme.secondaryContainer
-                    : theme.colorScheme.primaryContainer,
+                  color: winningAuction.sold
+                      ? theme.colorScheme.secondaryContainer
+                      : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(20),
-                  border: winningAuction.sold ? Border.all(
-                    color: theme.colorScheme.secondary,
-                    width: 1,
-                  ) : null,
+                  border: winningAuction.sold
+                      ? Border.all(color: theme.colorScheme.secondary, width: 1)
+                      : null,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (winningAuction.sold) 
+                    if (winningAuction.sold)
                       Icon(
                         Icons.check_circle,
                         size: 16,
                         color: theme.colorScheme.secondary,
                       ),
-                    if (winningAuction.sold)
-                      const SizedBox(width: 4),
+                    if (winningAuction.sold) const SizedBox(width: 4),
                     Text(
-                      winningAuction.sold 
-                        ? AppStrings.alreadyPaid.tr()
-                        : AppStrings.waitingForPayment.tr(),
+                      winningAuction.sold
+                          ? AppStrings.alreadyPaid.tr()
+                          : AppStrings.waitingForPayment.tr(),
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: winningAuction.sold 
-                          ? theme.colorScheme.secondary
-                          : theme.colorScheme.onPrimaryContainer,
+                        color: winningAuction.sold
+                            ? theme.colorScheme.secondary
+                            : theme.colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -101,16 +100,42 @@ class WinningAuctionCard extends StatelessWidget {
           if (!winningAuction.sold) ...[
             const SizedBox(height: 24),
             PrimaryButton(
-              onPressed: () {
-                final order = OrderModel.fromWinningAuction(winningAuction);
-                Navigator.of(context).push(
+              onPressed: () async {
+                final result = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
-                    builder: (context) => ShippingDetailsScreen(initialOrder: order),
+                    builder: (context) => OrderConfirmationScreen(
+                      order: OrderModel.fromWinningAuction(winningAuction),
+                    ),
                   ),
                 );
+                // If receipt was uploaded successfully, could refresh the list
+                if (result == true) {
+                  // Optionally show a success indicator
+                }
               },
-              text: AppStrings.proceedToPayment.tr(),
+              text: AppStrings.continueToOrder.tr(),
               isLoading: false,
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const MyPaymentsScreen(),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  Icons.receipt_long,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+                label: Text(
+                  AppStrings.viewPayments.tr(),
+                  style: TextStyle(color: theme.colorScheme.primary),
+                ),
+              ),
             ),
           ],
         ],
@@ -118,9 +143,14 @@ class WinningAuctionCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String label, String value, {TextStyle? valueStyle}) {
+  Widget _buildInfoRow(
+    BuildContext context,
+    String label,
+    String value, {
+    TextStyle? valueStyle,
+  }) {
     final theme = Theme.of(context);
-    
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -135,12 +165,9 @@ class WinningAuctionCard extends StatelessWidget {
         ),
         Expanded(
           flex: 3,
-          child: Text(
-            value,
-            style: valueStyle ?? theme.textTheme.bodyMedium,
-          ),
+          child: Text(value, style: valueStyle ?? theme.textTheme.bodyMedium),
         ),
       ],
     );
   }
-} 
+}

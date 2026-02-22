@@ -5,11 +5,13 @@ class WinningAuctionModel {
   final int userId;
   final int auctionId;
   final String product;
+  final int? productId;
   final double price;
   final bool sold;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String auctionTitle;
+  final String? auctionImage;
   final DateTime auctionStartDate;
   final String winnerName;
 
@@ -18,11 +20,13 @@ class WinningAuctionModel {
     required this.userId,
     required this.auctionId,
     required this.product,
+    this.productId,
     required this.price,
     required this.sold,
     required this.createdAt,
     required this.updatedAt,
     required this.auctionTitle,
+    this.auctionImage,
     required this.auctionStartDate,
     required this.winnerName,
   });
@@ -36,11 +40,13 @@ class WinningAuctionModel {
         userId == other.userId &&
         auctionId == other.auctionId &&
         product == other.product &&
+        productId == other.productId &&
         price == other.price &&
         sold == other.sold &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
         auctionTitle == other.auctionTitle &&
+        auctionImage == other.auctionImage &&
         auctionStartDate == other.auctionStartDate &&
         winnerName == other.winnerName;
   }
@@ -52,11 +58,13 @@ class WinningAuctionModel {
       userId.hashCode ^
       auctionId.hashCode ^
       product.hashCode ^
+      productId.hashCode ^
       price.hashCode ^
       sold.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode ^
       auctionTitle.hashCode ^
+      auctionImage.hashCode ^
       auctionStartDate.hashCode ^
       winnerName.hashCode;
 
@@ -66,11 +74,15 @@ class WinningAuctionModel {
       userId: json['user_id'] as int,
       auctionId: json['auction_id'] as int,
       product: json['product'] as String,
+      productId: json['product_id'] as int?,
       price: (json['price'] as num).toDouble(),
       sold: json['sold'] as bool,
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
       auctionTitle: json['auction']['title'] as String,
+      auctionImage:
+          json['auction']['image_url'] as String? ??
+          json['auction']['main_image'] as String?,
       auctionStartDate: DateTime.parse(
         json['auction']['startDate'] as String,
       ).toLocal(),
@@ -84,12 +96,14 @@ class WinningAuctionModel {
       'user_id': userId,
       'auction_id': auctionId,
       'product': product,
+      'product_id': productId,
       'price': price,
       'sold': sold,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'auction': {
         'title': auctionTitle,
+        'image_url': auctionImage,
         'startDate': auctionStartDate.toIso8601String(),
       },
       'name': winnerName,

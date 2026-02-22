@@ -80,4 +80,8 @@ abstract class EndPoints {
   static const String likes = 'likes';
   static const String likedProducts = 'likes/products';
   static const String likedAuctions = 'likes/auctions';
+
+  // Auction Payments
+  static const String uploadReceipt = 'auction-payments/upload-receipt';
+  static const String myPayments = 'auction-payments/my-payments';
 }

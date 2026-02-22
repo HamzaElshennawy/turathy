@@ -9,6 +9,12 @@ import 'package:turathy/src/features/orders/data/order_repository.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/presentation/widgets/order_card.dart';
 import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
+import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
+import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
+import 'package:turathy/src/features/auctions/domain/winning_auction_model.dart';
+import 'package:turathy/src/features/auctions/data/auction_payments_repository.dart';
+import 'package:turathy/src/features/auctions/domain/auction_payment_model.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 import '../../cart/presentation/cart_screen.dart';
 
 class OrdersListScreen extends ConsumerStatefulWidget {
@@ -30,6 +36,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
     final ordersValue = ref.watch(
       getUserOrdersProvider(CachedVariables.userId!),
     );
+    final winningsValue = ref.watch(userWinningAuctionsProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -74,63 +81,186 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
 
           // Content
           Expanded(
-            child: AsyncValueWidget(
-              value: ordersValue,
-              data: (orders) {
-                final filteredOrders = _filterOrders(orders);
-
-                if (filteredOrders.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No orders found', // Should be localized, using hardcoded for now or AppStrings if available
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredOrders.length,
-                  itemBuilder: (context, index) {
-                    final order = filteredOrders[index];
-                    return OrderCard(
-                      title: _getOrderTitle(order),
-                      price: '${order.total} ${AppStrings.currency.tr()}',
-                      status: order.orderStatus ?? order.paymentStatus,
-                      imageUrl: _getOrderImage(order),
-                      //imageUrl: _getOrderImage(order),
-                      onTap: () {
-                        // Navigate to details
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                OrderConfirmationScreen(order: order),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(getUserOrdersProvider);
+                ref.invalidate(userWinningAuctionsProvider);
+                ref.invalidate(myPaymentsProvider);
+                // Wait for the providers to refresh
+                await Future.wait([
+                  ref.read(
+                    getUserOrdersProvider(CachedVariables.userId!).future,
+                  ),
+                  ref.read(userWinningAuctionsProvider.future),
+                  ref.read(myPaymentsProvider.future),
+                ]);
               },
+              child: _buildList(ordersValue, winningsValue),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildList(
+    AsyncValue<List<OrderModel>> ordersValue,
+    AsyncValue<List<WinningAuctionModel>> winningsValue,
+  ) {
+    final paymentsValue = ref.watch(myPaymentsProvider);
+
+    if (_selectedTab == 0) {
+      return AsyncValueWidget(
+        value: ordersValue,
+        data: (orders) {
+          final filtered = _filterOrders(orders);
+          return _buildOrderListView(filtered, [], []);
+        },
+      );
+    } else {
+      // For Auctions, combine orders, winnings, and payments
+      return ordersValue.when(
+        data: (orders) {
+          return winningsValue.when(
+            data: (winnings) {
+              return paymentsValue.when(
+                data: (payments) {
+                  final filteredOrders = _filterOrders(orders);
+                  // Deduplicate: Don't show a 'Winning' if an 'Order' exists for the same auction
+                  final dedupedWinnings = winnings.where((w) {
+                    return !filteredOrders.any(
+                      (o) => o.auctionId == w.auctionId,
+                    );
+                  }).toList();
+
+                  return _buildOrderListView(
+                    filteredOrders,
+                    dedupedWinnings,
+                    payments,
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, st) => Center(child: Text('Error: $e')),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Error: $e')),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, st) => Center(child: Text('Error: $e')),
+      );
+    }
+  }
+
+  Widget _buildOrderListView(
+    List<OrderModel> orders,
+    List<WinningAuctionModel> winnings,
+    List<AuctionPaymentModel> payments,
+  ) {
+    final combinedLength = orders.length + winnings.length;
+
+    if (combinedLength == 0) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No items found',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: combinedLength,
+      itemBuilder: (context, index) {
+        if (index < winnings.length) {
+          // Display Winning Auction (Dynamic Status)
+          final winning = winnings[index];
+
+          // Find payment for this winning
+          final payment = payments.where((p) {
+            if (winning.id != 0 && p.winningId == winning.id) return true;
+            return p.productId == (winning.productId ?? 0);
+          }).firstOrNull;
+
+          String statusStr = AppStrings.waitingForPayment.tr();
+          if (payment != null) {
+            if (payment.isApproved) {
+              statusStr = AppStrings.alreadyPaid.tr();
+            } else if (payment.isRejected) {
+              statusStr = AppStrings.paymentRejected.tr();
+            } else {
+              statusStr = AppStrings.paymentPending.tr();
+            }
+          }
+
+          if (winning.sold) {
+            statusStr = AppStrings.alreadyPaid.tr();
+          }
+
+          return OrderCard(
+            title: winning.auctionTitle,
+            price: winning.formattedPrice,
+            status: statusStr,
+            imageUrl: _getWinningImage(winning),
+            onTap: () {
+              if (payment == null || payment.isRejected) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OrderConfirmationScreen(
+                      order: OrderModel.fromWinningAuction(winning),
+                    ),
+                  ),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyPaymentsScreen(),
+                  ),
+                );
+              }
+            },
+          );
+        } else {
+          // Display finalized Order
+          final order = orders[index - winnings.length];
+          return OrderCard(
+            title: _getOrderTitle(order),
+            price: '${order.total} ${AppStrings.currency.tr()}',
+            status: order.orderStatus ?? order.paymentStatus,
+            imageUrl: _getOrderImage(order),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OrderDetailsScreen(order: order),
+                ),
+              );
+            },
+          );
+        }
+      },
     );
   }
 
@@ -166,17 +296,12 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
 
   List<OrderModel> _filterOrders(List<OrderModel> orders) {
     if (_selectedTab == 0) {
-      // Store Orders: Have product_id or product data (and NO auction_id usually, or auction_id is null/0)
-      // Based on schema, store orders have product_id. Auction orders have auction_id.
-      // OrderModel has methods to check? No.
-      // OrderModel fromJson assigns 0 to auctionId if null.
-      // Let's check if there is a 'product' relation or 'auction' relation populated.
-      // Or check IDs.
+      // Store Orders: No auctionId AND no auction data
       return orders
-          .where((order) => order.auctionId == 0 || order.auction == null)
+          .where((order) => order.auctionId == 0 && order.auction == null)
           .toList();
     } else {
-      // Auction Orders
+      // Auction Orders: Has auctionId OR auction data
       return orders
           .where((order) => order.auctionId != 0 || order.auction != null)
           .toList();
@@ -212,6 +337,13 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
           auction['image_url']?.toString() ?? auction['main_image']?.toString();
     }
 
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http')) return url;
+    return '${EndPoints.baseUrl}$url';
+  }
+
+  String? _getWinningImage(WinningAuctionModel winning) {
+    String? url = winning.auctionImage;
     if (url == null || url.isEmpty) return null;
     if (url.startsWith('http')) return url;
     return '${EndPoints.baseUrl}$url';

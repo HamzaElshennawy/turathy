@@ -312,4 +312,29 @@ class AppStrings {
   static const String newCondition = 'newCondition';
   static const String usedCondition = 'usedCondition';
   static const String antiqueCondition = 'antiqueCondition';
+
+  // Auction Payments
+  static const String uploadReceipt = 'uploadReceipt';
+  static const String selectFile = 'selectFile';
+  static const String uploadingReceipt = 'uploadingReceipt';
+  static const String receiptUploadedSuccessfully =
+      'receiptUploadedSuccessfully';
+  static const String myPayments = 'myPayments';
+  static const String paymentPending = 'paymentPending';
+  static const String paymentApproved = 'paymentApproved';
+  static const String paymentRejected = 'paymentRejected';
+  static const String fileSizeExceeded = 'fileSizeExceeded';
+  static const String selectImageOrPdf = 'selectImageOrPdf';
+  static const String viewPayments = 'viewPayments';
+  static const String noPaymentsYet = 'noPaymentsYet';
+  static const String rejectionReason = 'rejectionReason';
+  static const String uploadNewReceipt = 'uploadNewReceipt';
+  static const String continueToOrder = 'continueToOrder';
+  static const String paymentMethod = 'paymentMethod';
+  static const String cardPayment = 'cardPayment';
+  static const String bankTransfer = 'bankTransfer';
+  static const String bankAccountInfo = 'bankAccountInfo';
+  static const String orderSubmittedSuccessfully = 'orderSubmittedSuccessfully';
+  static const String completeYourOrder = 'completeYourOrder';
+  static const String viewReceipt = 'viewReceipt';
 }

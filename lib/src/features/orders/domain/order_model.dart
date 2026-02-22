@@ -35,6 +35,8 @@ class OrderModel {
   final Map<String, dynamic>? product;
   final Map<String, dynamic>? auction;
   final int? productId;
+  final int? winningId;
+  final int? auctionProductId;
 
   const OrderModel({
     required this.id,
@@ -68,6 +70,8 @@ class OrderModel {
     this.product,
     this.auction,
     this.productId,
+    this.winningId,
+    this.auctionProductId,
   });
 
   @override
@@ -137,7 +141,8 @@ class OrderModel {
       createdAt.hashCode ^
       updatedAt.hashCode ^
       product.hashCode ^
-      auction.hashCode;
+      auction.hashCode ^
+      auctionProductId.hashCode;
 
   OrderModel copyWith({
     int? id,
@@ -171,6 +176,8 @@ class OrderModel {
     Map<String, dynamic>? product,
     Map<String, dynamic>? auction,
     int? productId,
+    int? winningId,
+    int? auctionProductId,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -204,6 +211,8 @@ class OrderModel {
       product: product ?? this.product,
       auction: auction ?? this.auction,
       productId: productId ?? this.productId,
+      winningId: winningId ?? this.winningId,
+      auctionProductId: auctionProductId ?? this.auctionProductId,
     );
   }
 
@@ -212,6 +221,8 @@ class OrderModel {
       'user_id': userId,
       'auction_id': auctionId,
       'product_id': productId,
+      'auction_product_id': auctionProductId,
+      'winning_id': winningId,
       'total': total,
       'date': DateFormat('yyyy-MM-dd', 'en_US').format(date),
       'cName': cName,
@@ -263,15 +274,19 @@ class OrderModel {
       product: json['product'],
       auction: json['auction'],
       productId: json['product_id'] as int?,
+      auctionProductId: json['auction_product_id'] as int?,
+      winningId: json['winning_id'] as int?,
     );
   }
 
   factory OrderModel.fromWinningAuction(WinningAuctionModel winningAuction) {
     return OrderModel(
-      id: winningAuction.id,
+      id: 0,
       userId: winningAuction.userId,
       auctionId: winningAuction.auctionId,
-      productId: null,
+      productId: null, // Legacy field for store products
+      auctionProductId: winningAuction.productId, // New schema field
+      winningId: winningAuction.id != 0 ? winningAuction.id : null,
       total: winningAuction.price,
       date: DateTime.now(),
       cName: winningAuction.winnerName,

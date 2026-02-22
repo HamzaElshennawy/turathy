@@ -6,6 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
+import 'package:turathy/src/features/auctions/domain/winning_auction_model.dart';
+import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
+import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
+import 'package:turathy/src/features/orders/domain/order_model.dart';
+import 'package:turathy/src/features/orders/data/order_repository.dart';
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 
@@ -19,6 +24,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final String? winnerName;
   final num? finalPrice;
   final bool isViewOnly;
+  final AuctionProducts? selectedProduct;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -31,6 +37,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.winnerName,
     this.finalPrice,
     this.isViewOnly = false,
+    this.selectedProduct,
   });
 
   @override
@@ -113,6 +120,10 @@ class _AuctionBiddingControlsWidgetState
   Widget build(BuildContext context) {
     final auctionProduct = ref.watch(auctionProductChangeProvider);
     final lastBid = ref.watch(currentBidStateProvider);
+    final ordersValue = ref.watch(
+      getUserOrdersProvider(CachedVariables.userId ?? 0),
+    );
+    final orders = ordersValue.value ?? [];
 
     // bidPrice is the minimum bid increment, not the current price
     num bidIncrement = widget.auction.bidPrice ?? 0;
@@ -121,16 +132,15 @@ class _AuctionBiddingControlsWidgetState
 
     // Find the current product ID to filter bids correctly
     // This prevents using bids from a previous item when joining a running auction
-    int? currentProductId;
-    if (widget.auction.auctionProducts != null &&
-        widget.auction.currentProduct != null) {
-      final currentProductObj = widget.auction.auctionProducts!.firstWhere(
-        (p) =>
-            (p.product?.trim().toLowerCase() ?? '') ==
-            (widget.auction.currentProduct?.trim().toLowerCase() ?? ''),
+    int? currentProductId = widget.auction.currentProductId;
+    if (currentProductId == null &&
+        widget.auction.currentProduct != null &&
+        widget.auction.auctionProducts != null) {
+      final match = widget.auction.auctionProducts!.firstWhere(
+        (p) => p.product == widget.auction.currentProduct,
         orElse: () => AuctionProducts(),
       );
-      currentProductId = currentProductObj.id;
+      currentProductId = match.id;
     }
 
     // Determine the latest bid from either real-time update or initial data
@@ -357,24 +367,139 @@ class _AuctionBiddingControlsWidgetState
 
           // Quick Bid Buttons - 1x, 1.5x, 2x minBid
           if (widget.isViewOnly) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade400),
-              ),
-              child: const Center(
-                child: Text(
-                  "Not currently live", // You might want to translate this
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            // Check if user won this specific past product
+            Builder(
+              builder: (context) {
+                final currentUserId = CachedVariables.userId;
+                final productId = widget.selectedProduct?.id;
+
+                if (productId != null && widget.auction.auctionBids != null) {
+                  final productBids = widget.auction.auctionBids!
+                      .where((b) => b.productId == productId)
+                      .toList();
+
+                  if (productBids.isNotEmpty) {
+                    productBids.sort(
+                      (a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0),
+                    );
+                    final highestBid = productBids.first;
+
+                    if (highestBid.userId == currentUserId) {
+                      // User won this product! Show upload receipt
+                      final wonPrice = highestBid.bid ?? 0;
+                      return Column(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  AppStrings.youWon.tr(),
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                gapH4,
+                                Text(
+                                  '${'finalPrice'.tr()}: \$${wonPrice.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          gapH12,
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                final winningModel = WinningAuctionModel(
+                                  id: 0,
+                                  userId: currentUserId ?? 0,
+                                  auctionId: widget.auction.id ?? 0,
+                                  product:
+                                      widget.selectedProduct?.product ?? '',
+                                  productId: widget.selectedProduct?.id ?? 0,
+                                  price: wonPrice.toDouble(),
+                                  sold: false,
+                                  createdAt: DateTime.now(),
+                                  updatedAt: DateTime.now(),
+                                  auctionTitle: widget.auction.title ?? '',
+                                  auctionStartDate:
+                                      widget.auction.startDate ??
+                                      DateTime.now(),
+                                  winnerName: '',
+                                );
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        OrderConfirmationScreen(
+                                          order: OrderModel.fromWinningAuction(
+                                            winningModel,
+                                          ),
+                                        ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.receipt_long,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                AppStrings.continueToOrder.tr(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2D4739),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  }
+                }
+
+                // Default: not won, show "Not currently live"
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade400),
                   ),
-                ),
-              ),
+                  child: const Center(
+                    child: Text(
+                      "Not currently live",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ] else if (widget.isOwner) ...[
             Container(
@@ -465,40 +590,126 @@ class _AuctionBiddingControlsWidgetState
               ),
             ),
           ] else
-            _buildResultContainer(currentPrice),
+            _buildResultContainer(currentPrice, orders),
         ],
       ),
     );
   }
 
-  Widget _buildResultContainer(num finalPrice) {
-    if (widget.winnerId != null) {
-      if (widget.winnerId == CachedVariables.userId) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green),
-          ),
-          child: Column(
-            children: [
-              Text(
-                AppStrings.youWon.tr(),
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+  Widget _buildResultContainer(num currentPrice, List<OrderModel> orders) {
+    if (widget.isAuctionEnded && widget.winnerId != null) {
+      final isWinner = widget.winnerId == CachedVariables.userId;
+      final finalPrice = widget.finalPrice ?? currentPrice;
+
+      // Find if there's an existing order for this user and product
+      final currentProductId =
+          widget.selectedProduct?.id ?? widget.auction.currentProductId;
+      final existingOrder = orders
+          .where(
+            (o) =>
+                (o.auctionProductId == currentProductId ||
+                    o.productId == currentProductId) &&
+                o.auctionId == widget.auction.id,
+          )
+          .firstOrNull;
+
+      final bool showCheckOrder =
+          existingOrder != null &&
+          (existingOrder.orderStatus == 'confirmed' ||
+              existingOrder.orderStatus == 'pending_approval');
+
+      if (isWinner) {
+        return Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    AppStrings.youWon.tr(),
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  gapH4,
+                  Text(
+                    '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
+                    style: const TextStyle(color: Colors.green, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            gapH12,
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (showCheckOrder) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            OrderDetailsScreen(order: existingOrder),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final winningModel = WinningAuctionModel(
+                    id: 0,
+                    userId: CachedVariables.userId ?? 0,
+                    auctionId: widget.auction.id ?? 0,
+                    product: widget.auction.currentProduct ?? '',
+                    productId: currentProductId ?? 0,
+                    price: finalPrice.toDouble(),
+                    sold: false,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                    auctionTitle: widget.auction.title ?? '',
+                    auctionStartDate:
+                        widget.auction.startDate ?? DateTime.now(),
+                    winnerName: '',
+                  );
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => OrderConfirmationScreen(
+                        order: OrderModel.fromWinningAuction(winningModel),
+                      ),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  showCheckOrder ? Icons.visibility : Icons.receipt_long,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  showCheckOrder
+                      ? 'Check the Order'
+                      : AppStrings.continueToOrder.tr(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D4739),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
                 ),
               ),
-              gapH4,
-              Text(
-                '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
-                style: const TextStyle(color: Colors.green, fontSize: 14),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       } else {
         // Did the user bid? We can check locally via the `auction.auctionBids` or just
