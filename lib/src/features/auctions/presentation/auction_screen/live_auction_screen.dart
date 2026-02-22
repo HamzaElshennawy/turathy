@@ -12,6 +12,7 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
+import 'package:turathy/src/features/orders/data/order_repository.dart';
 
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
@@ -20,6 +21,7 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_info_table_widget.dart';
 import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
+import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import '../../domain/winning_auction_model.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
@@ -477,7 +479,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                         if (auction.currentProduct != null)
                           Container(
                             padding: const EdgeInsets.all(12),
-                            color: Colors.amber.withOpacity(0.1),
+                            color: Colors.amber.withValues(alpha: 0.1),
                             child: Row(
                               children: [
                                 const Icon(
@@ -602,8 +604,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                                 left: 0,
                                                 right: 0,
                                                 child: Container(
-                                                  color: Colors.red.withOpacity(
-                                                    0.8,
+                                                  color: Colors.red.withValues(
+                                                    alpha: 0.8,
                                                   ),
                                                   padding:
                                                       const EdgeInsets.symmetric(
@@ -713,8 +715,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                               left: 0,
                                               right: 0,
                                               child: Container(
-                                                color: badgeColor.withOpacity(
-                                                  0.9,
+                                                color: badgeColor.withValues(
+                                                  alpha: 0.9,
                                                 ),
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -870,7 +872,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: (statusColor ?? Colors.red)
-                                            .withOpacity(0.9),
+                                            .withValues(alpha: 0.9),
                                         border: Border.all(
                                           color: Colors.white,
                                           width: 2,
@@ -878,8 +880,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                         borderRadius: BorderRadius.circular(8),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.3,
+                                            color: Colors.black.withValues(
+                                              alpha: 0.3,
                                             ),
                                             blurRadius: 4,
                                             offset: const Offset(2, 2),
@@ -956,8 +958,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   void _scrollToCurrentItem() {
     if (!mounted ||
         auction.auctionProducts == null ||
-        auction.auctionProducts!.isEmpty)
+        auction.auctionProducts!.isEmpty) {
       return;
+    }
 
     final index = auction.auctionProducts!.indexWhere(
       (p) =>
@@ -1053,7 +1056,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   }
 }
 
-class AuctionResultDialog extends StatelessWidget {
+class AuctionResultDialog extends ConsumerWidget {
   final int? winnerId;
   final String? winnerName;
   final num? finalPrice;
@@ -1070,7 +1073,7 @@ class AuctionResultDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Determine status
     bool isWinner = winnerId != null && winnerId == currentUserId;
     bool hasWinner = winnerId != null;
@@ -1110,7 +1113,7 @@ class AuctionResultDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -1123,7 +1126,7 @@ class AuctionResultDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 64, color: color),
@@ -1194,22 +1197,71 @@ class AuctionResultDialog extends StatelessWidget {
               height: 50,
               child: isWinner
                   ? ElevatedButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
+                        final currentProductId =
+                            auction.auctionProducts
+                                ?.firstWhere(
+                                  (p) => p.product == auction.currentProduct,
+                                  orElse: () => AuctionProducts(),
+                                )
+                                .id ??
+                            auction.currentProductId ??
+                            0;
+
                         Navigator.of(context).pop();
+
+                        // Check existing orders directly from provider state
+                        final ordersValue = ref.read(
+                          getUserOrdersProvider(currentUserId ?? 0).future,
+                        );
+
+                        try {
+                          final orders = await ordersValue;
+                          final existingOrder = orders.firstWhere(
+                            (o) =>
+                                o.auctionId == auction.id &&
+                                (o.productId == currentProductId ||
+                                    o.auctionProductId == currentProductId),
+                            orElse: () => OrderModel(
+                              id: -1,
+                              userId: -1,
+                              total: 0,
+                              itemDesc: '',
+                              createdAt: DateTime.now(),
+                              auctionId: -1,
+                              cName: '',
+                              cCountry: '',
+                              cCity: '',
+                              cMobile: '',
+                              cAddress: '',
+                              pCs: 0,
+                              codAmt: "0",
+                              weight: "0",
+                              date: DateTime.now(),
+                            ),
+                          );
+
+                          if (existingOrder.id != -1 && context.mounted) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    OrderDetailsScreen(order: existingOrder),
+                              ),
+                            );
+                            return;
+                          }
+                        } catch (e) {
+                          debugPrint("Error fetching orders: $e");
+                        }
+
+                        if (!context.mounted) return;
+
                         final winningModel = WinningAuctionModel(
                           id: 0,
                           userId: currentUserId ?? 0,
                           auctionId: auction.id ?? 0,
                           product: auction.currentProduct ?? '',
-                          productId:
-                              auction.auctionProducts
-                                  ?.firstWhere(
-                                    (p) => p.product == auction.currentProduct,
-                                    orElse: () => AuctionProducts(),
-                                  )
-                                  .id ??
-                              auction.currentProductId ??
-                              0,
+                          productId: currentProductId,
                           price: (finalPrice ?? 0).toDouble(),
                           sold: false,
                           createdAt: DateTime.now(),
@@ -1218,6 +1270,7 @@ class AuctionResultDialog extends StatelessWidget {
                           auctionStartDate: auction.startDate ?? DateTime.now(),
                           winnerName: winnerName ?? '',
                         );
+
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => OrderConfirmationScreen(

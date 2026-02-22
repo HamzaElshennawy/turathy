@@ -301,5 +301,15 @@
   "bankAccountInfo": "معلومات الحساب البنكي",
   "orderSubmittedSuccessfully": "تم تقديم الطلب بنجاح",
   "completeYourOrder": "إكمال الطلب",
-  "viewReceipt": "عرض الإيصال"
+  "viewReceipt": "عرض الإيصال",
+  "shipped": "تم الشحن",
+  "delivered": "تم التوصيل",
+  "confirmed": "مؤكد",
+  "orderStatusTimeline": "حالة الطلب",
+  "orderCreatedWaiting": "تم إنشاء الطلب وفي انتظار الدفع",
+  "receiptUploadedWaiting": "تم رفع الإيصال وفي انتظار مراجعة الإدارة",
+  "paymentVerifiedConfirmed": "تم التحقق من الدفع وتأكيد الطلب",
+  "itemOnItsWay": "المنتج في الطريق إليك",
+  "itemDeliveredSuccessfully": "تم توصيل المنتج بنجاح",
+  "checkOrder": "متابعة الطلب"
 }

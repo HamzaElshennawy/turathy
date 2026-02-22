@@ -1,0 +1,21 @@
+Analyzing live_auction_screen.dart...
+
+  error - live_auction_screen.dart:1224:43 - The named parameter 'cAddress' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'cCity' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'cCountry' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'cMobile' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'cName' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'codAmt' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'date' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'pCs' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - live_auction_screen.dart:1224:43 - The named parameter 'weight' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+   info - live_auction_screen.dart:482:49 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - live_auction_screen.dart:607:69 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - live_auction_screen.dart:718:67 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - live_auction_screen.dart:875:46 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - live_auction_screen.dart:883:65 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - live_auction_screen.dart:962:7 - Statements in an if should be enclosed in a block. Try wrapping the statement in a block. - curly_braces_in_flow_control_structures
+   info - live_auction_screen.dart:1115:35 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - live_auction_screen.dart:1128:30 - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+
+17 issues found.

@@ -1,18 +1,151 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
+import 'package:turathy/src/features/orders/data/order_repository.dart';
+import 'package:turathy/src/features/auctions/data/auction_payments_repository.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 
-class OrderDetailsScreen extends ConsumerWidget {
+class OrderDetailsScreen extends ConsumerStatefulWidget {
   final OrderModel order;
 
   const OrderDetailsScreen({super.key, required this.order});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
+  late OrderModel _currentOrder;
+  PlatformFile? _selectedFile;
+  bool _isUploading = false;
+  String? _errorMessage;
+
+  static const int _maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+
+  @override
+  void initState() {
+    super.initState();
+    _currentOrder = widget.order;
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf'],
+        withData: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.size > _maxFileSizeBytes) {
+          setState(() {
+            _errorMessage = AppStrings.fileSizeExceeded.tr();
+            _selectedFile = null;
+          });
+          return;
+        }
+        setState(() {
+          _selectedFile = file;
+          _errorMessage = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
+    }
+  }
+
+  Future<void> _uploadReceipt() async {
+    if (_selectedFile == null || _selectedFile!.path == null) {
+      setState(() => _errorMessage = AppStrings.selectFile.tr());
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await ref
+          .read(auctionPaymentsRepositoryProvider)
+          .uploadReceipt(
+            userId: _currentOrder.userId,
+            auctionId: _currentOrder.auctionId,
+            productId:
+                _currentOrder.auctionProductId ?? _currentOrder.productId ?? 0,
+            orderId: _currentOrder.id,
+            amount: _currentOrder.total.toInt(),
+            filePath: _selectedFile!.path!,
+          );
+
+      if (mounted) {
+        ref.invalidate(getUserOrdersProvider);
+
+        setState(() {
+          _currentOrder = _currentOrder.copyWith(
+            paymentStatus: 'initiated',
+            orderStatus: 'pending_approval',
+          );
+          _selectedFile = null;
+        });
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 60),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.receiptUploadedSuccessfully.tr(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    minimumSize: const Size(double.infinity, 45),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(AppStrings.ok.tr()),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final order = _currentOrder;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -31,6 +164,9 @@ class OrderDetailsScreen extends ConsumerWidget {
             _buildProductSection(order, theme),
             _buildShippingSection(order, theme),
             _buildTimelineSection(order, theme),
+            if (order.paymentStatus == null ||
+                order.paymentStatus == 'rejected')
+              _buildUploadReceiptSection(theme),
             const SizedBox(height: 40),
           ],
         ),
@@ -58,12 +194,17 @@ class OrderDetailsScreen extends ConsumerWidget {
       case 'shipped':
         color = Colors.blue;
         icon = Icons.local_shipping;
-        text = 'Shipped';
+        text = AppStrings.shipped.tr();
         break;
       case 'delivered':
         color = const Color(0xFF2D4739);
         icon = Icons.home;
-        text = 'Delivered';
+        text = AppStrings.delivered.tr();
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        icon = Icons.cancel;
+        text = AppStrings.orderCanceled.tr();
         break;
       default:
         color = Colors.grey;
@@ -107,6 +248,20 @@ class OrderDetailsScreen extends ConsumerWidget {
     );
   }
 
+  String _translatePaymentStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return AppStrings.paymentApproved.tr();
+      case 'rejected':
+        return AppStrings.paymentRejected.tr();
+      case 'initiated':
+      case 'pending':
+        return AppStrings.paymentPending.tr();
+      default:
+        return status;
+    }
+  }
+
   Widget _buildOrderInfo(OrderModel order, ThemeData theme) {
     return _buildCard(
       title: AppStrings.orderSummary.tr(),
@@ -122,7 +277,10 @@ class OrderDetailsScreen extends ConsumerWidget {
             isBold: true,
           ),
           if (order.paymentStatus != null)
-            _buildInfoRow(AppStrings.status.tr(), order.paymentStatus!),
+            _buildInfoRow(
+              AppStrings.status.tr(),
+              _translatePaymentStatus(order.paymentStatus!),
+            ),
         ],
       ),
     );
@@ -221,18 +379,18 @@ class OrderDetailsScreen extends ConsumerWidget {
     final status = order.orderStatus?.toLowerCase() ?? 'pending';
 
     return _buildCard(
-      title: 'Order Status Timeline',
+      title: AppStrings.orderStatusTimeline.tr(),
       child: Column(
         children: [
           _buildTimelineItem(
-            'Pending',
-            'Order created and waiting for payment',
+            AppStrings.pending.tr(),
+            AppStrings.orderCreatedWaiting.tr(),
             isFirst: true,
             isDone: true,
           ),
           _buildTimelineItem(
             AppStrings.waitingForApproval.tr(),
-            'Receipt uploaded and waiting for admin review',
+            AppStrings.receiptUploadedWaiting.tr(),
             isDone: [
               'pending_approval',
               'confirmed',
@@ -242,20 +400,20 @@ class OrderDetailsScreen extends ConsumerWidget {
             isActive: status == 'pending_approval',
           ),
           _buildTimelineItem(
-            'Confirmed',
-            'Payment verified and order confirmed',
+            AppStrings.confirmed.tr(),
+            AppStrings.paymentVerifiedConfirmed.tr(),
             isDone: ['confirmed', 'shipped', 'delivered'].contains(status),
             isActive: status == 'confirmed',
           ),
           _buildTimelineItem(
-            'Shipped',
-            'Item is on its way to you',
+            AppStrings.shipped.tr(),
+            AppStrings.itemOnItsWay.tr(),
             isDone: ['shipped', 'delivered'].contains(status),
             isActive: status == 'shipped',
           ),
           _buildTimelineItem(
-            'Delivered',
-            'Item has been delivered successfully',
+            AppStrings.delivered.tr(),
+            AppStrings.itemDeliveredSuccessfully.tr(),
             isLast: true,
             isDone: status == 'delivered',
             isActive: status == 'delivered',
@@ -391,4 +549,101 @@ class OrderDetailsScreen extends ConsumerWidget {
   }
 
   static const FontWeight fontWeightBold = FontWeight.bold;
+  Widget _buildUploadReceiptSection(ThemeData theme) {
+    final isRejected = _currentOrder.paymentStatus == 'rejected';
+    final title = isRejected
+        ? AppStrings.uploadNewReceipt.tr()
+        : AppStrings.uploadReceipt.tr();
+
+    return _buildCard(
+      title: title,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: _pickFile,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _selectedFile != null
+                      ? theme.colorScheme.primary
+                      : Colors.grey.withOpacity(0.5),
+                  style: BorderStyle.solid,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                color: _selectedFile != null
+                    ? theme.colorScheme.primaryContainer.withOpacity(0.1)
+                    : null,
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    _selectedFile != null
+                        ? Icons.check_circle
+                        : Icons.upload_file,
+                    color: _selectedFile != null
+                        ? theme.colorScheme.primary
+                        : Colors.grey,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(_selectedFile?.name ?? title),
+                ],
+              ),
+            ),
+          ),
+          if (_selectedFile != null &&
+              _selectedFile!.path != null &&
+              !_selectedFile!.name.endsWith('.pdf'))
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  File(_selectedFile!.path!),
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(color: theme.colorScheme.error),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isUploading ? null : _uploadReceipt,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isUploading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(title),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

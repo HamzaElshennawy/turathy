@@ -202,25 +202,31 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
             return p.productId == (winning.productId ?? 0);
           }).firstOrNull;
 
+          Color statusColor = Colors.orange;
           String statusStr = AppStrings.waitingForPayment.tr();
           if (payment != null) {
             if (payment.isApproved) {
               statusStr = AppStrings.alreadyPaid.tr();
+              statusColor = Colors.green;
             } else if (payment.isRejected) {
               statusStr = AppStrings.paymentRejected.tr();
+              statusColor = Colors.red;
             } else {
               statusStr = AppStrings.paymentPending.tr();
+              statusColor = Colors.orange;
             }
           }
 
           if (winning.sold) {
             statusStr = AppStrings.alreadyPaid.tr();
+            statusColor = Colors.green;
           }
 
           return OrderCard(
             title: winning.auctionTitle,
             price: winning.formattedPrice,
             status: statusStr,
+            statusColor: statusColor,
             imageUrl: _getWinningImage(winning),
             onTap: () {
               if (payment == null || payment.isRejected) {
@@ -248,7 +254,12 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
           return OrderCard(
             title: _getOrderTitle(order),
             price: '${order.total} ${AppStrings.currency.tr()}',
-            status: order.orderStatus ?? order.paymentStatus,
+            status: _getOrderStatusText(
+              order.orderStatus ?? order.paymentStatus,
+            ),
+            statusColor: _getOrderStatusColor(
+              order.orderStatus ?? order.paymentStatus,
+            ),
             imageUrl: _getOrderImage(order),
             onTap: () {
               Navigator.push(
@@ -347,5 +358,50 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
     if (url == null || url.isEmpty) return null;
     if (url.startsWith('http')) return url;
     return '${EndPoints.baseUrl}$url';
+  }
+
+  String _getOrderStatusText(String? status) {
+    status = status?.toLowerCase() ?? 'pending';
+    switch (status) {
+      case 'confirmed':
+        return AppStrings.completed.tr();
+      case 'pending_approval':
+        return AppStrings.waitingForApproval.tr();
+      case 'shipped':
+        return AppStrings.shipped.tr();
+      case 'delivered':
+        return AppStrings.delivered.tr();
+      case 'cancelled':
+      case 'rejected':
+        return AppStrings.orderCanceled.tr();
+      case 'initiated':
+      case 'pending':
+        return AppStrings.paymentPending.tr();
+      case 'approved':
+        return AppStrings.paymentApproved.tr();
+      default:
+        return AppStrings.pending.tr();
+    }
+  }
+
+  Color _getOrderStatusColor(String? status) {
+    status = status?.toLowerCase() ?? 'pending';
+    switch (status) {
+      case 'confirmed':
+      case 'approved':
+        return Colors.green;
+      case 'shipped':
+        return Colors.blue;
+      case 'delivered':
+        return const Color(0xFF2D4739);
+      case 'cancelled':
+      case 'rejected':
+        return Colors.red;
+      case 'pending_approval':
+      case 'initiated':
+      case 'pending':
+      default:
+        return Colors.orange;
+    }
   }
 }

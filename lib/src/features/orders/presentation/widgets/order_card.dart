@@ -9,6 +9,7 @@ class OrderCard extends StatelessWidget {
   final String title;
   final String price;
   final String? status;
+  final Color? statusColor;
   final String? imageUrl;
   final VoidCallback? onTap;
 
@@ -17,6 +18,7 @@ class OrderCard extends StatelessWidget {
     required this.title,
     required this.price,
     this.status,
+    this.statusColor,
     this.imageUrl,
     this.onTap,
   });
@@ -92,8 +94,8 @@ class OrderCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: status == 'delivered' || status == 'completed'
-                              ? Colors.green.withOpacity(0.1)
+                          color: statusColor != null
+                              ? statusColor!.withOpacity(0.1)
                               : Colors.orange.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -102,10 +104,7 @@ class OrderCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color:
-                                status == 'delivered' || status == 'completed'
-                                ? Colors.green
-                                : Colors.orange,
+                            color: statusColor ?? Colors.orange,
                           ),
                         ),
                       ),

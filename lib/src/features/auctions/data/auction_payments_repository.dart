@@ -12,6 +12,7 @@ class AuctionPaymentsRepository {
     required int userId,
     required int auctionId,
     required int productId,
+    required int orderId,
     required int amount,
     required String filePath,
   }) async {
@@ -21,6 +22,7 @@ class AuctionPaymentsRepository {
       'user_id': userId,
       'auction_id': auctionId,
       'product_id': productId,
+      'order_id': orderId,
       'amount': amount,
       'receipt': await MultipartFile.fromFile(filePath, filename: fileName),
     });

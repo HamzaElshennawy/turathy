@@ -387,6 +387,21 @@ class _AuctionBiddingControlsWidgetState
                     if (highestBid.userId == currentUserId) {
                       // User won this product! Show upload receipt
                       final wonPrice = highestBid.bid ?? 0;
+
+                      final existingOrder = orders
+                          .where(
+                            (o) =>
+                                (o.auctionProductId == productId ||
+                                    o.productId == productId) &&
+                                o.auctionId == widget.auction.id,
+                          )
+                          .firstOrNull;
+
+                      final bool showCheckOrder =
+                          existingOrder != null &&
+                          (existingOrder.orderStatus == 'confirmed' ||
+                              existingOrder.orderStatus == 'pending_approval');
+
                       return Column(
                         children: [
                           Container(
@@ -424,6 +439,17 @@ class _AuctionBiddingControlsWidgetState
                             height: 50,
                             child: ElevatedButton.icon(
                               onPressed: () {
+                                if (showCheckOrder && existingOrder != null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => OrderDetailsScreen(
+                                        order: existingOrder,
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 final winningModel = WinningAuctionModel(
                                   id: 0,
                                   userId: currentUserId ?? 0,
@@ -452,12 +478,16 @@ class _AuctionBiddingControlsWidgetState
                                   ),
                                 );
                               },
-                              icon: const Icon(
-                                Icons.receipt_long,
+                              icon: Icon(
+                                showCheckOrder
+                                    ? Icons.visibility
+                                    : Icons.receipt_long,
                                 color: Colors.white,
                               ),
                               label: Text(
-                                AppStrings.continueToOrder.tr(),
+                                showCheckOrder
+                                    ? AppStrings.checkOrder.tr()
+                                    : AppStrings.continueToOrder.tr(),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,

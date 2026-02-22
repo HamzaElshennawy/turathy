@@ -165,6 +165,7 @@ class _OrderConfirmationScreenState
                   finalizedOrder.auctionProductId ??
                   finalizedOrder.productId ??
                   0,
+              orderId: finalizedOrder.id,
               amount: finalizedOrder.total.toInt(),
               filePath: _selectedFile!.path!,
             );

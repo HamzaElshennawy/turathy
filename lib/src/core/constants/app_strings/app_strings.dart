@@ -337,4 +337,16 @@ class AppStrings {
   static const String orderSubmittedSuccessfully = 'orderSubmittedSuccessfully';
   static const String completeYourOrder = 'completeYourOrder';
   static const String viewReceipt = 'viewReceipt';
+
+  // Order Details Screen
+  static const String shipped = 'shipped';
+  static const String delivered = 'delivered';
+  static const String confirmed = 'confirmed';
+  static const String orderStatusTimeline = 'orderStatusTimeline';
+  static const String orderCreatedWaiting = 'orderCreatedWaiting';
+  static const String receiptUploadedWaiting = 'receiptUploadedWaiting';
+  static const String paymentVerifiedConfirmed = 'paymentVerifiedConfirmed';
+  static const String itemOnItsWay = 'itemOnItsWay';
+  static const String itemDeliveredSuccessfully = 'itemDeliveredSuccessfully';
+  static const String checkOrder = 'checkOrder';
 }
