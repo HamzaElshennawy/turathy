@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+// import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +11,7 @@ import 'package:turathy/src/core/common_widgets/async_value_widget.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
-import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
+// import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
 
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
@@ -44,7 +44,7 @@ class LiveAuctionScreen extends ConsumerStatefulWidget {
 class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   late SocketActions socketActions = ref.read(socketActionsProvider);
   late AuctionModel auction;
-  RtcEngine? _engine;
+  // RtcEngine? _engine;
   bool _isVideoReady = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
@@ -77,7 +77,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   @override
   void dispose() {
-    _cleanupEngine();
+    // _cleanupEngine();
     _cancelFailSafeTimer();
     _cancelFailSafeTimer();
     _audioPlayer.dispose();
@@ -85,13 +85,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     super.dispose();
   }
 
-  void _cleanupEngine() {
-    if (_engine != null) {
-      _engine!.leaveChannel();
-      _engine!.release();
-      _engine = null;
-    }
-  }
+  // void _cleanupEngine() {
+  //   if (_engine != null) {
+  //     _engine!.leaveChannel();
+  //     _engine!.release();
+  //     _engine = null;
+  //   }
+  // }
 
   bool _isSameProduct(String? p1, String? p2) {
     if (p1 == null && p2 == null) return true;
@@ -415,6 +415,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Agora Video (shrinks if no video)
+                        /* 
                         if (auction.isLiveAuction && auction.isLive == true)
                           AnimatedSize(
                             duration: const Duration(milliseconds: 300),
@@ -438,7 +439,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                             agoraToken: token,
                                             auctionId: widget.auctionId,
                                             onEngineInitialized: (engine) {
-                                              _engine = engine;
+                                              // _engine = engine;
                                               if (mounted) {
                                                 setState(() {
                                                   _isVideoReady = true;
@@ -452,6 +453,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                   )
                                 : const SizedBox.shrink(),
                           ),
+                        */
 
                         // Current Product Indicator (New)
                         if (auction.currentProduct != null && !_isAuctionEnded)
