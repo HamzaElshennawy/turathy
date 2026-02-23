@@ -349,4 +349,8 @@ class AppStrings {
   static const String itemOnItsWay = 'itemOnItsWay';
   static const String itemDeliveredSuccessfully = 'itemDeliveredSuccessfully';
   static const String checkOrder = 'checkOrder';
+
+  // Internet Connection Error
+  static const String noInternetConnection = 'noInternetConnection';
+  static const String checkInternetConnection = 'checkInternetConnection';
 }

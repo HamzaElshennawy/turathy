@@ -3,7 +3,10 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+
+import '../../common_widgets/no_internet_dialog.dart';
 
 import '../../../features/authintication/data/auth_repository.dart';
 import '../../../routing/app_router.dart';
@@ -12,6 +15,7 @@ import 'end_points.dart';
 
 class DioHelper {
   static late Dio dio;
+  static bool _isShowingNoInternetDialog = false;
 
   static void init() {
     dio = Dio(
@@ -64,10 +68,26 @@ class DioHelper {
           }
           return handler.next(response);
         },
-        onError: (DioException error, handler) {
+        onError: (DioException error, handler) async {
           if (error.response?.statusCode == 401) {
             goRouter.push(RouteConstants.signIn);
             AuthRepository.clearLocalDetails();
+          } else if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout ||
+              error.type == DioExceptionType.connectionError ||
+              error.type == DioExceptionType.unknown) {
+            final context = rootNavigatorKey.currentContext;
+            if (context != null && !_isShowingNoInternetDialog) {
+              _isShowingNoInternetDialog = true;
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext context) {
+                  return const NoInternetDialog();
+                },
+              );
+              _isShowingNoInternetDialog = false;
+            }
           }
           return handler.next(error);
         },

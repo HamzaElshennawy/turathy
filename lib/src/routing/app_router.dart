@@ -10,7 +10,10 @@ import '../features/products/presentation/product_details_wrapper.dart';
 import '../features/splash_screen/splash_screen.dart';
 import 'rout_constants.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final goRouter = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: RouteConstants.init,
   debugLogDiagnostics: true,
   routes: [

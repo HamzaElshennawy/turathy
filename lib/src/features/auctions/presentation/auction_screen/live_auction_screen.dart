@@ -59,6 +59,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   // when the user enters an already-finished auction.
   bool _wasLiveWhenJoined = false;
 
+  // True only when the auction initially loads as already-ended via the API.
+  bool _apiLoadedAsEnded = false;
+
   // Selected product for view-only mode
   AuctionProducts? _selectedProduct;
 
@@ -350,44 +353,19 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             auction.isCanceled == true ||
             auction.winningUserId != null)) {
       _isAuctionEnded = true;
+      _apiLoadedAsEnded = true;
       _winnerId = auction.winningUserId;
       _winnerName = auction.user?.name;
-      // We often don't have winner name in AuctionModel directly unless we fetch it separately or it's added to model.
-      // For now, relies on what we have. If winningUserId is present, we know ID.
-      // We might need to fetch winner name if it's not in the model.
-      // Actually AuctionModel has `winningUserId`.
       _finalPrice = auction.actualPrice;
-    }
 
-    // Check if we should show the result dialog immediately on entry
-    // Only show if the user participated or won
-    // We check this outside the `_isAuctionEnded` block to handle cases where
-    // auctionBids might populate after the initial load.
-    final bool isLocallyEnded =
-        _isAuctionEnded ||
-        auction.isExpired == true ||
-        auction.isCanceled == true ||
-        auction.winningUserId != null;
-
-    if (isLocallyEnded && !_hasShownResultDialog) {
-      final bool userParticipated =
-          auction.auctionBids?.any(
-            (bid) => bid.userId == CachedVariables.userId,
-          ) ??
-          false;
-
-      final int? effectiveWinnerId = _winnerId ?? auction.winningUserId;
-      final bool userWon = effectiveWinnerId == CachedVariables.userId;
-
-      if (userWon || userParticipated) {
-        // Schedule dialog to show after build
+      // Auto-select the last item on the products list if the auction has ended upon load
+      if (auction.auctionProducts != null &&
+          auction.auctionProducts!.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _showResultDialog(
-              winnerId: effectiveWinnerId,
-              winnerName: _winnerName ?? auction.user?.name,
-              finalPrice: _finalPrice ?? auction.actualPrice,
-            );
+          if (mounted && _selectedProduct == null) {
+            setState(() {
+              _selectedProduct = auction.auctionProducts!.last;
+            });
           }
         });
       }
@@ -476,7 +454,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                           ),
 
                         // Current Product Indicator (New)
-                        if (auction.currentProduct != null)
+                        if (auction.currentProduct != null && !_isAuctionEnded)
                           Container(
                             padding: const EdgeInsets.all(12),
                             color: Colors.amber.withValues(alpha: 0.1),
@@ -1026,7 +1004,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     required String? winnerName,
     required num? finalPrice,
   }) {
-    if (_hasShownResultDialog) return;
+    if (_hasShownResultDialog || _apiLoadedAsEnded) return;
 
     setState(() {
       _hasShownResultDialog = true;

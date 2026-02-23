@@ -301,69 +301,71 @@ class _AuctionBiddingControlsWidgetState
           gapH16,
 
           // Timer pill with progress bar for last 30 seconds
-          Builder(
-            builder: (context) {
-              final bool showProgressBar =
-                  _remainingTime.inSeconds <= 30 &&
-                  _remainingTime.inSeconds > 0;
-              final double progress = showProgressBar
-                  ? _remainingTime.inSeconds / 30.0
-                  : 0.0;
+          if (!isAuctionEnded) ...[
+            Builder(
+              builder: (context) {
+                final bool showProgressBar =
+                    _remainingTime.inSeconds <= 30 &&
+                    _remainingTime.inSeconds > 0;
+                final double progress = showProgressBar
+                    ? _remainingTime.inSeconds / 30.0
+                    : 0.0;
 
-              return Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Stack(
-                  children: [
-                    // Progress bar (only visible in last 30 seconds)
-                    if (showProgressBar)
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 500),
-                        width: MediaQuery.of(context).size.width * progress,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: _remainingTime.inSeconds <= 10
-                                ? [
-                                    const Color(0xFFD32F2F).withAlpha(180),
-                                    const Color(0xFFFF5252).withAlpha(150),
-                                  ]
-                                : [
-                                    const Color(0xFF2D4739).withAlpha(180),
-                                    const Color(0xFF4CAF50).withAlpha(150),
-                                  ],
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    // Timer text
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Center(
-                        child: Text(
-                          _formatDuration(_remainingTime),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: showProgressBar
-                                ? Colors.black
-                                : (isAuctionEnded
-                                      ? Colors.red
-                                      : Colors.black87),
+                return Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Progress bar (only visible in last 30 seconds)
+                      if (showProgressBar)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 500),
+                          width: MediaQuery.of(context).size.width * progress,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: _remainingTime.inSeconds <= 10
+                                  ? [
+                                      const Color(0xFFD32F2F).withAlpha(180),
+                                      const Color(0xFFFF5252).withAlpha(150),
+                                    ]
+                                  : [
+                                      const Color(0xFF2D4739).withAlpha(180),
+                                      const Color(0xFF4CAF50).withAlpha(150),
+                                    ],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                      // Timer text
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Center(
+                          child: Text(
+                            _formatDuration(_remainingTime),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: showProgressBar
+                                  ? Colors.black
+                                  : (isAuctionEnded
+                                        ? Colors.red
+                                        : Colors.black87),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          gapH16,
+                    ],
+                  ),
+                );
+              },
+            ),
+            gapH16,
+          ],
 
           // Quick Bid Buttons - 1x, 1.5x, 2x minBid
           if (widget.isViewOnly) ...[
@@ -518,9 +520,9 @@ class _AuctionBiddingControlsWidgetState
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade400),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      "Not currently live",
+                      AppStrings.ended.tr(),
                       style: TextStyle(
                         color: Colors.grey,
                         fontSize: 16,

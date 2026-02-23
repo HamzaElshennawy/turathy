@@ -82,26 +82,10 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
 
     String? statusLabel;
     Color? statusColor;
-    final int? currentUserId = ref.read(authControllerProvider).value?.id;
-    final int? winnerId = widget.product.winningUserId;
 
     if (isEnded) {
-      if (winnerId != null && winnerId == currentUserId) {
-        statusLabel = AppStrings.youWon.tr();
-        statusColor = Colors.green;
-      } else if (widget.product.auctionBids?.any(
-            (bid) => bid.userId == currentUserId,
-          ) ??
-          false) {
-        statusLabel = AppStrings.youLost.tr();
-        statusColor = Colors.red;
-      } else if (winnerId != null) {
-        statusLabel = AppStrings.sold.tr();
-        statusColor = Colors.blue;
-      } else {
-        statusLabel = AppStrings.auctionEnded.tr();
-        statusColor = Colors.grey;
-      }
+      statusLabel = AppStrings.auctionEnded.tr();
+      statusColor = Colors.grey;
     }
 
     return Container(

@@ -311,5 +311,7 @@
   "paymentVerifiedConfirmed": "Payment verified and order confirmed",
   "itemOnItsWay": "Item is on its way to you",
   "itemDeliveredSuccessfully": "Item has been delivered successfully",
-  "checkOrder": "Check the Order"
+  "checkOrder": "Check the Order",
+  "noInternetConnection": "No Internet Connection",
+  "checkInternetConnection": "Please check your internet connection and try again."
 }

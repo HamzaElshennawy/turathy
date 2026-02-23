@@ -311,5 +311,7 @@
   "paymentVerifiedConfirmed": "تم التحقق من الدفع وتأكيد الطلب",
   "itemOnItsWay": "المنتج في الطريق إليك",
   "itemDeliveredSuccessfully": "تم توصيل المنتج بنجاح",
-  "checkOrder": "متابعة الطلب"
+  "checkOrder": "متابعة الطلب",
+  "noInternetConnection": "لا يوجد اتصال بالإنترنت",
+  "checkInternetConnection": "يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى."
 }
