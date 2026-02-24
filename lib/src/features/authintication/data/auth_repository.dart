@@ -196,6 +196,10 @@ class AuthRepository {
           );
         });
       }
+      if (user.name != null) {
+        await CacheHelper.setData(key: CachedKeys.userName, value: user.name!);
+        CachedVariables.userName = user.name;
+      }
       if (user.phone_number != null) {
         await CacheHelper.setData(
           key: CachedKeys.phone_number,
@@ -223,6 +227,9 @@ class AuthRepository {
     CachedVariables.userId = int.tryParse(
       await CacheHelper.getData(key: CachedKeys.userId) ?? '',
     );
+    CachedVariables.userName = await CacheHelper.getData(
+      key: CachedKeys.userName,
+    );
     CachedVariables.phone_number = await CacheHelper.getData(
       key: CachedKeys.phone_number,
     );
@@ -238,10 +245,12 @@ class AuthRepository {
   static Future<void> clearLocalDetails() async {
     CachedVariables.token = null;
     CachedVariables.userId = null;
+    CachedVariables.userName = null;
     CachedVariables.email = null;
     CachedVariables.phone_number = null;
     CachedVariables.password = null;
     await CacheHelper.deleteData(key: CachedKeys.userId);
+    await CacheHelper.deleteData(key: CachedKeys.userName);
     await CacheHelper.deleteData(key: CachedKeys.phone_number);
     await CacheHelper.deleteData(key: CachedKeys.password);
     await CacheHelper.deleteData(key: CachedKeys.onBoard);

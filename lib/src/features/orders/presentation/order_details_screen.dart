@@ -7,12 +7,15 @@ import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
 import 'package:turathy/src/features/auctions/data/auction_payments_repository.dart';
-import 'package:turathy/src/core/helper/dio/end_points.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
+import 'package:turathy/src/features/addresses/domain/user_address_model.dart';
+import 'package:turathy/src/features/addresses/presentation/address_selection_screen.dart';
 
 class OrderDetailsScreen extends ConsumerStatefulWidget {
   final OrderModel order;
+  final String? productImage;
 
-  const OrderDetailsScreen({super.key, required this.order});
+  const OrderDetailsScreen({super.key, required this.order, this.productImage});
 
   @override
   ConsumerState<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
@@ -287,44 +290,45 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 
   Widget _buildProductSection(OrderModel order, ThemeData theme) {
-    String? imageUrl;
-    if (order.product != null) {
-      final product = order.product!;
-      if (product['images'] != null && (product['images'] as List).isNotEmpty) {
-        imageUrl = (product['images'] as List).first.toString();
-      } else {
-        imageUrl = product['imageUrl']?.toString();
-      }
-    } else if (order.auction != null) {
-      imageUrl =
-          order.auction!['image_url']?.toString() ??
-          order.auction!['main_image']?.toString();
-    }
+    String? imageUrl = widget.productImage;
 
-    if (imageUrl != null && !imageUrl.startsWith('http')) {
-      imageUrl = '${EndPoints.baseUrl}$imageUrl';
-    }
+    final String finalImageUrl = imageUrl ?? '';
+    final bool hasImage = finalImageUrl.isNotEmpty;
+
+    final heroTag = 'order_product_${order.id}';
 
     return _buildCard(
       title: AppStrings.auctionProducts.tr(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: imageUrl != null && imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
+          GestureDetector(
+            onTap: hasImage
+                ? () => AppFunctions.showImageDialog(
+                    context: context,
+                    imageUrl: finalImageUrl,
+                    id: heroTag.hashCode,
                   )
-                : Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image),
-                  ),
+                : null,
+            child: Hero(
+              tag: heroTag.hashCode,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: hasImage
+                    ? Image.network(
+                        finalImageUrl,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.image),
+                      ),
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -354,6 +358,11 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 
   Widget _buildShippingSection(OrderModel order, ThemeData theme) {
+    final status = order.orderStatus?.toLowerCase() ?? 'pending';
+    final canEdit =
+        ['pending', 'initiated', ''].contains(status) ||
+        order.paymentStatus == null;
+
     return _buildCard(
       title: AppStrings.shippingDetails.tr(),
       child: Column(
@@ -370,9 +379,72 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           ),
           const SizedBox(height: 4),
           Text(order.cAddress, style: const TextStyle(fontSize: 14)),
+          if (canEdit) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _changeShippingAddress(order),
+                icon: const Icon(Icons.edit_location_alt, size: 18),
+                label: Text(AppStrings.editAddress.tr()),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.primary,
+                  side: BorderSide(color: theme.colorScheme.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _changeShippingAddress(OrderModel order) async {
+    final selectedAddress = await Navigator.push<UserAddressModel>(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            AddressSelectionScreen(preselectedAddressId: order.addressId),
+      ),
+    );
+
+    if (selectedAddress == null || !mounted) return;
+
+    try {
+      final updated = order.copyWith(addressId: selectedAddress.id);
+      final result = await ref
+          .read(orderRepositoryProvider)
+          .updateOrder(updated);
+      if (mounted) {
+        // Merge the selected address data into the result so UI shows it
+        final withAddress = result.copyWith(
+          address: {
+            'name': selectedAddress.name,
+            'mobile': selectedAddress.mobile,
+            'country': selectedAddress.country,
+            'city': selectedAddress.city,
+            'address': selectedAddress.address,
+          },
+        );
+        setState(() => _currentOrder = withAddress);
+        ref.invalidate(getUserOrdersProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.addressSavedSuccessfully.tr()),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildTimelineSection(OrderModel order, ThemeData theme) {

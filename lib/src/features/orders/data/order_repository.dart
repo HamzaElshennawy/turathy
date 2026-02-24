@@ -15,21 +15,13 @@ class OrderRepository {
         ? EndPoints.addProductOrder
         : EndPoints.addOrder;
 
-    // For product order (Cart), we need to adapt the body to AddProductOrderDto
-    // The AddProductOrderDto expects: user_id, product_id, quantity, cName, cCountry, cCity, cMobile, cAddress.
-    // We must construct a clean map to avoid sending extra fields like auction_id, total, etc. that might cause 400 Bad Request.
-
     Map<String, dynamic> data;
     if (isProductOrder) {
       data = {
         'user_id': order.userId,
         'product_id': order.productId,
         'quantity': order.pCs,
-        'cName': order.cName,
-        'cCountry': order.cCountry,
-        'cCity': order.cCity,
-        'cMobile': order.cMobile,
-        'cAddress': order.cAddress,
+        'address_id': order.addressId,
       };
     } else {
       data = order.toJson();
@@ -53,7 +45,7 @@ class OrderRepository {
     final result = await DioHelper.getData(
       url: EndPoints.getUserOrders,
       token: CachedVariables.token,
-      query: {'user_id': userId},
+      query: {'user_id': userId, 'include': 'user_addresses'},
     );
     if (result.statusCode == 200) {
       List<OrderModel> orders = [];
@@ -75,7 +67,7 @@ class OrderRepository {
       token: CachedVariables.token,
       data: {...order.toJson(), 'order_id': order.id},
     );
-    if (result.statusCode == 200) {
+    if (result.statusCode == 200 || result.statusCode == 201) {
       return OrderModel.fromJson(result.data['data']);
     } else {
       String message =

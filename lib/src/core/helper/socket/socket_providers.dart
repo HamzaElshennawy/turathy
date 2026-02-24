@@ -45,6 +45,17 @@ final auctionStartedProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   );
 });
 
+/// Auction pre-started event stream
+final auctionPreStartedProvider = StreamProvider.autoDispose<AuctionModel>((
+  ref,
+) {
+  final service = ref.watch(socketServiceProvider);
+  return service.getEventStream<AuctionModel>(
+    'auctionPreStarted',
+    (data) => AuctionModel.fromJson(data as Map<String, dynamic>),
+  );
+});
+
 /// User count update event stream
 final userCountUpdateProvider = StreamProvider.autoDispose<UserCountUpdate>((
   ref,

@@ -1,19 +1,17 @@
 import 'dart:io';
 
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/data/auction_payments_repository.dart';
-import 'package:turathy/src/utils/validators.dart';
-import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
 
 import '../../../core/common_widgets/custom_card.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../addresses/domain/user_address_model.dart';
+import '../../addresses/presentation/address_selection_screen.dart';
 import '../data/order_repository.dart';
 import '../domain/order_model.dart';
 
@@ -21,8 +19,13 @@ enum UnifiedPaymentMethod { creditCard, bankTransfer }
 
 class OrderConfirmationScreen extends ConsumerStatefulWidget {
   final OrderModel order;
+  final UserAddressModel? preselectedAddress;
 
-  const OrderConfirmationScreen({super.key, required this.order});
+  const OrderConfirmationScreen({
+    super.key,
+    required this.order,
+    this.preselectedAddress,
+  });
 
   @override
   ConsumerState<OrderConfirmationScreen> createState() =>
@@ -31,12 +34,7 @@ class OrderConfirmationScreen extends ConsumerStatefulWidget {
 
 class _OrderConfirmationScreenState
     extends ConsumerState<OrderConfirmationScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _mobileController;
-  late TextEditingController _addressController;
-  String? _selectedCountryCode;
-  String? _selectedCityValue;
+  UserAddressModel? _selectedAddress;
 
   UnifiedPaymentMethod _paymentMethod = UnifiedPaymentMethod.bankTransfer;
   PlatformFile? _selectedFile;
@@ -48,36 +46,20 @@ class _OrderConfirmationScreenState
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.order.cName);
-    _mobileController = TextEditingController(text: widget.order.cMobile);
-    _addressController = TextEditingController(text: widget.order.cAddress);
-
-    if (widget.order.cCountry.isNotEmpty) {
-      final gov = kGovernates
-          .where(
-            (g) =>
-                g.title == widget.order.cCountry ||
-                g.code == widget.order.cCountry,
-          )
-          .firstOrNull;
-      if (gov != null) {
-        _selectedCountryCode = gov.code;
-        if (widget.order.cCity.isNotEmpty) {
-          _selectedCityValue = gov.cities
-              .where((c) => c.title == widget.order.cCity)
-              .firstOrNull
-              ?.title;
-        }
-      }
-    }
+    _selectedAddress = widget.preselectedAddress;
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _mobileController.dispose();
-    _addressController.dispose();
-    super.dispose();
+  Future<void> _pickAddress() async {
+    final result = await Navigator.of(context).push<UserAddressModel>(
+      MaterialPageRoute(
+        builder: (context) => AddressSelectionScreen(
+          preselectedAddressId: _selectedAddress?.id ?? widget.order.addressId,
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() => _selectedAddress = result);
+    }
   }
 
   Future<void> _pickFile() async {
@@ -110,13 +92,7 @@ class _OrderConfirmationScreenState
   Future<OrderModel?> _syncOrderDetails() async {
     try {
       final updatedOrderData = widget.order.copyWith(
-        cName: _nameController.text,
-        cMobile: _mobileController.text,
-        cAddress: _addressController.text,
-        cCountry: kGovernates
-            .firstWhere((g) => g.code == _selectedCountryCode)
-            .title,
-        cCity: _selectedCityValue ?? '',
+        addressId: _selectedAddress!.id,
       );
 
       if (widget.order.id == 0) {
@@ -135,7 +111,10 @@ class _OrderConfirmationScreenState
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_selectedAddress == null) {
+      setState(() => _errorMessage = AppStrings.selectAddress.tr());
+      return;
+    }
 
     if (_paymentMethod == UnifiedPaymentMethod.bankTransfer &&
         (_selectedFile == null || _selectedFile!.path == null)) {
@@ -239,143 +218,178 @@ class _OrderConfirmationScreenState
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSectionTitle(theme, AppStrings.orderSummary.tr()),
-              CustomCard(
-                child: Column(
-                  children: [
-                    _buildDetailRow(
-                      theme,
-                      AppStrings.itemDescription.tr(),
-                      widget.order.itemDesc,
-                    ),
-                    const Divider(),
-                    _buildDetailRow(
-                      theme,
-                      AppStrings.totalAmount.tr(),
-                      widget.order.total.toString(),
-                      isPrice: true,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildSectionTitle(theme, AppStrings.shippingDetails.tr()),
-              CustomCard(
-                child: Column(
-                  children: [
-                    _buildTextField(
-                      controller: _nameController,
-                      label: AppStrings.name.tr(),
-                      icon: Icons.person,
-                    ),
-                    const SizedBox(height: 12),
-                    Directionality(
-                      textDirection: ui.TextDirection.ltr,
-                      child: TextFormField(
-                        controller: _mobileController,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters:
-                            Validators.ksaLocalPhoneInputFormatters,
-                        decoration:
-                            _getInputDecoration(
-                              context,
-                              AppStrings.mobileNumber.tr(),
-                              Icons.phone,
-                            ).copyWith(
-                              prefixIcon: CountryCodePicker(
-                                onChanged: (country) {},
-                                initialSelection: '+966',
-                                favorite: const ['+966', 'SA'],
-                                padding: EdgeInsets.zero,
-                              ),
-                            ),
-                        validator: (value) =>
-                            Validators.ksaLocalPhoneValidator(value),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _addressController,
-                      label: AppStrings.address.tr(),
-                      icon: Icons.location_on,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildCountryDropdown(theme),
-                    const SizedBox(height: 12),
-                    _buildCityDropdown(theme),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _buildSectionTitle(theme, AppStrings.paymentMethod.tr()),
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSectionTitle(theme, AppStrings.orderSummary.tr()),
+            CustomCard(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: _buildPaymentTile(
-                      Icons.credit_card,
-                      AppStrings.cardPayment.tr(),
-                      UnifiedPaymentMethod.creditCard,
-                    ),
+                  _buildDetailRow(
+                    theme,
+                    AppStrings.itemDescription.tr(),
+                    widget.order.itemDesc,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildPaymentTile(
-                      Icons.account_balance,
-                      AppStrings.bankTransfer.tr(),
-                      UnifiedPaymentMethod.bankTransfer,
-                    ),
+                  const Divider(),
+                  _buildDetailRow(
+                    theme,
+                    AppStrings.totalAmount.tr(),
+                    widget.order.total.toString(),
+                    isPrice: true,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
 
-              if (_paymentMethod == UnifiedPaymentMethod.bankTransfer)
-                _buildBankTransferSection(theme),
-              if (_paymentMethod == UnifiedPaymentMethod.creditCard)
-                _buildCreditCardSection(paymentConfig, theme),
+            // Shipping Address Section
+            _buildSectionTitle(theme, AppStrings.shippingDetails.tr()),
+            _buildAddressSection(theme),
+            const SizedBox(height: 16),
 
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: theme.colorScheme.error),
-                    textAlign: TextAlign.center,
+            _buildSectionTitle(theme, AppStrings.paymentMethod.tr()),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPaymentTile(
+                    Icons.credit_card,
+                    AppStrings.cardPayment.tr(),
+                    UnifiedPaymentMethod.creditCard,
                   ),
                 ),
-
-              const SizedBox(height: 24),
-              if (_paymentMethod == UnifiedPaymentMethod.bankTransfer)
-                ElevatedButton(
-                  onPressed: _isSubmitting ? null : _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPaymentTile(
+                    Icons.account_balance,
+                    AppStrings.bankTransfer.tr(),
+                    UnifiedPaymentMethod.bankTransfer,
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(AppStrings.submitOrder.tr()),
                 ),
-            ],
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            if (_paymentMethod == UnifiedPaymentMethod.bankTransfer)
+              _buildBankTransferSection(theme),
+            if (_paymentMethod == UnifiedPaymentMethod.creditCard)
+              _buildCreditCardSection(paymentConfig, theme),
+
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _errorMessage!,
+                  style: TextStyle(color: theme.colorScheme.error),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+            const SizedBox(height: 24),
+            if (_paymentMethod == UnifiedPaymentMethod.bankTransfer)
+              ElevatedButton(
+                onPressed: _isSubmitting ? null : _handleSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(AppStrings.submitOrder.tr()),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddressSection(ThemeData theme) {
+    if (_selectedAddress != null) {
+      return CustomCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  AppStrings.selectedAddress.tr(),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _pickAddress,
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: Text(AppStrings.changeAddress.tr()),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_selectedAddress!.label != null)
+              Text(
+                _selectedAddress!.label!,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              _selectedAddress!.name,
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+            Text(
+              _selectedAddress!.mobile,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _selectedAddress!.fullAddress,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No address selected yet — big "Select Address" button
+    return InkWell(
+      onTap: _pickAddress,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.primary.withOpacity(0.5),
+            style: BorderStyle.solid,
           ),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.location_on, size: 40, color: theme.colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(
+              AppStrings.selectAddress.tr(),
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -420,75 +434,6 @@ class _OrderConfirmationScreenState
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: _getInputDecoration(context, label, icon),
-      validator: (v) =>
-          v == null || v.isEmpty ? AppStrings.addressRequired.tr() : null,
-    );
-  }
-
-  InputDecoration _getInputDecoration(
-    BuildContext context,
-    String label,
-    IconData icon,
-  ) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      filled: true,
-      fillColor: Theme.of(context).colorScheme.surface,
-    );
-  }
-
-  Widget _buildCountryDropdown(ThemeData theme) {
-    return DropdownButtonFormField<String>(
-      value: _selectedCountryCode,
-      decoration: _getInputDecoration(
-        context,
-        AppStrings.country.tr(),
-        Icons.public,
-      ),
-      items: kGovernates
-          .map((g) => DropdownMenuItem(value: g.code, child: Text(g.title)))
-          .toList(),
-      onChanged: (v) => setState(() {
-        _selectedCountryCode = v;
-        _selectedCityValue = null;
-      }),
-      validator: (v) => v == null ? AppStrings.countryRequired.tr() : null,
-    );
-  }
-
-  Widget _buildCityDropdown(ThemeData theme) {
-    final gov = kGovernates
-        .where((g) => g.code == _selectedCountryCode)
-        .firstOrNull;
-    final cities = gov?.cities ?? [];
-    return DropdownButtonFormField<String>(
-      value: _selectedCityValue,
-      decoration: _getInputDecoration(
-        context,
-        AppStrings.city.tr(),
-        Icons.location_city,
-      ),
-      items: cities
-          .map(
-            (c) =>
-                DropdownMenuItem<String>(value: c.title, child: Text(c.title)),
-          )
-          .toList(),
-      onChanged: (v) => setState(() => _selectedCityValue = v),
-      validator: (v) => v == null ? AppStrings.cityRequired.tr() : null,
     );
   }
 

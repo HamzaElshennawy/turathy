@@ -166,6 +166,8 @@ abstract class AppFunctions {
               color: Colors.transparent,
             ),
             imageProvider: CachedNetworkImageProvider(imageUrl),
+            minScale: PhotoViewComputedScale.contained,
+            initialScale: PhotoViewComputedScale.contained,
           ),
         ),
       ),

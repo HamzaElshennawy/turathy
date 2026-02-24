@@ -353,4 +353,21 @@ class AppStrings {
   // Internet Connection Error
   static const String noInternetConnection = 'noInternetConnection';
   static const String checkInternetConnection = 'checkInternetConnection';
+
+  // Address Management
+  static const String myAddresses = 'myAddresses';
+  static const String addNewAddress = 'addNewAddress';
+  static const String editAddress = 'editAddress';
+  static const String deleteAddress = 'deleteAddress';
+  static const String addressLabel = 'addressLabel';
+  static const String recipientName = 'recipientName';
+  static const String recipientMobile = 'recipientMobile';
+  static const String setAsDefault = 'setAsDefault';
+  static const String defaultAddress = 'defaultAddress';
+  static const String noAddressesSaved = 'noAddressesSaved';
+  static const String selectAddress = 'selectAddress';
+  static const String changeAddress = 'changeAddress';
+  static const String addressDeletedSuccessfully = 'addressDeletedSuccessfully';
+  static const String addressSavedSuccessfully = 'addressSavedSuccessfully';
+  static const String selectedAddress = 'selectedAddress';
 }

@@ -283,22 +283,42 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '${AppStrings.startedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF1B5E20),
+                                    if (widget.product.liveStartDate !=
+                                        null) ...[
+                                      Text(
+                                        '${'preAuctionStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF1B5E20),
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black54,
+                                      Text(
+                                        '${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(widget.product.liveStartDate!)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black54,
+                                        ),
                                       ),
-                                    ),
+                                    ] else ...[
+                                      Text(
+                                        '${AppStrings.startedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF1B5E20),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 );
                               } else if (expiryDate.isBefore(now)) {

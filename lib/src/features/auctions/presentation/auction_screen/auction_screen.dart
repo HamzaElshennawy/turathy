@@ -197,10 +197,20 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       AppStrings.auctionNumber.tr(),
                       widget.auction.id.toString(),
                     ),
-                    _buildInfoRow(
-                      AppStrings.startsAt.tr(),
-                      _formatDate(widget.auction.startDate),
-                    ),
+                    if (widget.auction.liveStartDate != null) ...[
+                      _buildInfoRow(
+                        'preAuctionStartsAt'.tr(),
+                        _formatDate(widget.auction.startDate),
+                      ),
+                      _buildInfoRow(
+                        'liveStartsAt'.tr(),
+                        _formatDate(widget.auction.liveStartDate),
+                      ),
+                    ] else
+                      _buildInfoRow(
+                        AppStrings.startsAt.tr(),
+                        _formatDate(widget.auction.startDate),
+                      ),
                     _buildInfoRow(
                       AppStrings.endsAt.tr(),
                       _formatDate(widget.auction.expiryDate),

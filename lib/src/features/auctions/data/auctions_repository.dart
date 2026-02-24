@@ -11,6 +11,7 @@ import '../../authintication/data/auth_repository.dart';
 import '../../search/domain/filter_state.dart';
 import '../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
 import '../domain/auction_model.dart';
+import '../domain/max_bid_model.dart';
 import '../domain/winning_auction_model.dart';
 
 class AuctionsRepository {
@@ -178,6 +179,51 @@ class AuctionsRepository {
       throw AuthException(message, response.statusCode);
     }
   }
+
+  Future<List<MaxBidModel>> getMyMaxBids() async {
+    final result = await DioHelper.getData(
+      url: EndPoints.getMyMaxBids,
+      token: CachedVariables.token,
+      query: {'user_id': CachedVariables.userId.toString()},
+    );
+    if (result.statusCode == 200) {
+      List<MaxBidModel> maxBids = [];
+      for (var item in result.data['data']) {
+        maxBids.add(MaxBidModel.fromJson(item));
+      }
+      return maxBids;
+    } else {
+      String message =
+          result.data['error'] ?? 'An error occurred while fetching max bids';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
+  Future<List<MaxBidModel>> getMaxBids({
+    int? auctionId,
+    int? productId,
+    int? userId,
+  }) async {
+    final result = await DioHelper.getData(
+      url: EndPoints.getMaxBids(
+        auctionId: auctionId,
+        productId: productId,
+        userId: userId,
+      ),
+      token: CachedVariables.token,
+    );
+    if (result.statusCode == 200) {
+      List<MaxBidModel> maxBids = [];
+      for (var item in result.data['data']) {
+        maxBids.add(MaxBidModel.fromJson(item));
+      }
+      return maxBids;
+    } else {
+      String message =
+          result.data['error'] ?? 'An error occurred while fetching max bids';
+      throw AuthException(message, result.statusCode);
+    }
+  }
 }
 
 final productsRepositoryProvider = Provider<AuctionsRepository>((ref) {
@@ -265,6 +311,43 @@ final userAuctionsProvider = FutureProvider.autoDispose
 final userWinningAuctionsProvider =
     FutureProvider.autoDispose<List<WinningAuctionModel>>((ref) async {
       return ref.watch(productsRepositoryProvider).getWinningAuctions();
+    });
+
+final userMaxBidsProvider = FutureProvider.autoDispose<List<MaxBidModel>>((
+  ref,
+) async {
+  return ref.watch(productsRepositoryProvider).getMyMaxBids();
+});
+
+class GetMaxBidsRequest {
+  final int? auctionId;
+  final int? productId;
+  final int? userId;
+
+  const GetMaxBidsRequest({this.auctionId, this.productId, this.userId});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GetMaxBidsRequest &&
+          runtimeType == other.runtimeType &&
+          auctionId == other.auctionId &&
+          productId == other.productId &&
+          userId == other.userId);
+
+  @override
+  int get hashCode => auctionId.hashCode ^ productId.hashCode ^ userId.hashCode;
+}
+
+final maxBidsProvider = FutureProvider.autoDispose
+    .family<List<MaxBidModel>, GetMaxBidsRequest>((ref, request) async {
+      return ref
+          .watch(productsRepositoryProvider)
+          .getMaxBids(
+            auctionId: request.auctionId,
+            productId: request.productId,
+            userId: request.userId,
+          );
     });
 
 class AgoraTokenRequest {

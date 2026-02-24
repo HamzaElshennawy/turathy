@@ -99,17 +99,31 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     return p1.trim().toLowerCase() == p2.trim().toLowerCase();
   }
 
-  void _placeBid(int quantity, num currentBid, {bool isMinBid = false}) {
+  void _placeBid(
+    int quantity,
+    num currentBid, {
+    bool isMinBid = false,
+    int? overrideProductId,
+  }) {
     if (currentBid == 0) {
       return;
     }
 
-    final productToBidOn = auction.auctionProducts?.firstWhere(
-      (element) =>
-          element.product == auction.currentProduct ||
-          element.id == auction.currentProductId,
-      orElse: () => AuctionProducts(),
-    );
+    AuctionProducts? productToBidOn;
+
+    if (overrideProductId != null) {
+      productToBidOn = auction.auctionProducts?.firstWhere(
+        (element) => element.id == overrideProductId,
+        orElse: () => AuctionProducts(),
+      );
+    } else {
+      productToBidOn = auction.auctionProducts?.firstWhere(
+        (element) =>
+            element.product == auction.currentProduct ||
+            element.id == auction.currentProductId,
+        orElse: () => AuctionProducts(),
+      );
+    }
 
     if (productToBidOn == null || productToBidOn.id == null) {
       debugPrint(
@@ -142,6 +156,26 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(userCountUpdateProvider, (previous, next) {});
+
+    // Listen for pre-auction start
+    ref.listen(auctionPreStartedProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event != null) {
+        setState(() {
+          auction = event;
+          if (event.liveStartDate != null) {
+            _scheduleFailSafeTimer(event.liveStartDate!);
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('preAuctionPhase'.tr()),
+            backgroundColor: Colors.blueAccent,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
 
     // Listen for Auction Item Ended (Multi-item transition)
     ref.listen(auctionItemEndedProvider, (previous, next) {
@@ -450,10 +484,38 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                         );
                                       },
                                     ),
-                                  )
-                                : const SizedBox.shrink(),
                           ),
                         */
+
+                        // Pre-Auction Indicator
+                        if (auction.isPreAuction &&
+                            !_isAuctionEnded &&
+                            auction.liveStartDate != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.hourglass_top,
+                                  color: Colors.blue,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${'preAuctionPhase'.tr()} - ${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(auction.liveStartDate!)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue.shade800,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
 
                         // Current Product Indicator (New)
                         if (auction.currentProduct != null && !_isAuctionEnded)
@@ -744,13 +806,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
                               bool isProductEnded = false;
 
-                              if (isCurrentLiveProduct) {
+                              if (auction.isPreAuction) {
+                                isProductEnded = false;
+                              } else if (isCurrentLiveProduct) {
                                 isProductEnded =
                                     _isAuctionEnded ||
                                     auction.isExpired == true ||
                                     auction.isCanceled == true;
-                                // We don't strictly check expiryDate here because standard flow uses isExpired/isCanceled checks
-                                // But if strictly expired:
                                 if (auction.expiryDate != null &&
                                     auction.expiryDate!.isBefore(
                                       DateTime.now(),
@@ -758,9 +820,28 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                   isProductEnded = true;
                                 }
                               } else {
-                                // It is a past product (selected from list)
-                                // Past products are by definition "ended" in this sequential flow
-                                isProductEnded = true;
+                                final currentIndex = auction.auctionProducts!
+                                    .indexWhere(
+                                      (p) =>
+                                          _isSameProduct(
+                                            p.product,
+                                            auction.currentProduct,
+                                          ) ||
+                                          p.id == auction.currentProductId,
+                                    );
+                                final activeIndex = auction.auctionProducts!
+                                    .indexWhere(
+                                      (p) => p.id == activeProduct.id,
+                                    );
+                                if (currentIndex != -1 &&
+                                    activeIndex > currentIndex &&
+                                    !_isAuctionEnded &&
+                                    auction.isExpired != true &&
+                                    auction.isCanceled != true) {
+                                  isProductEnded = false;
+                                } else {
+                                  isProductEnded = true;
+                                }
                               }
 
                               if (isProductEnded) {
@@ -806,8 +887,15 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                   statusColor = Colors.grey;
                                 }
                               } else {
-                                statusLabel = AppStrings.live.tr();
-                                statusColor = Colors.red;
+                                if (auction.isPreAuction) {
+                                  statusLabel = 'preAuctionPhase'.tr();
+                                  statusColor = Colors.blue;
+                                } else if (!isCurrentLiveProduct) {
+                                  statusLabel = null;
+                                } else {
+                                  statusLabel = AppStrings.live.tr();
+                                  statusColor = Colors.red;
+                                }
                               }
                             }
 
@@ -838,10 +926,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                               children: [
                                 AuctionGalleryWidget(images: imagesToShow),
                                 // SOLD Badge Logic for Main Image
-                                if (statusLabel == AppStrings.sold.tr() ||
-                                    statusLabel == AppStrings.youWon.tr() ||
-                                    statusLabel == AppStrings.youLost.tr() ||
-                                    statusLabel == AppStrings.live.tr())
+                                if (statusLabel != null)
                                   Positioned(
                                     top: 20,
                                     right: 20,
@@ -869,7 +954,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                         ],
                                       ),
                                       child: Text(
-                                        statusLabel ?? AppStrings.sold.tr(),
+                                        statusLabel,
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
@@ -909,6 +994,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                   expiryDate: auction.expiryDate,
                   isAuctionEnded: _isAuctionEnded,
                   isViewOnly:
+                      !auction.isPreAuction &&
                       _selectedProduct != null &&
                       _selectedProduct?.id !=
                           (auction.auctionProducts
@@ -923,8 +1009,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                   winnerId: _winnerId,
                   winnerName: _winnerName,
                   finalPrice: _finalPrice,
-                  onPlaceBid: (qty, price) {
-                    _placeBid(qty, price);
+                  onPlaceBid: (qty, price, productId) {
+                    _placeBid(qty, price, overrideProductId: productId);
                   },
                 ),
               ],
@@ -1209,11 +1295,6 @@ class AuctionResultDialog extends ConsumerWidget {
                               itemDesc: '',
                               createdAt: DateTime.now(),
                               auctionId: -1,
-                              cName: '',
-                              cCountry: '',
-                              cCity: '',
-                              cMobile: '',
-                              cAddress: '',
                               pCs: 0,
                               codAmt: "0",
                               weight: "0",

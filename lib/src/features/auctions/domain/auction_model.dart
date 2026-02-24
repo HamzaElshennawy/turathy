@@ -14,6 +14,7 @@ class AuctionModel {
   num? bidPrice;
   DateTime? expiryDate;
   DateTime? startDate;
+  DateTime? liveStartDate;
   bool? isLive;
   bool? isExpired;
   bool? isCanceled;
@@ -45,6 +46,7 @@ class AuctionModel {
     this.bidPrice,
     this.expiryDate,
     this.startDate,
+    this.liveStartDate,
     this.isLive,
     this.isExpired,
     this.isCanceled,
@@ -79,6 +81,7 @@ class AuctionModel {
           bidPrice == other.bidPrice &&
           expiryDate == other.expiryDate &&
           startDate == other.startDate &&
+          liveStartDate == other.liveStartDate &&
           isLive == other.isLive &&
           isExpired == other.isExpired &&
           isCanceled == other.isCanceled &&
@@ -106,6 +109,7 @@ class AuctionModel {
       bidPrice.hashCode ^
       expiryDate.hashCode ^
       startDate.hashCode ^
+      liveStartDate.hashCode ^
       isLive.hashCode ^
       isExpired.hashCode ^
       isCanceled.hashCode ^
@@ -135,6 +139,9 @@ class AuctionModel {
         : null;
     startDate = json['startDate'] != null
         ? DateTime.parse(json['startDate'] as String).toLocal()
+        : null;
+    liveStartDate = json['liveStartDate'] != null
+        ? DateTime.parse(json['liveStartDate'] as String).toLocal()
         : null;
     isLive = json['isLive'];
     isExpired = json['isExpired'];
@@ -194,6 +201,7 @@ class AuctionModel {
     data['bidPrice'] = bidPrice;
     data['expiryDate'] = expiryDate?.toIso8601String();
     data['startDate'] = startDate?.toIso8601String();
+    data['liveStartDate'] = liveStartDate?.toIso8601String();
     data['isLive'] = isLive;
     data['isExpired'] = isExpired;
     data['isCanceled'] = isCanceled;
@@ -220,7 +228,19 @@ class AuctionModel {
 
   @override
   String toString() {
-    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, currentProductId: $currentProductId, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
+    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, currentProductId: $currentProductId, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, liveStartDate: $liveStartDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
+  }
+
+  bool get isCanceledLocal {
+    // If we have an explicit isCanceled flag, use it
+    if (this.isCanceled == true) return true;
+    return false;
+  }
+
+  bool get isPreAuction {
+    if (startDate == null || liveStartDate == null) return false;
+    final now = DateTime.now();
+    return now.isAfter(startDate!) && now.isBefore(liveStartDate!);
   }
 }
 

@@ -8,11 +8,8 @@ class OrderModel {
   final int auctionId;
   final double total;
   final DateTime date;
-  final String cName;
-  final String cCountry;
-  final String cCity;
-  final String cMobile;
-  final String cAddress;
+  final int? addressId;
+  final Map<String, dynamic>? address;
   final int pCs;
   final String codAmt;
   final String weight;
@@ -44,11 +41,8 @@ class OrderModel {
     required this.auctionId,
     required this.total,
     required this.date,
-    required this.cName,
-    required this.cCountry,
-    required this.cCity,
-    required this.cMobile,
-    required this.cAddress,
+    this.addressId,
+    this.address,
     required this.pCs,
     required this.codAmt,
     required this.weight,
@@ -74,75 +68,22 @@ class OrderModel {
     this.auctionProductId,
   });
 
+  // Address helper getters — read from nested address object when available
+  String get cName => address?['name'] as String? ?? '';
+  String get cCountry => address?['country'] as String? ?? '';
+  String get cCity => address?['city'] as String? ?? '';
+  String get cMobile => address?['mobile'] as String? ?? '';
+  String get cAddress => address?['address'] as String? ?? '';
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OrderModel &&
           runtimeType == other.runtimeType &&
-          id == other.id &&
-          userId == other.userId &&
-          auctionId == other.auctionId &&
-          total == other.total &&
-          date == other.date &&
-          cName == other.cName &&
-          cCountry == other.cCountry &&
-          cCity == other.cCity &&
-          cMobile == other.cMobile &&
-          cAddress == other.cAddress &&
-          pCs == other.pCs &&
-          codAmt == other.codAmt &&
-          weight == other.weight &&
-          itemDesc == other.itemDesc &&
-          shipType == other.shipType &&
-          sName == other.sName &&
-          sContact == other.sContact &&
-          sAddr1 == other.sAddr1 &&
-          sCity == other.sCity &&
-          sPhone == other.sPhone &&
-          sCntry == other.sCntry &&
-          awbNo == other.awbNo &&
-          refNo == other.refNo &&
-          paymentStatus == other.paymentStatus &&
-          paymentId == other.paymentId &&
-          orderStatus == other.orderStatus &&
-          createdAt == other.createdAt &&
-          updatedAt == other.updatedAt &&
-          product == other.product &&
-          auction == other.auction);
+          id == other.id);
 
   @override
-  int get hashCode =>
-      id.hashCode ^
-      userId.hashCode ^
-      auctionId.hashCode ^
-      total.hashCode ^
-      date.hashCode ^
-      cName.hashCode ^
-      cCountry.hashCode ^
-      cCity.hashCode ^
-      cMobile.hashCode ^
-      cAddress.hashCode ^
-      pCs.hashCode ^
-      codAmt.hashCode ^
-      weight.hashCode ^
-      itemDesc.hashCode ^
-      shipType.hashCode ^
-      sName.hashCode ^
-      sContact.hashCode ^
-      sAddr1.hashCode ^
-      sCity.hashCode ^
-      sPhone.hashCode ^
-      sCntry.hashCode ^
-      awbNo.hashCode ^
-      refNo.hashCode ^
-      paymentStatus.hashCode ^
-      paymentId.hashCode ^
-      orderStatus.hashCode ^
-      createdAt.hashCode ^
-      updatedAt.hashCode ^
-      product.hashCode ^
-      auction.hashCode ^
-      auctionProductId.hashCode;
+  int get hashCode => id.hashCode;
 
   OrderModel copyWith({
     int? id,
@@ -150,11 +91,8 @@ class OrderModel {
     int? auctionId,
     double? total,
     DateTime? date,
-    String? cName,
-    String? cCountry,
-    String? cCity,
-    String? cMobile,
-    String? cAddress,
+    int? addressId,
+    Map<String, dynamic>? address,
     int? pCs,
     String? codAmt,
     String? weight,
@@ -185,11 +123,8 @@ class OrderModel {
       auctionId: auctionId ?? this.auctionId,
       total: total ?? this.total,
       date: date ?? this.date,
-      cName: cName ?? this.cName,
-      cCountry: cCountry ?? this.cCountry,
-      cCity: cCity ?? this.cCity,
-      cMobile: cMobile ?? this.cMobile,
-      cAddress: cAddress ?? this.cAddress,
+      addressId: addressId ?? this.addressId,
+      address: address ?? this.address,
       pCs: pCs ?? this.pCs,
       codAmt: codAmt ?? this.codAmt,
       weight: weight ?? this.weight,
@@ -225,11 +160,7 @@ class OrderModel {
       'winning_id': winningId,
       'total': total,
       'date': DateFormat('yyyy-MM-dd', 'en_US').format(date),
-      'cName': cName,
-      'cCountry': cCountry,
-      'cCity': cCity,
-      'cMobile': cMobile,
-      'cAddress': cAddress,
+      'address_id': addressId,
       'PCs': pCs,
       'codAmt': num.tryParse(codAmt) ?? 0,
       'weight': weight,
@@ -244,11 +175,9 @@ class OrderModel {
       auctionId: (json['auction_id'] ?? 0) as int,
       total: (json['total'] as num?)?.toDouble() ?? 0.0,
       date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
-      cName: json['cName'] as String? ?? '',
-      cCountry: json['cCountry'] as String? ?? '',
-      cCity: json['cCity'] as String? ?? '',
-      cMobile: json['cMobile'] as String? ?? '',
-      cAddress: json['cAddress'] as String? ?? '',
+      addressId: json['address_id'] as int?,
+      address:
+          (json['address'] ?? json['user_addresses']) as Map<String, dynamic>?,
       pCs: (json['PCs'] ?? 1) as int,
       codAmt: (json['codAmt'] ?? 0).toString(),
       weight: (json['weight'] ?? '1').toString(),
@@ -284,16 +213,11 @@ class OrderModel {
       id: 0,
       userId: winningAuction.userId,
       auctionId: winningAuction.auctionId,
-      productId: null, // Legacy field for store products
-      auctionProductId: winningAuction.productId, // New schema field
+      productId: null,
+      auctionProductId: winningAuction.productId,
       winningId: winningAuction.id != 0 ? winningAuction.id : null,
       total: winningAuction.price,
       date: DateTime.now(),
-      cName: winningAuction.winnerName,
-      cCountry: 'KSA', // Default value as per API example
-      cCity: 'ULA', // Default value as per API example
-      cMobile: '', // To be filled by user
-      cAddress: '', // To be filled by user
       pCs: 1,
       codAmt: '0',
       weight: '1',

@@ -27,6 +27,7 @@ abstract class SocketConfig {
   /// Socket events that the app listens to
   static const List<String> supportedEvents = [
     'auctionStarted',
+    'auctionPreStarted',
     'userCountUpdate',
     'newComment',
     'newBid',

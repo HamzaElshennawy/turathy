@@ -251,25 +251,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
         } else {
           // Display finalized Order
           final order = orders[index - winnings.length];
-          return OrderCard(
-            title: _getOrderTitle(order),
-            price: '${order.total} ${AppStrings.currency.tr()}',
-            status: _getOrderStatusText(
-              order.orderStatus ?? order.paymentStatus,
-            ),
-            statusColor: _getOrderStatusColor(
-              order.orderStatus ?? order.paymentStatus,
-            ),
-            imageUrl: _getOrderImage(order),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OrderDetailsScreen(order: order),
-                ),
-              );
-            },
-          );
+          return _OrderItemWidget(order: order);
         }
       },
     );
@@ -319,6 +301,19 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
     }
   }
 
+  String? _getWinningImage(WinningAuctionModel winning) {
+    String? url = winning.auctionImage;
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http')) return url;
+    return '${EndPoints.baseUrl}$url';
+  }
+}
+
+class _OrderItemWidget extends ConsumerWidget {
+  final OrderModel order;
+
+  const _OrderItemWidget({required this.order});
+
   String _getOrderTitle(OrderModel order) {
     if (order.product != null) {
       return order.product!['title'] ??
@@ -330,34 +325,6 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
           order.itemDesc;
     }
     return order.itemDesc;
-  }
-
-  String? _getOrderImage(OrderModel order) {
-    String? url;
-    if (order.product != null) {
-      final product = order.product!;
-      // Check for images list first
-      if (product['images'] != null && (product['images'] as List).isNotEmpty) {
-        url = (product['images'] as List).first.toString();
-      } else {
-        url = product['imageUrl']?.toString();
-      }
-    } else if (order.auction != null) {
-      final auction = order.auction!;
-      url =
-          auction['image_url']?.toString() ?? auction['main_image']?.toString();
-    }
-
-    if (url == null || url.isEmpty) return null;
-    if (url.startsWith('http')) return url;
-    return '${EndPoints.baseUrl}$url';
-  }
-
-  String? _getWinningImage(WinningAuctionModel winning) {
-    String? url = winning.auctionImage;
-    if (url == null || url.isEmpty) return null;
-    if (url.startsWith('http')) return url;
-    return '${EndPoints.baseUrl}$url';
   }
 
   String _getOrderStatusText(String? status) {
@@ -403,5 +370,79 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
       default:
         return Colors.orange;
     }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    String? imageUrl;
+    if (order.product != null) {
+      final product = order.product!;
+      if (product['images'] != null && (product['images'] as List).isNotEmpty) {
+        imageUrl = (product['images'] as List).first.toString();
+      } else {
+        imageUrl = product['imageUrl']?.toString();
+      }
+    } else if (order.auction != null) {
+      if (order.auctionProductId != null &&
+          order.auction!['auction_products'] != null) {
+        final products = order.auction!['auction_products'] as List;
+        final specificProduct = products.firstWhere(
+          (p) => p['id'] == order.auctionProductId,
+          orElse: () => null,
+        );
+        if (specificProduct != null && specificProduct['image'] != null) {
+          imageUrl = specificProduct['image'].toString();
+        }
+      }
+
+      if (imageUrl == null && order.auctionProductId != null) {
+        final auctionAsync = ref.watch(auctionDetailsProvider(order.auctionId));
+        auctionAsync.whenData((auction) {
+          if (auction.auctionProducts != null) {
+            for (var p in auction.auctionProducts!) {
+              if (p.id == order.auctionProductId) {
+                if (p.images != null && p.images!.isNotEmpty) {
+                  imageUrl = p.images!.first;
+                } else if (p.imageUrl != null && p.imageUrl!.isNotEmpty) {
+                  imageUrl = p.imageUrl;
+                }
+                break;
+              }
+            }
+          }
+        });
+      }
+
+      imageUrl ??=
+          order.auction!['image_url']?.toString() ??
+          order.auction!['main_image']?.toString();
+    }
+
+    if (imageUrl != null && !imageUrl!.startsWith('http')) {
+      imageUrl = '${EndPoints.baseUrl}$imageUrl';
+    }
+
+    final String finalImageUrl = imageUrl ?? '';
+
+    return OrderCard(
+      title: _getOrderTitle(order),
+      price: '${order.total} ${AppStrings.currency.tr()}',
+      status: _getOrderStatusText(order.orderStatus ?? order.paymentStatus),
+      statusColor: _getOrderStatusColor(
+        order.orderStatus ?? order.paymentStatus,
+      ),
+      imageUrl: finalImageUrl.isNotEmpty ? finalImageUrl : null,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OrderDetailsScreen(
+              order: order,
+              productImage: finalImageUrl.isNotEmpty ? finalImageUrl : null,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
