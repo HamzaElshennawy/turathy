@@ -220,23 +220,44 @@ class _AuctionBiddingControlsWidgetState
       currentPrice = widget.finalPrice!;
     }
 
+    // Dynamic bid increment logic based on the current price
+    if (currentPrice <= 500) {
+      bidIncrement = 10;
+    } else if (currentPrice <= 1500) {
+      bidIncrement = 20;
+    } else if (currentPrice <= 3000) {
+      bidIncrement = 50;
+    } else if (currentPrice <= 5000) {
+      bidIncrement = 100;
+    } else if (currentPrice <= 7500) {
+      bidIncrement = 200;
+    } else {
+      bidIncrement = 500;
+    }
+
     final bool isAuctionEnded =
         _remainingTime == Duration.zero || widget.isAuctionEnded;
 
     // Check status based on the determine latest bid
     final bool isHighestBidder = latestBid?.userId == CachedVariables.userId;
 
-    // Check if user has participated in the auction
-    final bool hasParticipated =
-        widget.auction.auctionBids?.any(
-          (bid) => bid.userId == CachedVariables.userId,
-        ) ??
-        false;
+    // Filter all bids to just the ones for the current product
+    final List<AuctionBid> currentProductBids = currentProductId != null
+        ? (widget.auction.auctionBids
+                  ?.where((bid) => bid.productId == currentProductId)
+                  .toList() ??
+              [])
+        : (widget.auction.auctionBids ?? []);
+
+    // Check if user has participated in the current product's auction
+    final bool hasParticipated = currentProductBids.any(
+      (bid) => bid.userId == CachedVariables.userId,
+    );
 
     // A user is outbid if they participated but are not the highest bidder
     final bool hasBeenOutbid = hasParticipated && !isHighestBidder;
 
-    final int bidNumber = widget.auction.auctionBids?.length ?? 0;
+    final int bidNumber = currentProductBids.length;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -257,7 +278,7 @@ class _AuctionBiddingControlsWidgetState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'المواجهة رقم: ${bidNumber.toString().padLeft(3, '0')}',
+                    '${AppStrings.auctionBidNumber.tr()}${bidNumber.toString().padLeft(3, '0')}',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   gapH4,
@@ -274,9 +295,9 @@ class _AuctionBiddingControlsWidgetState
                           ),
                         ),
                         gapW4,
-                        const Text(
-                          'اعلى مزايدة',
-                          style: TextStyle(
+                        Text(
+                          AppStrings.highestBid.tr(),
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.green,
                             fontWeight: FontWeight.w500,
@@ -296,9 +317,9 @@ class _AuctionBiddingControlsWidgetState
                           ),
                         ),
                         gapW4,
-                        const Text(
-                          'هناك مزايدة اعلى منك',
-                          style: TextStyle(
+                        Text(
+                          AppStrings.higherBidThanYours.tr(),
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.red,
                             fontWeight: FontWeight.w500,
@@ -313,7 +334,7 @@ class _AuctionBiddingControlsWidgetState
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'المزاد الحالي',
+                    AppStrings.currentAuction.tr(),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   Text(
@@ -456,7 +477,7 @@ class _AuctionBiddingControlsWidgetState
                                 ),
                                 gapH4,
                                 Text(
-                                  '${'finalPrice'.tr()}: \$${wonPrice.toStringAsFixed(0)}',
+                                  '${AppStrings.finalPrice.tr()}: \$${wonPrice.toStringAsFixed(0)}',
                                   style: const TextStyle(
                                     color: Colors.green,
                                     fontSize: 14,
@@ -604,7 +625,7 @@ class _AuctionBiddingControlsWidgetState
               ),
               child: Center(
                 child: Text(
-                  'selectItemToBid'.tr(),
+                  AppStrings.selectItemToBid.tr(),
                   style: TextStyle(
                     color: Colors.blue.shade700,
                     fontSize: 16,
@@ -940,11 +961,16 @@ class _AuctionBiddingControlsWidgetState
         // But if we never bid, "You Lost" might feel aggressive?
         // Let's check if the user is in the bid list if available.
         // Similar logic to AuctionGallery.
-        final bool userBid =
-            widget.auction.auctionBids?.any(
-              (bid) => bid.userId == CachedVariables.userId,
-            ) ??
-            false;
+        final currentProductBids = currentProductId != null
+            ? (widget.auction.auctionBids
+                      ?.where((bid) => bid.productId == currentProductId)
+                      .toList() ??
+                  [])
+            : (widget.auction.auctionBids ?? []);
+
+        final bool userBid = currentProductBids.any(
+          (bid) => bid.userId == CachedVariables.userId,
+        );
 
         if (userBid) {
           return Container(
@@ -1045,7 +1071,7 @@ class _AuctionBiddingControlsWidgetState
     final bool isSelected = _selectedMultiplier == multiplier;
     // Calculate total bid price (current + increment * multiplier)
     final num totalBidPrice = currentPrice + (bidIncrement * multiplier);
-    final String label = totalBidPrice.toStringAsFixed(0);
+    final String label = '\$${totalBidPrice.toStringAsFixed(0)}';
 
     return GestureDetector(
       onTap: isDisabled

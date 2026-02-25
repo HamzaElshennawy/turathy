@@ -167,8 +167,13 @@ class AuctionModel {
     user = json['user'] != null ? User.fromJson(json['user']) : null;
     if (json['auction_products'] != null) {
       auctionProducts = <AuctionProducts>[];
+      auctionBids = <AuctionBid>[]; // Initialize to aggregate from products
       json['auction_products'].forEach((v) {
-        auctionProducts!.add(AuctionProducts.fromJson(v));
+        final product = AuctionProducts.fromJson(v);
+        auctionProducts!.add(product);
+        if (product.bids != null) {
+          auctionBids!.addAll(product.bids!);
+        }
       });
     }
 
@@ -180,9 +185,12 @@ class AuctionModel {
     }
 
     if (json['Auction_bids'] != null) {
-      auctionBids = <AuctionBid>[];
+      auctionBids ??= <AuctionBid>[];
       json['Auction_bids'].forEach((v) {
-        auctionBids!.add(AuctionBid.fromJson(v));
+        final newBid = AuctionBid.fromJson(v);
+        if (!auctionBids!.any((b) => b.id == newBid.id)) {
+          auctionBids!.add(newBid);
+        }
       });
     }
     isLiveAuction = json['type'] == 'Live';
@@ -247,6 +255,8 @@ class AuctionModel {
 class User {
   int? id;
   String? name;
+  String? nickname;
+  String? nationality;
   String? number;
   String? password;
   String? otpCode;
@@ -256,6 +266,8 @@ class User {
   User({
     this.id,
     this.name,
+    this.nickname,
+    this.nationality,
     this.number,
     this.password,
     this.otpCode,
@@ -270,6 +282,8 @@ class User {
           runtimeType == other.runtimeType &&
           id == other.id &&
           name == other.name &&
+          nickname == other.nickname &&
+          nationality == other.nationality &&
           number == other.number &&
           password == other.password &&
           otpCode == other.otpCode &&
@@ -280,15 +294,27 @@ class User {
   int get hashCode =>
       id.hashCode ^
       name.hashCode ^
+      nickname.hashCode ^
+      nationality.hashCode ^
       number.hashCode ^
       password.hashCode ^
       otpCode.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;
 
+  String get displayTitle {
+    final title = nickname ?? name;
+    if (nationality != null && nationality!.isNotEmpty) {
+      return '$title ${SocketUser.getFlagEmoji(nationality!)}';
+    }
+    return title ?? 'Unknown';
+  }
+
   User.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     name = json['name'];
+    nickname = json['nickname'];
+    nationality = json['nationality'];
     number = json['number'];
     password = json['password'];
     otpCode = json['otpCode'];
@@ -300,6 +326,8 @@ class User {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['id'] = id;
     data['name'] = name;
+    data['nickname'] = nickname;
+    data['nationality'] = nationality;
     data['number'] = number;
     data['password'] = password;
     data['otpCode'] = otpCode;
@@ -325,6 +353,7 @@ class AuctionProducts {
   String? origin;
   String? usage;
   List<String>? images;
+  List<AuctionBid>? bids;
 
   AuctionProducts({
     this.id,
@@ -402,6 +431,18 @@ class AuctionProducts {
       images = List<String>.from(
         json['images'],
       ).map((e) => EndPoints.baseUrl + e).toList();
+    }
+
+    if (json['Auction_bids'] != null) {
+      bids = <AuctionBid>[];
+      json['Auction_bids'].forEach((v) {
+        bids!.add(AuctionBid.fromJson(v));
+      });
+    } else if (json['bids'] != null) {
+      bids = <AuctionBid>[];
+      json['bids'].forEach((v) {
+        bids!.add(AuctionBid.fromJson(v));
+      });
     }
   }
 

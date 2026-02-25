@@ -26,6 +26,7 @@ import 'package:turathy/src/features/orders/domain/order_model.dart';
 import '../../domain/winning_auction_model.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
+import 'package:turathy/src/features/auctions/domain/auction_access_model.dart';
 
 class LiveAuctionScreen extends ConsumerStatefulWidget {
   final int auctionId;
@@ -65,19 +66,120 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   // Selected product for view-only mode
   AuctionProducts? _selectedProduct;
 
+  // Access Control State
+  String _accessStatus =
+      'LOADING'; // 'LOADING', 'GRANTED', 'REQUIRED', 'PENDING', 'DENIED'
+  bool _isAccessLoading = true;
+
+  StreamSubscription? _socketErrorSubscription;
+
   @override
   void initState() {
-    if (widget.isAdmin) {
-      socketActions.startLiveAuction(widget.auctionId, CachedVariables.userId!);
-    }
-    socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
-
     super.initState();
+    _checkAccess();
+
+    // Listen to socket errors (e.g., "Max bid limit exceeded")
+
+    // Using socketServiceProvider directly to get access to getEventStream
+    final socketService = ref.read(socketServiceProvider);
+    _socketErrorSubscription = socketService
+        .getEventStream<dynamic>('error', (data) => data)
+        .listen((data) {
+          if (mounted && data != null) {
+            final message = data['message'] ?? data.toString();
+
+            // Check if message is related to bid limit
+            if (message.toString().toLowerCase().contains(
+              'max bid limit exceeded',
+            )) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppStrings.bidLimitExceeded.tr()),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            } else {
+              // Display other errors generic or as they come
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(message.toString()),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        });
+  }
+
+  Future<void> _checkAccess() async {
+    if (widget.isAdmin) {
+      setState(() {
+        _accessStatus = 'GRANTED';
+        _isAccessLoading = false;
+      });
+      socketActions.startLiveAuction(widget.auctionId, CachedVariables.userId!);
+      socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
+      return;
+    }
+
+    try {
+      final repository = ref.read(productsRepositoryProvider);
+      final response = await repository.checkUserAccess(
+        CachedVariables.userId ?? 0,
+        widget.auctionId,
+      );
+
+      setState(() {
+        _accessStatus = response.status.toUpperCase();
+        _isAccessLoading = false;
+      });
+
+      if (_accessStatus == 'GRANTED') {
+        socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
+      }
+    } catch (e) {
+      debugPrint("Error checking auction access: $e");
+      setState(() {
+        _accessStatus = 'ERROR';
+        _isAccessLoading = false;
+      });
+    }
+  }
+
+  Future<void> _requestAccess() async {
+    setState(() {
+      _isAccessLoading = true;
+    });
+    try {
+      final repository = ref.read(productsRepositoryProvider);
+      final response = await repository.requestAccess(
+        RequestAuctionAccessDto(
+          userId: CachedVariables.userId ?? 0,
+          auctionId: widget.auctionId,
+        ),
+      );
+      setState(() {
+        _accessStatus = response.status.toUpperCase();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppStrings.accessPending.tr()),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error requesting auction access: $e");
+    } finally {
+      setState(() {
+        _isAccessLoading = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     // _cleanupEngine();
+    _socketErrorSubscription?.cancel();
     _cancelFailSafeTimer();
     _cancelFailSafeTimer();
     _audioPlayer.dispose();
@@ -430,26 +532,40 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: AsyncValueWidget(
-          value: auctionValue,
-          data: (auction) {
-            final activeProduct =
-                _selectedProduct ??
-                auction.auctionProducts?.firstWhere((p) {
-                  return p.product == auction.currentProduct ||
-                      p.id == auction.currentProductId;
-                }, orElse: () => AuctionProducts());
+      body: SafeArea(child: _buildBodyContent()),
+    );
+  }
 
-            return Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Agora Video (shrinks if no video)
-                        /* 
+  Widget _buildBodyContent() {
+    if (_isAccessLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_accessStatus != 'GRANTED') {
+      return _buildAccessOverlay();
+    }
+
+    final auctionValue = ref.watch(auctionDetailsProvider(widget.auctionId));
+
+    return AsyncValueWidget(
+      value: auctionValue,
+      data: (auction) {
+        final activeProduct =
+            _selectedProduct ??
+            auction.auctionProducts?.firstWhere((p) {
+              return p.product == auction.currentProduct ||
+                  p.id == auction.currentProductId;
+            }, orElse: () => AuctionProducts());
+
+        return Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Agora Video (shrinks if no video)
+                    /* 
                         if (auction.isLiveAuction && auction.isLive == true)
                           AnimatedSize(
                             duration: const Duration(milliseconds: 300),
@@ -487,535 +603,588 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                           ),
                         */
 
-                        // Pre-Auction Indicator
-                        if (auction.isPreAuction &&
-                            !_isAuctionEnded &&
-                            auction.liveStartDate != null)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.hourglass_top,
-                                  color: Colors.blue,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '${'preAuctionPhase'.tr()} - ${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(auction.liveStartDate!)}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue.shade800,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Current Product Indicator (New)
-                        if (auction.currentProduct != null && !_isAuctionEnded)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            color: Colors.amber.withValues(alpha: 0.1),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.label_outline,
-                                  color: Colors.amber,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '${AppStrings.currentItem.tr()}: ${auction.currentProduct}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Items List (Horizontal scrollable)
-                        if (auction.auctionProducts != null &&
-                            auction.auctionProducts!.isNotEmpty)
-                          Container(
-                            height: 80,
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              itemCount: auction.auctionProducts!.length,
-                              itemBuilder: (context, index) {
-                                final item = auction.auctionProducts![index];
-                                final bool isLive =
-                                    item.product == auction.currentProduct ||
-                                    item.id == auction.currentProductId;
-                                final bool isSelected =
-                                    item.id ==
-                                    (_selectedProduct?.id ??
-                                        (auction.auctionProducts
-                                                ?.firstWhere(
-                                                  (p) =>
-                                                      p.product ==
-                                                      auction.currentProduct,
-                                                  orElse: () =>
-                                                      AuctionProducts(),
-                                                )
-                                                .id ??
-                                            auction.currentProductId));
-
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedProduct = item;
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 60,
-                                    height: 60,
-                                    margin: const EdgeInsets.only(right: 8),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: isLive
-                                            ? Colors
-                                                  .red // Red border for LIVE item
-                                            : isSelected
-                                            ? Colors
-                                                  .blue // Blue border for SELECTED item
-                                            : Colors.transparent,
-                                        width: (isLive || isSelected) ? 2 : 1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
+                    // Pre-Auction Indicator
+                    if (auction.isPreAuction &&
+                        !_isAuctionEnded &&
+                        auction.liveStartDate != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.hourglass_top, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${'preAuctionPhase'.tr()} - ${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(auction.liveStartDate!)}',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue.shade800,
                                     ),
-                                    child: Stack(
-                                      fit: StackFit.expand,
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                          child: CachedNetworkImage(
-                                            imageUrl: item.imageUrl ?? '',
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) =>
-                                                const SizedBox(),
-                                            errorWidget:
-                                                (context, url, error) =>
-                                                    const Icon(Icons.error),
-                                          ),
-                                        ),
-                                        // Status Badge Logic
-                                        Builder(
-                                          builder: (context) {
-                                            // 1. Determine "Phase" of this item relative to current live item
-                                            // Assuming list is ordered:
-                                            // Index < CurrentIndex -> Past/Sold
-                                            // Index == CurrentIndex -> Live
-                                            // Index > CurrentIndex -> Future
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                                            // Find index of current product
-                                            final currentIndex = auction
-                                                .auctionProducts!
-                                                .indexWhere(
-                                                  (p) => _isSameProduct(
-                                                    p.product,
-                                                    auction.currentProduct,
-                                                  ),
-                                                );
-                                            // If current product not found (e.g. auction ended completely), maybe all are sold?
-                                            // Or if auction just started?
+                    // Current Product Indicator (New)
+                    if (auction.currentProduct != null && !_isAuctionEnded)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.label_outline,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${AppStrings.currentItem.tr()}: ${auction.currentProduct}',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                                            // If auction is ended manually, all past items are sold/won.
+                    // Items List (Horizontal scrollable)
+                    if (auction.auctionProducts != null &&
+                        auction.auctionProducts!.isNotEmpty)
+                      Container(
+                        height: 80,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: auction.auctionProducts!.length,
+                          itemBuilder: (context, index) {
+                            final item = auction.auctionProducts![index];
+                            final bool isLive =
+                                item.product == auction.currentProduct ||
+                                item.id == auction.currentProductId;
+                            final bool isSelected =
+                                item.id ==
+                                (_selectedProduct?.id ??
+                                    (auction.auctionProducts
+                                            ?.firstWhere(
+                                              (p) =>
+                                                  p.product ==
+                                                  auction.currentProduct,
+                                              orElse: () => AuctionProducts(),
+                                            )
+                                            .id ??
+                                        auction.currentProductId));
 
-                                            if (isLive) {
-                                              return Positioned(
-                                                bottom: 0,
-                                                left: 0,
-                                                right: 0,
-                                                child: Container(
-                                                  color: Colors.red.withValues(
-                                                    alpha: 0.8,
-                                                  ),
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 2,
-                                                      ),
-                                                  child: Text(
-                                                    AppStrings.live.tr(),
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 8,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
-                                                ),
-                                              );
-                                            }
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedProduct = item;
+                                });
+                              },
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: isLive
+                                        ? Colors
+                                              .red // Red border for LIVE item
+                                        : isSelected
+                                        ? Colors
+                                              .blue // Blue border for SELECTED item
+                                        : Colors.transparent,
+                                    width: (isLive || isSelected) ? 2 : 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: CachedNetworkImage(
+                                        imageUrl: item.imageUrl ?? '',
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            const SizedBox(),
+                                        errorWidget: (context, url, error) =>
+                                            const Icon(Icons.error),
+                                      ),
+                                    ),
+                                    // Status Badge Logic
+                                    Builder(
+                                      builder: (context) {
+                                        // 1. Determine "Phase" of this item relative to current live item
+                                        // Assuming list is ordered:
+                                        // Index < CurrentIndex -> Past/Sold
+                                        // Index == CurrentIndex -> Live
+                                        // Index > CurrentIndex -> Future
 
-                                            if (currentIndex != -1 &&
-                                                index > currentIndex) {
-                                              // Future Update
-                                              // Maybe no badge, or "WAIT"
-                                              return const SizedBox.shrink();
-                                            }
-
-                                            // FIX: If current product is not found (e.g. startup or mismatch)
-                                            // and auction is active, do NOT show "Sold" for everything.
-                                            if (currentIndex == -1 &&
-                                                !_isAuctionEnded &&
-                                                (auction.isCanceled != true &&
-                                                    auction.isExpired !=
-                                                        true)) {
-                                              return const SizedBox.shrink();
-                                            }
-
-                                            // If we are here, it's either Past (Sold/Expired) or auction ended completely
-
-                                            // Check Bids for this product ID
-                                            final productBids =
-                                                auction.auctionBids
-                                                    ?.where(
-                                                      (b) =>
-                                                          b.productId ==
-                                                          item.id,
-                                                    )
-                                                    .toList() ??
-                                                [];
-
-                                            // Filter bids specifically for this item
-                                            // Note: Backend must send productId in bids. We updated model, assumed backend sends it.
-
-                                            // Determine winner of this item
-                                            // Highest bid wins
-
-                                            AuctionBid? highestBid;
-                                            if (productBids.isNotEmpty) {
-                                              // Sort by bid amount desc
-                                              productBids.sort(
-                                                (a, b) => (b.bid ?? 0)
-                                                    .compareTo(a.bid ?? 0),
-                                              );
-                                              highestBid = productBids.first;
-                                            }
-
-                                            String? badgeText;
-                                            Color badgeColor = Colors.grey;
-
-                                            final currentUserId =
-                                                CachedVariables.userId;
-
-                                            if (highestBid != null) {
-                                              if (highestBid.userId ==
-                                                  currentUserId) {
-                                                badgeText = AppStrings.youWon
-                                                    .tr(); // Reusing "You Won" string or create "WON"
-                                                badgeColor = Colors.green;
-                                              } else {
-                                                // Did I bid on it?
-                                                final myBid = productBids
-                                                    .firstWhere(
-                                                      (b) =>
-                                                          b.userId ==
-                                                          currentUserId,
-                                                      orElse: () =>
-                                                          AuctionBid(),
-                                                    );
-                                                if (myBid.userId != null) {
-                                                  badgeText = AppStrings.youLost
-                                                      .tr(); // "LOST"
-                                                  badgeColor = Colors.red;
-                                                } else {
-                                                  badgeText = AppStrings.sold
-                                                      .tr(); // "SOLD"
-                                                  badgeColor = Colors.grey;
-                                                }
-                                              }
-                                            } else {
-                                              // No bids? Expired/Unsold
-                                              badgeText = AppStrings.sold
-                                                  .tr(); // Or "Passed"
-                                              badgeColor = Colors.grey;
-                                            }
-
-                                            return Positioned(
-                                              bottom: 0,
-                                              left: 0,
-                                              right: 0,
-                                              child: Container(
-                                                color: badgeColor.withValues(
-                                                  alpha: 0.9,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 2,
-                                                    ),
-                                                child: Text(
-                                                  badgeText,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
+                                        // Find index of current product
+                                        final currentIndex = auction
+                                            .auctionProducts!
+                                            .indexWhere(
+                                              (p) => _isSameProduct(
+                                                p.product,
+                                                auction.currentProduct,
                                               ),
                                             );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                                        // If current product not found (e.g. auction ended completely), maybe all are sold?
+                                        // Or if auction just started?
 
-                        // Image Gallery
-                        Builder(
-                          builder: (context) {
-                            String? statusLabel;
-                            Color? statusColor;
-                            final int? currentUserId = CachedVariables.userId;
+                                        // If auction is ended manually, all past items are sold/won.
 
-                            // Use local state if ended, otherwise check model
-                            // Determine status for the ACTIVE product (displayed in big view)
-                            if (activeProduct != null &&
-                                activeProduct.id != null) {
-                              final bool isCurrentLiveProduct = _isSameProduct(
-                                activeProduct.product,
-                                auction.currentProduct,
-                              );
-
-                              // If it's the current live product, check if the AUCTION itself is ended/expired.
-                              // If auction is live and this is the current product, no special "Sold" badge needed yet (unless expired).
-
-                              bool isProductEnded = false;
-
-                              if (auction.isPreAuction) {
-                                isProductEnded = false;
-                              } else if (isCurrentLiveProduct) {
-                                isProductEnded =
-                                    _isAuctionEnded ||
-                                    auction.isExpired == true ||
-                                    auction.isCanceled == true;
-                                if (auction.expiryDate != null &&
-                                    auction.expiryDate!.isBefore(
-                                      DateTime.now(),
-                                    )) {
-                                  isProductEnded = true;
-                                }
-                              } else {
-                                final currentIndex = auction.auctionProducts!
-                                    .indexWhere(
-                                      (p) =>
-                                          _isSameProduct(
-                                            p.product,
-                                            auction.currentProduct,
-                                          ) ||
-                                          p.id == auction.currentProductId,
-                                    );
-                                final activeIndex = auction.auctionProducts!
-                                    .indexWhere(
-                                      (p) => p.id == activeProduct.id,
-                                    );
-                                if (currentIndex != -1 &&
-                                    activeIndex > currentIndex &&
-                                    !_isAuctionEnded &&
-                                    auction.isExpired != true &&
-                                    auction.isCanceled != true) {
-                                  isProductEnded = false;
-                                } else {
-                                  isProductEnded = true;
-                                }
-                              }
-
-                              if (isProductEnded) {
-                                // Logic to determine Won/Lost/Sold for THIS product
-                                final productBids =
-                                    auction.auctionBids
-                                        ?.where(
-                                          (b) =>
-                                              b.productId == activeProduct.id,
-                                        )
-                                        .toList() ??
-                                    [];
-
-                                AuctionBid? highestBid;
-                                if (productBids.isNotEmpty) {
-                                  productBids.sort(
-                                    (a, b) =>
-                                        (b.bid ?? 0).compareTo(a.bid ?? 0),
-                                  );
-                                  highestBid = productBids.first;
-                                }
-
-                                if (highestBid != null) {
-                                  if (highestBid.userId == currentUserId) {
-                                    statusLabel = AppStrings.youWon.tr();
-                                    statusColor = Colors.green;
-                                  } else {
-                                    // Check if current user bid on this product
-                                    final didIBid = productBids.any(
-                                      (b) => b.userId == currentUserId,
-                                    );
-                                    if (didIBid) {
-                                      statusLabel = AppStrings.youLost.tr();
-                                      statusColor = Colors.red;
-                                    } else {
-                                      statusLabel = AppStrings.sold.tr();
-                                      statusColor = Colors.red;
-                                    }
-                                  }
-                                } else {
-                                  // No bids — item ended without any bids
-                                  statusLabel = AppStrings.sold.tr();
-                                  statusColor = Colors.grey;
-                                }
-                              } else {
-                                if (auction.isPreAuction) {
-                                  statusLabel = 'preAuctionPhase'.tr();
-                                  statusColor = Colors.blue;
-                                } else if (!isCurrentLiveProduct) {
-                                  statusLabel = null;
-                                } else {
-                                  statusLabel = AppStrings.live.tr();
-                                  statusColor = Colors.red;
-                                }
-                              }
-                            }
-
-                            final List<String> imagesToShow = [];
-
-                            // If we have a specific product active and it has images, show ONLY those
-                            if (activeProduct?.images != null &&
-                                activeProduct!.images!.isNotEmpty) {
-                              imagesToShow.addAll(activeProduct.images!);
-                            } else if (activeProduct?.imageUrl != null &&
-                                activeProduct!.imageUrl!.isNotEmpty) {
-                              imagesToShow.add(activeProduct.imageUrl!);
-                            } else if (auction.imageUrl != null &&
-                                auction.imageUrl!.isNotEmpty) {
-                              // Fallback to auction main image if product has no image
-                              imagesToShow.add(auction.imageUrl!);
-                            }
-
-                            // If no specific product image, we might show nothing or fallback.
-                            // Let's keep existing fallback behavior for now but EXCLUDE auctionImages if we have product image.
-
-                            if (imagesToShow.isEmpty &&
-                                auction.auctionImages != null) {
-                              imagesToShow.addAll(auction.auctionImages!);
-                            }
-
-                            return Stack(
-                              children: [
-                                AuctionGalleryWidget(images: imagesToShow),
-                                // SOLD Badge Logic for Main Image
-                                if (statusLabel != null)
-                                  Positioned(
-                                    top: 20,
-                                    right: 20,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: (statusColor ?? Colors.red)
-                                            .withValues(alpha: 0.9),
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.3,
+                                        if (isLive) {
+                                          return Positioned(
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            child: Container(
+                                              color: Colors.red.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 2,
+                                                  ),
+                                              child: Text(
+                                                AppStrings.live.tr(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
                                             ),
-                                            blurRadius: 4,
-                                            offset: const Offset(2, 2),
+                                          );
+                                        }
+
+                                        if (currentIndex != -1 &&
+                                            index > currentIndex) {
+                                          // Future Update
+                                          // Maybe no badge, or "WAIT"
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        // FIX: If current product is not found (e.g. startup or mismatch)
+                                        // and auction is active, do NOT show "Sold" for everything.
+                                        if (currentIndex == -1 &&
+                                            !_isAuctionEnded &&
+                                            (auction.isCanceled != true &&
+                                                auction.isExpired != true)) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        // If we are here, it's either Past (Sold/Expired) or auction ended completely
+
+                                        // Check Bids for this product ID
+                                        final productBids =
+                                            auction.auctionBids
+                                                ?.where(
+                                                  (b) => b.productId == item.id,
+                                                )
+                                                .toList() ??
+                                            [];
+
+                                        // Filter bids specifically for this item
+                                        // Note: Backend must send productId in bids. We updated model, assumed backend sends it.
+
+                                        // Determine winner of this item
+                                        // Highest bid wins
+
+                                        AuctionBid? highestBid;
+                                        if (productBids.isNotEmpty) {
+                                          // Sort by bid amount desc
+                                          productBids.sort(
+                                            (a, b) => (b.bid ?? 0).compareTo(
+                                              a.bid ?? 0,
+                                            ),
+                                          );
+                                          highestBid = productBids.first;
+                                        }
+
+                                        String? badgeText;
+                                        Color badgeColor = Colors.grey;
+
+                                        final currentUserId =
+                                            CachedVariables.userId;
+
+                                        if (highestBid != null) {
+                                          if (highestBid.userId ==
+                                              currentUserId) {
+                                            badgeText = AppStrings.youWon
+                                                .tr(); // Reusing "You Won" string or create "WON"
+                                            badgeColor = Colors.green;
+                                          } else {
+                                            // Did I bid on it?
+                                            final myBid = productBids
+                                                .firstWhere(
+                                                  (b) =>
+                                                      b.userId == currentUserId,
+                                                  orElse: () => AuctionBid(),
+                                                );
+                                            if (myBid.userId != null) {
+                                              badgeText = AppStrings.youLost
+                                                  .tr(); // "LOST"
+                                              badgeColor = Colors.red;
+                                            } else {
+                                              badgeText = AppStrings.sold
+                                                  .tr(); // "SOLD"
+                                              badgeColor = Colors.grey;
+                                            }
+                                          }
+                                        } else {
+                                          // No bids? Expired/Unsold
+                                          badgeText = AppStrings.sold
+                                              .tr(); // Or "Passed"
+                                          badgeColor = Colors.grey;
+                                        }
+
+                                        return Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            color: badgeColor.withValues(
+                                              alpha: 0.9,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 2,
+                                            ),
+                                            child: Text(
+                                              badgeText,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
                                           ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        statusLabel,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          letterSpacing: 1.2,
-                                        ),
-                                      ),
+                                        );
+                                      },
                                     ),
-                                  ),
-                              ],
+                                  ],
+                                ),
+                              ),
                             );
                           },
                         ),
+                      ),
 
-                        // Info Table
-                        AuctionInfoTableWidget(
-                          auction: auction,
-                          currentProduct: activeProduct,
-                        ),
+                    // Image Gallery
+                    Builder(
+                      builder: (context) {
+                        String? statusLabel;
+                        Color? statusColor;
+                        final int? currentUserId = CachedVariables.userId;
 
-                        gapH16,
+                        // Use local state if ended, otherwise check model
+                        // Determine status for the ACTIVE product (displayed in big view)
+                        if (activeProduct != null && activeProduct.id != null) {
+                          final bool isCurrentLiveProduct = _isSameProduct(
+                            activeProduct.product,
+                            auction.currentProduct,
+                          );
 
-                        // Bid History
-                        AuctionBidsHistoryWidget(
-                          initialBids: auction.auctionBids ?? [],
-                          productId: activeProduct?.id,
-                        ),
+                          // If it's the current live product, check if the AUCTION itself is ended/expired.
+                          // If auction is live and this is the current product, no special "Sold" badge needed yet (unless expired).
 
-                        gapH24,
-                      ],
+                          bool isProductEnded = false;
+
+                          if (auction.isPreAuction) {
+                            isProductEnded = false;
+                          } else if (isCurrentLiveProduct) {
+                            isProductEnded =
+                                _isAuctionEnded ||
+                                auction.isExpired == true ||
+                                auction.isCanceled == true;
+                            if (auction.expiryDate != null &&
+                                auction.expiryDate!.isBefore(DateTime.now())) {
+                              isProductEnded = true;
+                            }
+                          } else {
+                            final currentIndex = auction.auctionProducts!
+                                .indexWhere(
+                                  (p) =>
+                                      _isSameProduct(
+                                        p.product,
+                                        auction.currentProduct,
+                                      ) ||
+                                      p.id == auction.currentProductId,
+                                );
+                            final activeIndex = auction.auctionProducts!
+                                .indexWhere((p) => p.id == activeProduct.id);
+                            if (currentIndex != -1 &&
+                                activeIndex > currentIndex &&
+                                !_isAuctionEnded &&
+                                auction.isExpired != true &&
+                                auction.isCanceled != true) {
+                              isProductEnded = false;
+                            } else {
+                              isProductEnded = true;
+                            }
+                          }
+
+                          if (isProductEnded) {
+                            // Logic to determine Won/Lost/Sold for THIS product
+                            final productBids =
+                                auction.auctionBids
+                                    ?.where(
+                                      (b) => b.productId == activeProduct.id,
+                                    )
+                                    .toList() ??
+                                [];
+
+                            AuctionBid? highestBid;
+                            if (productBids.isNotEmpty) {
+                              productBids.sort(
+                                (a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0),
+                              );
+                              highestBid = productBids.first;
+                            }
+
+                            if (highestBid != null) {
+                              if (highestBid.userId == currentUserId) {
+                                statusLabel = AppStrings.youWon.tr();
+                                statusColor = Colors.green;
+                              } else {
+                                // Check if current user bid on this product
+                                final didIBid = productBids.any(
+                                  (b) => b.userId == currentUserId,
+                                );
+                                if (didIBid) {
+                                  statusLabel = AppStrings.youLost.tr();
+                                  statusColor = Colors.red;
+                                } else {
+                                  statusLabel = AppStrings.sold.tr();
+                                  statusColor = Colors.red;
+                                }
+                              }
+                            } else {
+                              // No bids — item ended without any bids
+                              statusLabel = AppStrings.sold.tr();
+                              statusColor = Colors.grey;
+                            }
+                          } else {
+                            if (auction.isPreAuction) {
+                              statusLabel = 'preAuctionPhase'.tr();
+                              statusColor = Colors.blue;
+                            } else if (!isCurrentLiveProduct) {
+                              statusLabel = null;
+                            } else {
+                              statusLabel = AppStrings.live.tr();
+                              statusColor = Colors.red;
+                            }
+                          }
+                        }
+
+                        final List<String> imagesToShow = [];
+
+                        // If we have a specific product active and it has images, show ONLY those
+                        if (activeProduct?.images != null &&
+                            activeProduct!.images!.isNotEmpty) {
+                          imagesToShow.addAll(activeProduct.images!);
+                        } else if (activeProduct?.imageUrl != null &&
+                            activeProduct!.imageUrl!.isNotEmpty) {
+                          imagesToShow.add(activeProduct.imageUrl!);
+                        } else if (auction.imageUrl != null &&
+                            auction.imageUrl!.isNotEmpty) {
+                          // Fallback to auction main image if product has no image
+                          imagesToShow.add(auction.imageUrl!);
+                        }
+
+                        // If no specific product image, we might show nothing or fallback.
+                        // Let's keep existing fallback behavior for now but EXCLUDE auctionImages if we have product image.
+
+                        if (imagesToShow.isEmpty &&
+                            auction.auctionImages != null) {
+                          imagesToShow.addAll(auction.auctionImages!);
+                        }
+
+                        return Stack(
+                          children: [
+                            AuctionGalleryWidget(images: imagesToShow),
+                            // SOLD Badge Logic for Main Image
+                            if (statusLabel != null)
+                              Positioned(
+                                top: 20,
+                                right: 20,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: (statusColor ?? Colors.red)
+                                        .withValues(alpha: 0.9),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 4,
+                                        offset: const Offset(2, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    statusLabel,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
-                  ),
+
+                    // Info Table
+                    AuctionInfoTableWidget(
+                      auction: auction,
+                      currentProduct: activeProduct,
+                    ),
+
+                    gapH16,
+
+                    // Bid History
+                    AuctionBidsHistoryWidget(
+                      initialBids: auction.auctionBids ?? [],
+                      productId: activeProduct?.id,
+                    ),
+
+                    gapH24,
+                  ],
                 ),
-                // Bidding Controls (Fixed at bottom)
-                AuctionBiddingControlsWidget(
-                  auction: auction,
-                  expiryDate: auction.expiryDate,
-                  isAuctionEnded: _isAuctionEnded,
-                  isViewOnly:
-                      !auction.isPreAuction &&
-                      _selectedProduct != null &&
-                      _selectedProduct?.id !=
-                          (auction.auctionProducts
-                                  ?.firstWhere(
-                                    (p) => p.product == auction.currentProduct,
-                                    orElse: () => AuctionProducts(),
-                                  )
-                                  .id ??
-                              auction.currentProductId),
-                  selectedProduct: _selectedProduct,
-                  isOwner: auction.userId == CachedVariables.userId,
-                  winnerId: _winnerId,
-                  winnerName: _winnerName,
-                  finalPrice: _finalPrice,
-                  onPlaceBid: (qty, price, productId) {
-                    _placeBid(qty, price, overrideProductId: productId);
-                  },
-                ),
-              ],
-            );
-          },
+              ),
+            ),
+            // Bidding Controls (Fixed at bottom)
+            AuctionBiddingControlsWidget(
+              auction: auction,
+              expiryDate: auction.expiryDate,
+              isAuctionEnded: _isAuctionEnded,
+              isViewOnly:
+                  !auction.isPreAuction &&
+                  _selectedProduct != null &&
+                  _selectedProduct?.id !=
+                      (auction.auctionProducts
+                              ?.firstWhere(
+                                (p) => p.product == auction.currentProduct,
+                                orElse: () => AuctionProducts(),
+                              )
+                              .id ??
+                          auction.currentProductId),
+              selectedProduct: _selectedProduct,
+              isOwner: auction.userId == CachedVariables.userId,
+              winnerId: _winnerId,
+              winnerName: _winnerName,
+              finalPrice: _finalPrice,
+              onPlaceBid: (qty, price, productId) {
+                _placeBid(qty, price, overrideProductId: productId);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAccessOverlay() {
+    IconData icon;
+    Color color;
+    String title;
+    String message = AppStrings.requestAccessDescription.tr();
+    Widget? actionWidget;
+
+    switch (_accessStatus) {
+      case 'PENDING':
+        icon = Icons.hourglass_empty;
+        color = Colors.orange;
+        title = AppStrings.accessPending.tr();
+        break;
+      case 'DENIED':
+        icon = Icons.block;
+        color = Colors.red;
+        title = AppStrings.accessDenied.tr();
+        break;
+      case 'REQUIRED':
+      default:
+        icon = Icons.lock_outline;
+        color = Colors.blueGrey;
+        title = AppStrings.requestAccess.tr();
+        actionWidget = ElevatedButton.icon(
+          onPressed: _requestAccess,
+          icon: const Icon(Icons.person_add, color: Colors.white),
+          label: Text(
+            AppStrings.requestAccess.tr(),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D4739),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        break;
+    }
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 80, color: color),
+            ),
+            gapH24,
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            gapH16,
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black54,
+                height: 1.5,
+              ),
+            ),
+            if (actionWidget != null) ...[gapH32, actionWidget],
+          ],
         ),
       ),
     );

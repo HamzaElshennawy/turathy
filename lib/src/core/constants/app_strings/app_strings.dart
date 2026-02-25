@@ -370,4 +370,22 @@ class AppStrings {
   static const String addressDeletedSuccessfully = 'addressDeletedSuccessfully';
   static const String addressSavedSuccessfully = 'addressSavedSuccessfully';
   static const String selectedAddress = 'selectedAddress';
+  static const String selectItemToBid = 'selectItemToBid';
+
+  // Auction Access Control
+  static const String requestAccess = 'requestAccess';
+  static const String requestAccessDescription = 'requestAccessDescription';
+  static const String accessPending = 'accessPending';
+  static const String accessDenied = 'accessDenied';
+  static const String bidLimitExceeded = 'bidLimitExceeded';
+  static const String myAuctionRequests = 'myAuctionRequests';
+  static const String auctionAccessRequired = 'auctionAccessRequired';
+  static const String accessGranted = 'accessGranted';
+
+  // Auction Bidding Controls
+  static const String auctionBidNumber = 'auctionBidNumber';
+  static const String highestBid = 'highestBid';
+  static const String outbid = 'outbid';
+  static const String currentAuction = 'currentAuction';
+  static const String higherBidThanYours = 'higherBidThanYours';
 }

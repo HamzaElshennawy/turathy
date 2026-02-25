@@ -105,13 +105,14 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              bid.user?.name ?? 'anonymous'.tr(),
+                              bid.user?.displayTitle ?? 'anonymous'.tr(),
                               style: TextStyle(
                                 fontWeight: showHighlight
                                     ? FontWeight.bold
                                     : FontWeight.w500,
                                 fontSize: 14,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             if (bid.createdAt != null)
                               Text(

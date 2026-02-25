@@ -336,5 +336,19 @@
   "continueWithAddress": "Continue",
   "recipientName": "Recipient Name",
   "recipientMobile": "Recipient Mobile",
-  "noAddressesSaved": "No addresses saved"
+  "noAddressesSaved": "No addresses saved",
+  "selectItemToBid": "Select Item to Bid",
+  "requestAccess": "Request Access",
+  "requestAccessDescription": "This auction is restricted and requires administrator approval to join or place bids.",
+  "accessPending": "Access Request Pending",
+  "accessDenied": "Access Denied",
+  "bidLimitExceeded": "Your maximum bid limit has been exceeded. Please wait or contact support.",
+  "myAuctionRequests": "My Requests",
+  "auctionAccessRequired": "Access Required",
+  "accessGranted": "Access Granted",
+  "auctionBidNumber": "Bid NO: ",
+  "highestBid": "Highest Bid",
+  "outbid": "Outbid",
+  "currentAuction": "Current Auction",
+  "higherBidThanYours": "Higher bid than yours"
 }

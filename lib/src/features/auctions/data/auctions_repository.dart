@@ -13,6 +13,7 @@ import '../../search/presentation/widgets/filter_widget/filter_widget_controller
 import '../domain/auction_model.dart';
 import '../domain/max_bid_model.dart';
 import '../domain/winning_auction_model.dart';
+import '../domain/auction_access_model.dart';
 
 class AuctionsRepository {
   Future<List<AuctionModel>> getAllAuctions([FilterState? filters]) async {
@@ -221,6 +222,68 @@ class AuctionsRepository {
     } else {
       String message =
           result.data['error'] ?? 'An error occurred while fetching max bids';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
+  Future<CheckAccessResponseModel> checkUserAccess(
+    int userId,
+    int auctionId,
+  ) async {
+    final result = await DioHelper.getData(
+      url: EndPoints.checkAuctionAccess,
+      token: CachedVariables.token,
+      query: {'user_id': userId.toString(), 'auction_id': auctionId.toString()},
+    );
+    if (result.statusCode == 200 || result.statusCode == 201) {
+      return CheckAccessResponseModel.fromJson(result.data['data']);
+    } else {
+      String message =
+          result.data['error'] ??
+          'An error occurred while checking auction access';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
+  Future<AuctionAccessModel> requestAccess(RequestAuctionAccessDto dto) async {
+    final result = await DioHelper.postData(
+      url: EndPoints.requestAuctionAccess,
+      data: dto.toJson(),
+      token: CachedVariables.token,
+    );
+    if (result.statusCode == 200 || result.statusCode == 201) {
+      final responseData = result.data['data'];
+      // Handle case where API returns a message and the created request,
+      // or just returns the created request directly.
+      if (responseData is Map<String, dynamic> &&
+          responseData.containsKey('request')) {
+        return AuctionAccessModel.fromJson(responseData['request']);
+      }
+      return AuctionAccessModel.fromJson(responseData);
+    } else {
+      String message =
+          result.data['error'] ??
+          'An error occurred while requesting auction access';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
+  Future<List<AuctionAccessModel>> getUserRequests() async {
+    final result = await DioHelper.getData(
+      url: EndPoints.getMyAuctionRequests,
+      token: CachedVariables.token,
+      query: {'user_id': CachedVariables.userId.toString()},
+    );
+    if (result.statusCode == 200) {
+      List<AuctionAccessModel> requests = [];
+      for (var item in result.data['data']) {
+        requests.add(AuctionAccessModel.fromJson(item));
+      }
+      return requests;
+    } else {
+      String message =
+          result.data['error'] ??
+          'An error occurred while fetching auction access requests';
       throw AuthException(message, result.statusCode);
     }
   }

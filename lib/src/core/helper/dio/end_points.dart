@@ -100,4 +100,18 @@ abstract class EndPoints {
   static const String addAddress = 'addresses/add-address';
   static const String updateAddress = 'addresses/update-address';
   static const String deleteAddress = 'addresses/delete-address';
+
+  // ============================================
+  // App Config
+  // ============================================
+
+  static const String getConfig = 'config/get-app-config';
+
+  // ============================================
+  // Auction Access
+  // ============================================
+
+  static const String requestAuctionAccess = 'auction-access/request-access';
+  static const String checkAuctionAccess = 'auction-access/check-access';
+  static const String getMyAuctionRequests = 'auction-access/get-my-requests';
 }

@@ -152,11 +152,15 @@ class CommentEvent {
 class SocketUser {
   final int id;
   final String name;
+  final String? nickname;
+  final String? nationality;
   final String number;
 
   const SocketUser({
     required this.id,
     required this.name,
+    this.nickname,
+    this.nationality,
     required this.number,
   });
 
@@ -164,12 +168,20 @@ class SocketUser {
     return SocketUser(
       id: json['id'] as int,
       name: json['name'] as String,
+      nickname: json['nickname'] as String?,
+      nationality: json['nationality'] as String?,
       number: json['number'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'name': name, 'number': number};
+    return {
+      'id': id,
+      'name': name,
+      'nickname': nickname,
+      'nationality': nationality,
+      'number': number,
+    };
   }
 
   @override
@@ -179,13 +191,44 @@ class SocketUser {
           runtimeType == other.runtimeType &&
           id == other.id &&
           name == other.name &&
+          nickname == other.nickname &&
+          nationality == other.nationality &&
           number == other.number;
 
   @override
-  int get hashCode => id.hashCode ^ name.hashCode ^ number.hashCode;
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      nickname.hashCode ^
+      nationality.hashCode ^
+      number.hashCode;
+
+  String get displayTitle {
+    final title = nickname ?? name;
+    if (nationality != null && nationality!.isNotEmpty) {
+      return '$title ${getFlagEmoji(nationality!)}';
+    }
+    return title;
+  }
+
+  static String getFlagEmoji(String countryCode) {
+    try {
+      String code = countryCode.toUpperCase();
+      if (code == 'EGY') code = 'EG';
+      if (code == 'SAU') code = 'SA';
+      if (code.length != 2) return code;
+
+      int firstLetter = code.codeUnitAt(0) - 0x41 + 0x1F1E6;
+      int secondLetter = code.codeUnitAt(1) - 0x41 + 0x1F1E6;
+      return String.fromCharCode(firstLetter) +
+          String.fromCharCode(secondLetter);
+    } catch (e) {
+      return countryCode;
+    }
+  }
 
   @override
-  String toString() => 'SocketUser(id: $id, name: $name)';
+  String toString() => 'SocketUser(id: $id, name: $name, nickname: $nickname)';
 }
 
 /// Auction product change event model
@@ -288,7 +331,7 @@ class AuctionEndedEvent {
   final AuctionModel? auction;
   final num? finalBidAmount;
 
-  String get winnerName => winningUser?.name ?? 'Unknown';
+  String get winnerName => winningUser?.displayTitle ?? 'Unknown';
   int? get winnerId => winningUser?.id;
 
   const AuctionEndedEvent({

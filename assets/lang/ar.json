@@ -336,5 +336,19 @@
   "continueWithAddress": "متابعة",
   "recipientName": "أسم المستلم",
   "recipientMobile": "رقم الجوال",
-  "noAddressesSaved": "لا يوجد عناوين"
+  "noAddressesSaved": "لا يوجد عناوين",
+  "selectItemToBid": "أختر بند للمزايدة",
+  "requestAccess": "طلب الدخول",
+  "requestAccessDescription": "هذا المزاد مقيد ويتطلب موافقة المسؤول على الانضمام أو تقديم العطاءات.",
+  "accessPending": "طلب الدخول قيد الانتظار",
+  "accessDenied": "تم رفض الدخول",
+  "bidLimitExceeded": "لقد تجاوزت الحد الأقصى للعطاء الخاص بك. الرجاء الانتظار أو الاتصال بالدعم.",
+  "myAuctionRequests": "طلباتي",
+  "auctionAccessRequired": "دخول مطلوب",
+  "accessGranted": "تم السماح",
+  "auctionBidNumber": "المواجهة رقم: ",
+  "highestBid": "أعلى مزايدة",
+  "outbid": "تمت المزايدة عليك",
+  "currentAuction": "المزاد الحالي",
+  "higherBidThanYours": "هناك مزايدة أعلى منك"
 }

@@ -11,6 +11,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../authintication/presentation/auth_controller.dart';
 import '../../authintication/presentation/sign_in_screen.dart';
+import '../../auctions/presentation/auction_screen/my_auction_requests_screen.dart';
 // import '../../main_screen.dart';
 import '../controller/theme_controller.dart';
 import 'widgets/language_widget/language_widget.dart';
@@ -208,6 +209,29 @@ class ProfileScreen extends ConsumerWidget {
                                                 ),
                                               ],
                                             ),
+                                          gapH16,
+                                          const Divider(),
+                                          ListTile(
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: const Icon(
+                                              Icons.assignment_ind,
+                                            ),
+                                            title: Text(
+                                              AppStrings.myAuctionRequests.tr(),
+                                            ),
+                                            trailing: const Icon(
+                                              Icons.chevron_right,
+                                            ),
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const MyAuctionRequestsScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const Divider(),
                                           gapH16,
                                           Row(
                                             children: [
