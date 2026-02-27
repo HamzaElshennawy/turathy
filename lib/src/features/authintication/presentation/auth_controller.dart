@@ -24,6 +24,11 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 
   UserModel? get currentUser => state.value;
 
+  /// Update the user state directly (e.g. after profile edit)
+  void updateUser(UserModel user) {
+    state = AsyncValue.data(user);
+  }
+
   Future<void> signIn(String fullphone_number, String password) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(

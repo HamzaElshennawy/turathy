@@ -13,6 +13,7 @@ abstract class EndPoints {
   static const String requestOTP = "auth/request-otp";
   static const String changePassword = "auth/change-password";
   static String getUser(int id) => "users/get-user?user_id=$id";
+  static const String updateUser = "users/update-user";
 
   // Auctions
   static const String addAuction = "auctions/add-auction";

@@ -9,8 +9,11 @@ import '../../../../home/presentation/home_screen/widgets/dot_indicator_widget.d
 class AuctionImagesSliderWidget extends StatefulWidget {
   final List<String> images;
   final int productID;
-  const AuctionImagesSliderWidget(
-      {super.key, required this.images, required this.productID});
+  const AuctionImagesSliderWidget({
+    super.key,
+    required this.images,
+    required this.productID,
+  });
 
   @override
   State<AuctionImagesSliderWidget> createState() =>
@@ -32,46 +35,49 @@ class _AuctionImagesSliderWidgetState extends State<AuctionImagesSliderWidget> {
       mainAxisSize: MainAxisSize.min,
       children: [
         CarouselSlider(
-            options: CarouselOptions(
-              viewportFraction: 1,
-              aspectRatio: 16 / 9,
-              enlargeCenterPage: true,
-              enableInfiniteScroll: widget.images.length > 1,
-              initialPage: 0,
-              autoPlay: widget.images.length > 1,
-              onPageChanged: (index, reason) => changeSliderIndex(index),
-            ),
-            items: List.generate(
-                widget.images.length,
-                (index) => Hero(
-                      tag: widget.productID,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            AppFunctions.showImageDialog(
-                                context: context,
-                                imageUrl: widget.images[index],
-                                id: widget.productID);
-                          },
-                          child: CachedNetworkImage(
-                            fit: BoxFit.contain,
-                            imageUrl: widget.images[index],
-                            progressIndicatorBuilder:
-                                (context, url, progress) => Center(
-                              child: CircularProgressIndicator(
-                                value: progress.progress,
-                              ),
-                            ),
+          options: CarouselOptions(
+            viewportFraction: 1,
+            aspectRatio: 16 / 9,
+            enlargeCenterPage: true,
+            enableInfiniteScroll: widget.images.length > 1,
+            initialPage: 0,
+            autoPlay: widget.images.length > 1,
+            onPageChanged: (index, reason) => changeSliderIndex(index),
+          ),
+          items: List.generate(
+            widget.images.length,
+            (index) => Hero(
+              tag: widget.productID,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    AppFunctions.showImageDialog(
+                      context: context,
+                      imageUrl: widget.images[index],
+                      id: widget.productID,
+                    );
+                  },
+                  child: CachedNetworkImage(
+                    fit: BoxFit.contain,
+                    imageUrl: widget.images[index],
+                    progressIndicatorBuilder: (context, url, progress) =>
+                        Center(
+                          child: CircularProgressIndicator(
+                            value: progress.progress,
                           ),
                         ),
-                      ),
-                    ))),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
         gapH8,
         DotIndicatorWidget(
           currentIndex: sliderIndex,
           count: widget.images.length,
-        )
+        ),
       ],
     );
   }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
@@ -26,6 +27,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final num? finalPrice;
   final bool isViewOnly;
   final AuctionProducts? selectedProduct;
+  final bool showOnlyMaxBid;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -39,6 +41,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.finalPrice,
     this.isViewOnly = false,
     this.selectedProduct,
+    this.showOnlyMaxBid = false,
   });
 
   @override
@@ -337,13 +340,27 @@ class _AuctionBiddingControlsWidgetState
                     AppStrings.currentAuction.tr(),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
-                  Text(
-                    '\$${currentPrice.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        currentPrice.toStringAsFixed(0),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      gapW8,
+                      SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        width: 28,
+                        height: 28,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.black,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -635,37 +652,39 @@ class _AuctionBiddingControlsWidgetState
               ),
             ),
           ] else if (!isAuctionEnded) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _buildBidMultiplierButton(
-                    multiplier: 1.0,
-                    bidIncrement: bidIncrement,
-                    currentPrice: currentPrice,
-                    isDisabled: isAuctionEnded,
+            if (!widget.showOnlyMaxBid) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildBidMultiplierButton(
+                      multiplier: 1.0,
+                      bidIncrement: bidIncrement,
+                      currentPrice: currentPrice,
+                      isDisabled: isAuctionEnded,
+                    ),
                   ),
-                ),
-                gapW8,
-                Expanded(
-                  child: _buildBidMultiplierButton(
-                    multiplier: 1.5,
-                    bidIncrement: bidIncrement,
-                    currentPrice: currentPrice,
-                    isDisabled: isAuctionEnded,
+                  gapW8,
+                  Expanded(
+                    child: _buildBidMultiplierButton(
+                      multiplier: 1.5,
+                      bidIncrement: bidIncrement,
+                      currentPrice: currentPrice,
+                      isDisabled: isAuctionEnded,
+                    ),
                   ),
-                ),
-                gapW8,
-                Expanded(
-                  child: _buildBidMultiplierButton(
-                    multiplier: 2.0,
-                    bidIncrement: bidIncrement,
-                    currentPrice: currentPrice,
-                    isDisabled: isAuctionEnded,
+                  gapW8,
+                  Expanded(
+                    child: _buildBidMultiplierButton(
+                      multiplier: 2.0,
+                      bidIncrement: bidIncrement,
+                      currentPrice: currentPrice,
+                      isDisabled: isAuctionEnded,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            gapH16,
+                ],
+              ),
+              gapH16,
+            ],
             // Custom Proxy Max Bid Input
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -720,7 +739,7 @@ class _AuctionBiddingControlsWidgetState
               child: ElevatedButton(
                 onPressed: () {
                   double bidAmount = 0;
-                  if (_selectedMultiplier > 0) {
+                  if (!widget.showOnlyMaxBid && _selectedMultiplier > 0) {
                     bidAmount =
                         currentPrice + (bidIncrement * _selectedMultiplier);
                   } else {
@@ -759,7 +778,7 @@ class _AuctionBiddingControlsWidgetState
                   elevation: 0,
                 ),
                 child: Text(
-                  _selectedMultiplier > 0
+                  !widget.showOnlyMaxBid && _selectedMultiplier > 0
                       ? AppStrings.bidNow.tr()
                       : 'setMaxBid'.tr(),
                   style: const TextStyle(

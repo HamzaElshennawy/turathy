@@ -6,6 +6,7 @@ import 'package:turathy/src/features/authintication/presentation/auth_controller
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
 import 'package:turathy/src/features/host/presentation/my_items_screen.dart';
+import 'package:turathy/src/features/profile/presentation/profile_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 
 class MoreScreen extends ConsumerWidget {
@@ -73,15 +74,30 @@ class MoreScreen extends ConsumerWidget {
             const Divider(),
 
             // Menu Items
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(AppStrings.settings.tr()),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                _showLanguageDialog(context);
-              },
-            ),
-            const Divider(),
+            if (user != null) ...[
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(AppStrings.profile.tr()),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+            ],
+            //ListTile(
+            //  leading: const Icon(Icons.settings),
+            //  title: Text(AppStrings.settings.tr()),
+            //  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            //  onTap: () {
+            //    _showLanguageDialog(context);
+            //  },
+            //),
+            //const Divider(),
             ListTile(
               leading: const Icon(Icons.calendar_month),
               title: Text(AppStrings.auctions.tr()),
@@ -126,61 +142,61 @@ class MoreScreen extends ConsumerWidget {
               ),
               const Divider(),
             ],
-            ListTile(
-              leading: const Icon(Icons.dashboard_customize_outlined),
-              title: Text(AppStrings.hostDashboard.tr()),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const MyItemsScreen(),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            if (user != null)
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: Text(
-                  AppStrings.signOut.tr(),
-                  style: const TextStyle(color: Colors.red),
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.red,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: Text(AppStrings.signOut.tr()),
-                      content: Text(AppStrings.areYouSureToSignOut.tr()),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: Text(
-                            AppStrings.cancel.tr(),
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(ctx).pop();
-                            ref.read(authControllerProvider.notifier).signOut();
-                          },
-                          child: Text(
-                            AppStrings.signOut.tr(),
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            if (user != null) const Divider(),
+            //ListTile(
+            //  leading: const Icon(Icons.dashboard_customize_outlined),
+            //  title: Text(AppStrings.hostDashboard.tr()),
+            //  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            //  onTap: () {
+            //    Navigator.of(context).push(
+            //      MaterialPageRoute(
+            //        builder: (context) => const MyItemsScreen(),
+            //      ),
+            //    );
+            //  },
+            //),
+            //const Divider(),
+            //if (user != null)
+            //  ListTile(
+            //    leading: const Icon(Icons.logout, color: Colors.red),
+            //    title: Text(
+            //      AppStrings.signOut.tr(),
+            //      style: const TextStyle(color: Colors.red),
+            //    ),
+            //    trailing: const Icon(
+            //      Icons.arrow_forward_ios,
+            //      size: 16,
+            //      color: Colors.red,
+            //    ),
+            //    onTap: () {
+            //      showDialog(
+            //        context: context,
+            //        builder: (ctx) => AlertDialog(
+            //          title: Text(AppStrings.signOut.tr()),
+            //          content: Text(AppStrings.areYouSureToSignOut.tr()),
+            //          actions: [
+            //            TextButton(
+            //              onPressed: () => Navigator.of(ctx).pop(),
+            //              child: Text(
+            //                AppStrings.cancel.tr(),
+            //                style: const TextStyle(color: Colors.grey),
+            //              ),
+            //            ),
+            //            TextButton(
+            //              onPressed: () {
+            //                Navigator.of(ctx).pop();
+            //                ref.read(authControllerProvider.notifier).signOut();
+            //              },
+            //              child: Text(
+            //                AppStrings.signOut.tr(),
+            //                style: const TextStyle(color: Colors.red),
+            //              ),
+            //            ),
+            //          ],
+            //        ),
+            //      );
+            //    },
+            //  ),
+            //if (user != null) const Divider(),
           ],
         ),
       ),

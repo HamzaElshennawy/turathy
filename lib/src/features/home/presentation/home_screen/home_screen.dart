@@ -8,8 +8,6 @@ import 'package:turathy/src/features/home/presentation/home_screen/controllers/s
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/categories_widget/category_widget.dart';
-import 'package:turathy/src/features/search/presentation/widgets/filter_widget/filter_widget_controller.dart';
-import 'package:turathy/src/features/search/presentation/widgets/search_list_widget.dart';
 import 'widgets/products_widget/live_auctions_widget.dart';
 
 class HomeScreen extends ConsumerWidget {

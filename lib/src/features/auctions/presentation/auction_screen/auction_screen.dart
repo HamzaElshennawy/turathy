@@ -4,6 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_details_widget.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
 
@@ -13,6 +15,7 @@ import '../../domain/auction_model.dart';
 import '../../domain/auction_access_model.dart';
 import '../../data/auctions_repository.dart';
 import 'widgets/auction_images_slider_widget.dart';
+import 'package:turathy/src/core/helper/socket/socket_providers.dart';
 
 class AuctionScreen extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -32,18 +35,59 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
   String? _accessStatus;
   bool _isAccessLoading = true;
+  bool _isLoadingDetails = false;
+  late AuctionModel _currentAuction;
+
+  /// Whether the user can open item bottom sheets (only GRANTED or owner)
+  bool get _canOpenItemBottomSheet =>
+      _accessStatus == 'GRANTED' ||
+      _currentAuction.userId == CachedVariables.userId;
+
+  /// Whether the auction has entered at least the pre-auction phase (now >= startDate)
+  bool get _hasPreAuctionStarted {
+    if (_currentAuction.startDate == null) return false;
+    return DateTime.now().isAfter(_currentAuction.startDate!);
+  }
 
   @override
   void initState() {
     super.initState();
-    _filteredProducts = widget.auction.auctionProducts ?? [];
+    _currentAuction = widget.auction;
+    _filteredProducts = _currentAuction.auctionProducts ?? [];
     _calculateTimeLeft();
     _startTimer();
     _checkAccess();
+    _fetchAuctionDetails();
+  }
+
+  Future<void> _fetchAuctionDetails() async {
+    if (_currentAuction.id == null) return;
+    setState(() {
+      _isLoadingDetails = true;
+    });
+    try {
+      final repository = ref.read(productsRepositoryProvider);
+      final fullAuction = await repository.getAuctionByID(_currentAuction.id!);
+      if (mounted) {
+        setState(() {
+          _currentAuction = fullAuction;
+          _filteredProducts = _currentAuction.auctionProducts ?? [];
+        });
+        _calculateTimeLeft();
+      }
+    } catch (e) {
+      debugPrint("Error fetching full auction details: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDetails = false;
+        });
+      }
+    }
   }
 
   Future<void> _checkAccess() async {
-    final isAdmin = widget.auction.userId == CachedVariables.userId;
+    final isAdmin = _currentAuction.userId == CachedVariables.userId;
     if (isAdmin) {
       setState(() {
         _accessStatus = 'GRANTED';
@@ -64,7 +108,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       final repository = ref.read(productsRepositoryProvider);
       final response = await repository.checkUserAccess(
         CachedVariables.userId ?? 0,
-        widget.auction.id ?? 0,
+        _currentAuction.id ?? 0,
       );
 
       setState(() {
@@ -96,7 +140,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       final response = await repository.requestAccess(
         RequestAuctionAccessDto(
           userId: CachedVariables.userId ?? 0,
-          auctionId: widget.auction.id ?? 0,
+          auctionId: _currentAuction.id ?? 0,
         ),
       );
       setState(() {
@@ -216,8 +260,229 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     );
   }
 
+  Widget _buildAccessButton(BuildContext context) {
+    bool isUpcoming = _timeLeft > Duration.zero;
+    bool isGranted = _accessStatus == 'GRANTED';
+    bool isPending = _accessStatus == 'PENDING';
+    bool isDenied = _accessStatus == 'DENIED';
+    bool isOwner = _currentAuction.userId == CachedVariables.userId;
+
+    VoidCallback? onPressed;
+    String buttonText = '';
+    Color? buttonColor;
+    bool isPreAuction = _currentAuction.isPreAuction;
+
+    if (isOwner || isGranted) {
+      if (isUpcoming || isPreAuction) {
+        // User already has access; wait for the live auction to actually start
+        return const SizedBox.shrink();
+      } else {
+        buttonText = AppStrings.joinNow.tr();
+        buttonColor = Theme.of(context).primaryColor;
+        onPressed = () {
+          if (CachedVariables.userId == null) {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => SignInScreen()));
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => LiveAuctionScreen(
+                auctionId: _currentAuction.id ?? 0,
+                isAdmin: isOwner,
+              ),
+            ),
+          );
+        };
+      }
+    } else if (isPending) {
+      buttonText = AppStrings.accessPending.tr();
+      buttonColor = Colors.orange;
+      onPressed = null;
+    } else if (isDenied) {
+      buttonText = AppStrings.accessDenied.tr();
+      buttonColor = Colors.red;
+      onPressed = null;
+    } else {
+      // REQUIRED or ERROR
+      buttonText = AppStrings.requestAccess.tr();
+      buttonColor = Theme.of(context).primaryColor;
+      onPressed = _requestAccess;
+    }
+
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        side: BorderSide(color: buttonColor),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        foregroundColor: buttonColor,
+      ),
+      child: Text(
+        buttonText,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  void _showItemBottomSheet(BuildContext context, AuctionProducts product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${AppStrings.itemNumber.tr()}: ${product.id}',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  gapH16,
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AuctionItemDetailsWidget(
+                            auction: _currentAuction,
+                            activeProduct: product,
+                            isAuctionEnded: false,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Only show max bid controls if pre-auction has started
+                  if (_hasPreAuctionStarted) ...[
+                    gapH16,
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final socketActions = ref.read(socketActionsProvider);
+                        return AuctionBiddingControlsWidget(
+                          auction: _currentAuction,
+                          selectedProduct: product,
+                          showOnlyMaxBid: true,
+                          onPlaceBid: (qty, price, productId) {
+                            if (productId != null) {
+                              socketActions.placeBid(
+                                _currentAuction.id ?? 0,
+                                CachedVariables.userId ?? 0,
+                                price.toDouble(),
+                                productId,
+                              );
+                              final overlay = Overlay.of(context);
+                              late OverlayEntry overlayEntry;
+                              bool isRemoved = false;
+
+                              overlayEntry = OverlayEntry(
+                                builder: (context) => Positioned(
+                                  bottom:
+                                      MediaQuery.of(context).viewInsets.bottom +
+                                      100,
+                                  left: 16.0,
+                                  right: 16.0,
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade600,
+                                        borderRadius: BorderRadius.circular(10),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.2,
+                                            ),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              AppStrings.bidPlacedSuccessfully
+                                                  .tr(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+
+                              overlay.insert(overlayEntry);
+                              Future.delayed(const Duration(seconds: 3), () {
+                                if (!isRemoved) {
+                                  overlayEntry.remove();
+                                  isRemoved = true;
+                                }
+                              });
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingDetails) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Turathy'),
+          centerTitle: true,
+          backgroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Turathy'),
@@ -242,16 +507,16 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 1. Header Image & Title
-                if (widget.auction.imageUrl != null ||
-                    (widget.auction.auctionImages != null &&
-                        widget.auction.auctionImages!.isNotEmpty))
+                if (_currentAuction.imageUrl != null ||
+                    (_currentAuction.auctionImages != null &&
+                        _currentAuction.auctionImages!.isNotEmpty))
                   AuctionImagesSliderWidget(
                     images:
-                        widget.auction.auctionImages != null &&
-                            widget.auction.auctionImages!.isNotEmpty
-                        ? widget.auction.auctionImages!
-                        : [widget.auction.imageUrl ?? ''],
-                    productID: widget.auction.id ?? 0,
+                        _currentAuction.auctionImages != null &&
+                            _currentAuction.auctionImages!.isNotEmpty
+                        ? _currentAuction.auctionImages!
+                        : [_currentAuction.imageUrl ?? ''],
+                    productID: _currentAuction.id ?? 0,
                   ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -259,14 +524,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.auction.title ?? '',
+                        _currentAuction.title ?? '',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       gapH8,
                       Text(
-                        widget.auction.description ?? '',
+                        _currentAuction.description ?? '',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey[600],
                         ),
@@ -283,25 +548,25 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       gapH8,
                       _buildInfoRow(
                         AppStrings.auctionNumber.tr(),
-                        widget.auction.id.toString(),
+                        _currentAuction.id.toString(),
                       ),
-                      if (widget.auction.liveStartDate != null) ...[
+                      if (_currentAuction.liveStartDate != null) ...[
                         _buildInfoRow(
                           'preAuctionStartsAt'.tr(),
-                          _formatDate(widget.auction.startDate),
+                          _formatDate(_currentAuction.startDate),
                         ),
                         _buildInfoRow(
                           'liveStartsAt'.tr(),
-                          _formatDate(widget.auction.liveStartDate),
+                          _formatDate(_currentAuction.liveStartDate),
                         ),
                       ] else
                         _buildInfoRow(
                           AppStrings.startsAt.tr(),
-                          _formatDate(widget.auction.startDate),
+                          _formatDate(_currentAuction.startDate),
                         ),
                       _buildInfoRow(
                         AppStrings.endsAt.tr(),
-                        _formatDate(widget.auction.expiryDate),
+                        _formatDate(_currentAuction.expiryDate),
                       ),
                       gapH8,
                       if (_timeLeft > Duration.zero)
@@ -322,83 +587,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         width: double.infinity,
                         child: _isAccessLoading
                             ? const Center(child: CircularProgressIndicator())
-                            : Builder(
-                                builder: (context) {
-                                  bool isUpcoming = _timeLeft > Duration.zero;
-                                  bool isGranted = _accessStatus == 'GRANTED';
-                                  bool isPending = _accessStatus == 'PENDING';
-                                  bool isDenied = _accessStatus == 'DENIED';
-                                  bool isOwner =
-                                      widget.auction.userId ==
-                                      CachedVariables.userId;
-
-                                  VoidCallback? onPressed;
-                                  String buttonText = '';
-                                  Color? buttonColor;
-
-                                  if (isUpcoming) {
-                                    buttonText = AppStrings.upcoming.tr();
-                                    buttonColor = Colors.grey;
-                                  } else if (isOwner || isGranted) {
-                                    buttonText = AppStrings.joinNow.tr();
-                                    buttonColor = Theme.of(
-                                      context,
-                                    ).primaryColor;
-                                    onPressed = () {
-                                      if (CachedVariables.userId == null) {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                SignInScreen(),
-                                          ),
-                                        );
-                                        return;
-                                      }
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              LiveAuctionScreen(
-                                                auctionId:
-                                                    widget.auction.id ?? 0,
-                                                isAdmin: isOwner,
-                                              ),
-                                        ),
-                                      );
-                                    };
-                                  } else if (isPending) {
-                                    buttonText = AppStrings.accessPending.tr();
-                                    buttonColor = Colors.orange;
-                                  } else if (isDenied) {
-                                    buttonText = AppStrings.accessDenied.tr();
-                                    buttonColor = Colors.red;
-                                  } else {
-                                    // REQUIRED or ERROR
-                                    buttonText = AppStrings.requestAccess.tr();
-                                    buttonColor = const Color(0xFF2D4739);
-                                    onPressed = _requestAccess;
-                                  }
-
-                                  return OutlinedButton(
-                                    onPressed: onPressed,
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      side: BorderSide(color: buttonColor),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      foregroundColor: buttonColor,
-                                    ),
-                                    child: Text(
-                                      buttonText,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                            : _buildAccessButton(context),
                       ),
                       gapH16,
 
@@ -529,134 +718,51 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                     ),
                                 itemBuilder: (context, index) {
                                   final product = _filteredProducts[index];
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey.shade200,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        // Product Image
-                                        Expanded(
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                const BorderRadius.vertical(
-                                                  top: Radius.circular(8),
-                                                ),
-                                            child: Image.network(
-                                              product.imageUrl ?? '',
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => Container(
-                                                    color: Colors.grey[200],
-                                                    child: const Icon(
-                                                      Icons.image_not_supported,
-                                                    ),
-                                                  ),
-                                            ),
-                                          ),
+                                  return GestureDetector(
+                                    onTap: _canOpenItemBottomSheet
+                                        ? () => _showItemBottomSheet(
+                                            context,
+                                            product,
+                                          )
+                                        : null,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
                                         ),
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${AppStrings.itemNumber.tr()}: ${product.id}',
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.bodySmall,
-                                              ),
-                                              gapH4,
-                                              Text(
-                                                product.product ?? '',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 14,
-                                                    ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              gapH4,
-                                              Text(
-                                                '${product.minBidPrice}\$',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              )
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _filteredProducts.length,
-                                separatorBuilder: (context, index) => gapH8,
-                                itemBuilder: (context, index) {
-                                  final product = _filteredProducts[index];
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Row(
+                                      child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                            CrossAxisAlignment.stretch,
                                         children: [
                                           // Product Image
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            child: Image.network(
-                                              product.imageUrl ?? '',
-                                              width: 80,
-                                              height: 80,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => Container(
-                                                    width: 80,
-                                                    height: 80,
-                                                    color: Colors.grey[200],
-                                                    child: const Icon(
-                                                      Icons.image_not_supported,
-                                                    ),
+                                          Expanded(
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  const BorderRadius.vertical(
+                                                    top: Radius.circular(8),
                                                   ),
+                                              child: Image.network(
+                                                product.imageUrl ?? '',
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) => Container(
+                                                      color: Colors.grey[200],
+                                                      child: const Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                      ),
+                                                    ),
+                                              ),
                                             ),
                                           ),
-                                          gapW12,
-                                          // Product Details
-                                          Expanded(
+                                          Padding(
+                                            padding: const EdgeInsets.all(8.0),
                                             child: Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
@@ -682,24 +788,126 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                 ),
+                                                gapH4,
+                                                Text(
+                                                  '${product.minBidPrice}\$',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                ),
                                               ],
                                             ),
                                           ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 8.0,
-                                            ),
-                                            child: Text(
-                                              '${product.minBidPrice}\$',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                            ),
-                                          ),
                                         ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _filteredProducts.length,
+                                separatorBuilder: (context, index) => gapH8,
+                                itemBuilder: (context, index) {
+                                  final product = _filteredProducts[index];
+                                  return GestureDetector(
+                                    onTap: _canOpenItemBottomSheet
+                                        ? () => _showItemBottomSheet(
+                                            context,
+                                            product,
+                                          )
+                                        : null,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            // Product Image
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: Image.network(
+                                                product.imageUrl ?? '',
+                                                width: 80,
+                                                height: 80,
+                                                fit: BoxFit.cover,
+                                                errorBuilder:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) => Container(
+                                                      width: 80,
+                                                      height: 80,
+                                                      color: Colors.grey[200],
+                                                      child: const Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ),
+                                            gapW12,
+                                            // Product Details
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '${AppStrings.itemNumber.tr()}: ${product.id}',
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.bodySmall,
+                                                  ),
+                                                  gapH4,
+                                                  Text(
+                                                    product.product ?? '',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 8.0,
+                                              ),
+                                              child: Text(
+                                                '${product.minBidPrice}\$',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );

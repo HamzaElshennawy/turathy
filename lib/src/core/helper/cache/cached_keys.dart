@@ -5,5 +5,6 @@ class CachedKeys {
   static const String userName = "userName";
   static const String onBoard = "onBoard";
   static const String lang = "lang";
+  static const String email = "email";
   static const String fcmToken = "fcm_token";
 }

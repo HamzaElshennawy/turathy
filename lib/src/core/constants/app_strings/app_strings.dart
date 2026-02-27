@@ -180,6 +180,10 @@ class AppStrings {
   static const String otpResentSuccessfully = "otpResentSuccessfully";
   static const String more = "more";
   static const String settings = "settings";
+  static const String account = "account";
+  static const String preferences = "preferences";
+  static const String supportAndLegal = "supportAndLegal";
+  static const String dangerZone = "dangerZone";
   static const String products = "products";
   static const String bidNow = "bidNow";
   static const String remainingTime = "remainingTime";
@@ -388,4 +392,6 @@ class AppStrings {
   static const String outbid = 'outbid';
   static const String currentAuction = 'currentAuction';
   static const String higherBidThanYours = 'higherBidThanYours';
+  static const String bidPlacedSuccessfully = 'bidPlacedSuccessfully';
+  static const String noRequestsFound = 'noRequestsFound';
 }

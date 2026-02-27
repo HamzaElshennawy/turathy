@@ -128,218 +128,233 @@ class _MainScreenState extends ConsumerState<MainScreen>
       value: SystemUiOverlayStyle(
         statusBarColor: Theme.of(context).colorScheme.primary.brighten(20),
       ),
-      child: Scaffold(
-        // floatingActionButton: FloatingActionButton.extended(
-        //     onPressed: () {}, label: Text('إضافة عرض')),
-        appBar: AppBar(
-          leadingWidth: _selectedIndex >= 1 ? 80 : 0,
-          toolbarHeight: 75,
-          leading: _selectedIndex >= 1
-              ? Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Image.asset(
-                    AppImages.logo,
-                    width: 70,
-                    filterQuality: FilterQuality.high,
-                  ),
-                )
-              : null,
-          title: _selectedIndex < 1
-              ? Row(
-                  children: [
-                    _UserAvatar(
-                      // image: authController.valueOrNull?.image,
-                      name: authController.valueOrNull?.name,
+      child: PopScope(
+        canPop: _selectedIndex == 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) {
+            return;
+          }
+          if (_selectedIndex != 0) {
+            setState(() {
+              _selectedIndex = 0;
+              pageController.jumpToPage(0);
+            });
+          }
+        },
+        child: Scaffold(
+          // floatingActionButton: FloatingActionButton.extended(
+          //     onPressed: () {}, label: Text('إضافة عرض')),
+          appBar: AppBar(
+            leadingWidth: _selectedIndex >= 1 ? 80 : 0,
+            toolbarHeight: 75,
+            leading: _selectedIndex >= 1
+                ? Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Image.asset(
+                      AppImages.logo,
+                      width: 70,
+                      filterQuality: FilterQuality.high,
                     ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '👋 ${AppStrings.hi.tr()}, ${authController.valueOrNull?.name ?? 'User'}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey, fontSize: 18),
-                        ),
-                        //Text(
-                        //  authController.valueOrNull?.name ?? 'User',
-                        //  style: Theme.of(context).textTheme.titleMedium
-                        //      ?.copyWith(fontWeight: FontWeight.bold),
-                        //),
-                      ],
-                    ),
-                  ],
-                )
-              : null,
-          actions: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, size: 32),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationsScreen(),
+                  )
+                : null,
+            title: _selectedIndex < 1
+                ? Row(
+                    children: [
+                      _UserAvatar(
+                        // image: authController.valueOrNull?.image,
+                        name: authController.valueOrNull?.name,
                       ),
-                    );
-                  },
-                ),
-                Consumer(
-                  builder: (context, ref, child) {
-                    // Initialize notifications controller to start listening/fetching
-                    ref.watch(notificationsNotifierProvider);
-                    final unreadCount = ref.watch(unreadCountProvider);
-
-                    if (unreadCount == 0) return const SizedBox.shrink();
-
-                    return Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          unreadCount > 9 ? '9+' : unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '👋 ${AppStrings.hi.tr()}, ${authController.valueOrNull?.name ?? 'User'}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey, fontSize: 18),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
+                          //Text(
+                          //  authController.valueOrNull?.name ?? 'User',
+                          //  style: Theme.of(context).textTheme.titleMedium
+                          //      ?.copyWith(fontWeight: FontWeight.bold),
+                          //),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            //if (isSignedIn)
-            //  IconButton(
-            //    icon: const Icon(Icons.logout),
-            //    onPressed: () {
-            //      ref.read(authControllerProvider.notifier).signOut();
-            //    },
-            //  ),
-          ],
-        ),
-        extendBody: true, // Allows body to extend behind the floating navbar
-        bottomNavigationBar: Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            // Gradient drop shadow
-            Container(
-              height: 100,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: const BoxDecoration(),
-            ),
-            // Floating Navigation Bar
-            Container(
-              margin: const EdgeInsets.only(),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                //gradient: LinearGradient(
-                //  begin: Alignment.center,
-                //  end: Alignment.topCenter,
-                //  colors: [Colors.transparent, Color(0xFFDCCAA7)],
-                //),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFFDCCAA7),
-                    blurRadius: 20,
-                    offset: const Offset(0, -10),
+                    ],
+                  )
+                : null,
+            actions: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined, size: 32),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      // Initialize notifications controller to start listening/fetching
+                      ref.watch(notificationsNotifierProvider);
+                      final unreadCount = ref.watch(unreadCountProvider);
+
+                      if (unreadCount == 0) return const SizedBox.shrink();
+
+                      return Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: NavigationBar(
-                  height: 70,
-                  elevation: 1,
-                  backgroundColor: const Color(0xFFFDFDF5),
-                  surfaceTintColor: Colors.transparent,
-                  indicatorColor: const Color(0xFFE8F5E9),
-                  indicatorShape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                  animationDuration: const Duration(milliseconds: 500),
-                  selectedIndex: _selectedIndex,
-                  onDestinationSelected: (index) {
-                    setState(() {
-                      _selectedIndex = index;
-                      pageController.jumpToPage(index);
-                    });
-                  },
-                  destinations: [
-                    NavigationDestination(
-                      icon: const Icon(Icons.home_outlined, size: 24),
-                      selectedIcon: const Icon(
-                        Icons.home,
-                        size: 28,
-                        color: Color(0xFF1B5E20),
-                      ),
-                      label: AppStrings.home.tr(),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.gavel_outlined, size: 24),
-                      selectedIcon: const Icon(
-                        Icons.gavel,
-                        size: 28,
-                        color: Color(0xFF1B5E20),
-                      ),
-                      label: AppStrings.auctions.tr(),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.store_outlined, size: 24),
-                      selectedIcon: const Icon(
-                        Icons.store,
-                        size: 28,
-                        color: Color(0xFF1B5E20),
-                      ),
-                      label: AppStrings.store.tr(),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.inventory_2_outlined, size: 24),
-                      selectedIcon: const Icon(
-                        Icons.inventory_2,
-                        size: 28,
-                        color: Color(0xFF1B5E20),
-                      ),
-                      label: AppStrings.myOrders.tr(),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.menu_outlined, size: 24),
-                      selectedIcon: const Icon(
-                        Icons.menu,
-                        size: 28,
-                        color: Color(0xFF1B5E20),
-                      ),
-                      label: AppStrings.more.tr(),
+              //if (isSignedIn)
+              //  IconButton(
+              //    icon: const Icon(Icons.logout),
+              //    onPressed: () {
+              //      ref.read(authControllerProvider.notifier).signOut();
+              //    },
+              //  ),
+            ],
+          ),
+          extendBody: true, // Allows body to extend behind the floating navbar
+          bottomNavigationBar: Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              // Gradient drop shadow
+              Container(
+                height: 100,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: const BoxDecoration(),
+              ),
+              // Floating Navigation Bar
+              Container(
+                margin: const EdgeInsets.only(),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  //gradient: LinearGradient(
+                  //  begin: Alignment.center,
+                  //  end: Alignment.topCenter,
+                  //  colors: [Colors.transparent, Color(0xFFDCCAA7)],
+                  //),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFFDCCAA7),
+                      blurRadius: 20,
+                      offset: const Offset(0, -10),
                     ),
                   ],
                 ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: NavigationBar(
+                    height: 70,
+                    elevation: 1,
+                    backgroundColor: const Color(0xFFFDFDF5),
+                    surfaceTintColor: Colors.transparent,
+                    indicatorColor: const Color(0xFFE8F5E9),
+                    indicatorShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.alwaysShow,
+                    animationDuration: const Duration(milliseconds: 500),
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: (index) {
+                      setState(() {
+                        _selectedIndex = index;
+                        pageController.jumpToPage(index);
+                      });
+                    },
+                    destinations: [
+                      NavigationDestination(
+                        icon: const Icon(Icons.home_outlined, size: 24),
+                        selectedIcon: const Icon(
+                          Icons.home,
+                          size: 28,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: AppStrings.home.tr(),
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.gavel_outlined, size: 24),
+                        selectedIcon: const Icon(
+                          Icons.gavel,
+                          size: 28,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: AppStrings.auctions.tr(),
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.store_outlined, size: 24),
+                        selectedIcon: const Icon(
+                          Icons.store,
+                          size: 28,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: AppStrings.store.tr(),
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.inventory_2_outlined, size: 24),
+                        selectedIcon: const Icon(
+                          Icons.inventory_2,
+                          size: 28,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: AppStrings.myOrders.tr(),
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.menu_outlined, size: 24),
+                        selectedIcon: const Icon(
+                          Icons.menu,
+                          size: 28,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: AppStrings.more.tr(),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: PageView(
-            physics: const NeverScrollableScrollPhysics(),
-            controller: pageController,
-            children: const [
-              HomeScreen(),
-              AllAuctionsScreen(),
-              StoreScreen(),
-              OrdersListScreen(),
-              MoreScreen(),
             ],
+          ),
+          body: SafeArea(
+            child: PageView(
+              physics: const NeverScrollableScrollPhysics(),
+              controller: pageController,
+              children: const [
+                HomeScreen(),
+                AllAuctionsScreen(),
+                StoreScreen(),
+                OrdersListScreen(),
+                MoreScreen(),
+              ],
+            ),
           ),
         ),
       ),

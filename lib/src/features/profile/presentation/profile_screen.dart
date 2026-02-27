@@ -1,15 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lottie/lottie.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/common_widgets/primary_button.dart';
-import '../../../core/constants/app_icons/app_icons.dart';
-import '../../../core/constants/app_lottie/app_lottie.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../authintication/presentation/auth_controller.dart';
+import '../../authintication/presentation/complete_profile_screen.dart';
 import '../../authintication/presentation/sign_in_screen.dart';
 import '../../auctions/presentation/auction_screen/my_auction_requests_screen.dart';
 // import '../../main_screen.dart';
@@ -21,535 +19,382 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // final state = ref.watch(profileScreenControllerProvider);
-    final data = ref.watch(authControllerProvider).valueOrNull;
+    final user = ref.watch(authControllerProvider).valueOrNull;
     final theme = ref.watch(themeControllerProvider);
-    double iconSize = 60;
-    final bool isSignedIn =
-        ref.watch(authControllerProvider).valueOrNull != null;
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppStrings.profileAndSettings.tr(),
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          gapH8,
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(Sizes.p8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Center(
-                      child: Lottie.asset(
-                        AppLottie.settings,
-                        fit: BoxFit.contain,
-                        height: MediaQuery.of(context).size.height / 3,
+    final bool isSignedIn = user != null;
+    final themeColor = Theme.of(context).primaryColor;
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: Text(
+          AppStrings.profileAndSettings.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header Section
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: themeColor.withOpacity(0.1),
+                    child: isSignedIn
+                        ? Text(
+                            user.name?.isNotEmpty == true
+                                ? user.name!.substring(0, 1).toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: themeColor,
+                            ),
+                          )
+                        : Icon(Icons.person, size: 50, color: themeColor),
+                  ),
+                  gapH16,
+                  if (isSignedIn) ...[
+                    Text(
+                      user.name ?? AppStrings.name.tr(),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    gapH4,
+                    Text(
+                      user.phone_number ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                    Column(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(AppStrings.changeTheme.tr()),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  children: [
-                                    // Theme selection dropdown removed as per user request
-                                    gapH8,
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(AppStrings.darkMode.tr()),
-                                        Switch.adaptive(
-                                          value: theme.mode == ThemeMode.dark,
-                                          onChanged: (value) {
-                                            if (value) {
-                                              ref
-                                                  .read(
-                                                    themeControllerProvider
-                                                        .notifier,
-                                                  )
-                                                  .setTheme(
-                                                    theme.copyWith(
-                                                      mode: ThemeMode.dark,
-                                                    ),
-                                                  );
-                                            } else {
-                                              ref
-                                                  .read(
-                                                    themeControllerProvider
-                                                        .notifier,
-                                                  )
-                                                  .setTheme(
-                                                    theme.copyWith(
-                                                      mode: ThemeMode.light,
-                                                    ),
-                                                  );
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // language
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(AppStrings.changeLanguage.tr()),
-                            Card(
-                              child: Container(
-                                alignment: Alignment.center,
-                                padding: const EdgeInsets.all(8),
-                                width: double.infinity,
-                                child: const LanguageWidget(),
-                              ),
-                            ),
-                          ],
-                        ),
-                        gapH8,
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(AppStrings.userDetails.tr()),
-                                // TextButton.icon(
-                                //     onPressed: () {
-                                //       // todo : open dialog to edit profile and handle picture
-                                //     },
-                                //     icon: const Icon(Icons.edit_note),
-                                //     label: Text(AppStrings.editProfile.tr()))
-                              ],
-                            ),
-                            Card(
-                              // color: Theme.of(context).cardColor,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: isSignedIn
-                                    ? Column(
-                                        children: [
-                                          if (data != null)
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
-                                                    children: [
-                                                      Wrap(
-                                                        crossAxisAlignment:
-                                                            WrapCrossAlignment
-                                                                .center,
-                                                        children: [
-                                                          Text(
-                                                            '${AppStrings.name.tr()} : ',
-                                                            style:
-                                                                Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .textTheme
-                                                                    .titleMedium,
-                                                          ),
-                                                          Text(
-                                                            '${data.name}',
-                                                            style:
-                                                                Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .textTheme
-                                                                    .bodyMedium,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      Wrap(
-                                                        crossAxisAlignment:
-                                                            WrapCrossAlignment
-                                                                .center,
-                                                        children: [
-                                                          Text(
-                                                            '${AppStrings.phone.tr()} : ',
-                                                            style:
-                                                                Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .textTheme
-                                                                    .titleMedium,
-                                                          ),
-                                                          Text(
-                                                            data.phone_number!,
-                                                            style:
-                                                                Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .textTheme
-                                                                    .bodyMedium,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          gapH16,
-                                          const Divider(),
-                                          ListTile(
-                                            contentPadding: EdgeInsets.zero,
-                                            leading: const Icon(
-                                              Icons.assignment_ind,
-                                            ),
-                                            title: Text(
-                                              AppStrings.myAuctionRequests.tr(),
-                                            ),
-                                            trailing: const Icon(
-                                              Icons.chevron_right,
-                                            ),
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const MyAuctionRequestsScreen(),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          const Divider(),
-                                          gapH16,
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: PrimaryButton(
-                                                  onPressed: () async {
-                                                    final result = await showDialog(
-                                                      context: context,
-                                                      // sign out dialog
-                                                      builder: (context) =>
-                                                          AlertDialog(
-                                                            title: Text(
-                                                              AppStrings.signOut
-                                                                  .tr(),
-                                                            ),
-                                                            content: Text(
-                                                              AppStrings
-                                                                  .areYouSureToSignOut
-                                                                  .tr(),
-                                                            ),
-                                                            actions: [
-                                                              TextButton(
-                                                                onPressed: () {
-                                                                  Navigator.of(
-                                                                    context,
-                                                                  ).pop();
-                                                                },
-                                                                child: Text(
-                                                                  AppStrings
-                                                                      .cancel
-                                                                      .tr(),
-                                                                ),
-                                                              ),
-                                                              TextButton(
-                                                                onPressed: () {
-                                                                  Navigator.of(
-                                                                    context,
-                                                                  ).pop(true);
-                                                                },
-                                                                child: Text(
-                                                                  AppStrings
-                                                                      .signOut
-                                                                      .tr(),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                    );
-
-                                                    if (result == true) {
-                                                      // todo : sign out
-                                                      // ref
-                                                      //         .read(
-                                                      //           mainScreenIndexProvider
-                                                      //               .notifier,
-                                                      //         )
-                                                      //         .state =
-                                                      //     0;
-                                                      ref
-                                                          .read(
-                                                            authControllerProvider
-                                                                .notifier,
-                                                          )
-                                                          .signOut()
-                                                          .then((value) {
-                                                            print(
-                                                              'value : $value',
-                                                            );
-                                                            if (value &&
-                                                                context
-                                                                    .mounted) {
-                                                              Navigator.of(
-                                                                context,
-                                                              ).push(
-                                                                MaterialPageRoute(
-                                                                  builder:
-                                                                      (
-                                                                        context,
-                                                                      ) =>
-                                                                          SignInScreen(),
-                                                                ),
-                                                              );
-                                                            }
-                                                          });
-                                                    }
-                                                  },
-                                                  isLoading: false,
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.error,
-                                                  text: AppStrings.signOut.tr(),
-                                                  svgPath: AppIcons.signOut,
-                                                ),
-                                              ),
-                                              gapW16,
-                                              Expanded(
-                                                child: PrimaryButton(
-                                                  onPressed: () {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          AppStrings
-                                                              .holdPressToDeleteAccount
-                                                              .tr(),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  onLongPress: () async {
-                                                    final result = await showDialog(
-                                                      context: context,
-                                                      // delete account dialog
-                                                      builder: (context) =>
-                                                          AlertDialog(
-                                                            title: Text(
-                                                              AppStrings
-                                                                  .deleteAccount
-                                                                  .tr(),
-                                                            ),
-                                                            content: Text(
-                                                              AppStrings
-                                                                  .areYouSureToDeleteAccount
-                                                                  .tr(),
-                                                            ),
-                                                            actions: [
-                                                              TextButton(
-                                                                onPressed: () {
-                                                                  Navigator.of(
-                                                                    context,
-                                                                  ).pop();
-                                                                },
-                                                                child: Text(
-                                                                  AppStrings
-                                                                      .cancel
-                                                                      .tr(),
-                                                                ),
-                                                              ),
-                                                              TextButton(
-                                                                onPressed: () {
-                                                                  Navigator.of(
-                                                                    context,
-                                                                  ).pop(true);
-                                                                },
-                                                                child: Text(
-                                                                  AppStrings
-                                                                      .delete
-                                                                      .tr(),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                    );
-
-                                                    if (result == true) {
-                                                      // todo : delete account
-                                                      // ref
-                                                      //         .read(
-                                                      //           mainScreenIndexProvider
-                                                      //               .notifier,
-                                                      //         )
-                                                      //         .state =
-                                                      //     0;
-                                                    }
-                                                  },
-                                                  isLoading: false,
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.error,
-                                                  text: AppStrings.deleteAccount
-                                                      .tr(),
-                                                  svgPath:
-                                                      AppIcons.deleteAccount,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      )
-                                    : Column(
-                                        children: [
-                                          Text(
-                                            AppStrings
-                                                .pleaseSignInOrCreateAccount
-                                                .tr(),
-                                          ),
-                                          gapH8,
-                                          PrimaryButton(
-                                            onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      SignInScreen(),
-                                                ),
-                                              );
-                                            },
-                                            text: AppStrings.signIn.tr(),
-                                            isLoading: false,
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(AppStrings.contactUs.tr()),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                  vertical: 12,
-                                ),
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: Wrap(
-                                        alignment: WrapAlignment.spaceEvenly,
-                                        children: [
-                                          InkWell(
-                                            onTap: () {},
-                                            child: Image.asset(
-                                              'assets/icons/facebook.png',
-                                              fit: BoxFit.contain,
-                                              width: iconSize,
-                                            ),
-                                          ),
-                                          InkWell(
-                                            onTap: () {},
-                                            child: Image.asset(
-                                              'assets/icons/insta.png',
-                                              fit: BoxFit.contain,
-                                              width: iconSize,
-                                            ),
-                                          ),
-                                          InkWell(
-                                            onTap: () {},
-                                            child: Image.asset(
-                                              'assets/icons/tiktok.png',
-                                              fit: BoxFit.contain,
-                                              width: iconSize,
-                                            ),
-                                          ),
-                                          InkWell(
-                                            onTap: () {},
-                                            child: Image.asset(
-                                              'assets/icons/whats.png',
-                                              fit: BoxFit.contain,
-                                              width: iconSize,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(AppStrings.legalInformation.tr()),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                  vertical: 12,
-                                ),
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: Wrap(
-                                    direction: Axis.vertical,
-                                    alignment: WrapAlignment.spaceEvenly,
-                                    children: [
-                                      InkWell(
-                                        onTap: () {},
-                                        child: Text(
-                                          AppStrings.privacyPolicy.tr(),
-                                        ),
-                                      ),
-                                      gapH8,
-                                      InkWell(
-                                        onTap: () {},
-                                        child: Text(
-                                          AppStrings.termsAndConditions.tr(),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value}',
-                        ),
-                        gapH12,
-                      ],
+                  ] else ...[
+                    Text(
+                      AppStrings.pleaseSignInOrCreateAccount.tr(),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    gapH16,
+                    PrimaryButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SignInScreen(),
+                          ),
+                        );
+                      },
+                      text: AppStrings.signIn.tr(),
+                      isLoading: false,
                     ),
                   ],
-                ),
+                ],
               ),
             ),
+
+            gapH24,
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // --- Account Section ---
+                  if (isSignedIn) ...[
+                    _buildSectionTitle(AppStrings.account.tr(), context),
+                    _buildSettingsGroup([
+                      _buildSettingsTile(
+                        icon: Icons.person_outline,
+                        title: AppStrings.userDetails.tr(),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const CompleteProfileScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildSettingsTile(
+                        icon: Icons.assignment_ind_outlined,
+                        title: AppStrings.myAuctionRequests.tr(),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const MyAuctionRequestsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ]),
+                    gapH24,
+                  ],
+
+                  // --- Preferences Section ---
+                  _buildSectionTitle(AppStrings.preferences.tr(), context),
+                  _buildSettingsGroup([
+                    //_buildSettingsTile(
+                    //  icon: Icons.dark_mode_outlined,
+                    //  title: AppStrings.darkMode.tr(),
+                    //  trailing: Switch.adaptive(
+                    //    value: theme.mode == ThemeMode.dark,
+                    //    activeColor: themeColor,
+                    //    onChanged: (value) {
+                    //      ref
+                    //          .read(themeControllerProvider.notifier)
+                    //          .setTheme(
+                    //            theme.copyWith(
+                    //              mode: value
+                    //                  ? ThemeMode.dark
+                    //                  : ThemeMode.light,
+                    //            ),
+                    //          );
+                    //    },
+                    //  ),
+                    //),
+                    _buildSettingsTile(
+                      icon: Icons.language_outlined,
+                      title: AppStrings.changeLanguage.tr(),
+                      trailing: const LanguageWidget(),
+                    ),
+                  ]),
+                  gapH24,
+
+                  // --- Support & Legal Section ---
+                  _buildSectionTitle(AppStrings.supportAndLegal.tr(), context),
+                  _buildSettingsGroup([
+                    _buildSettingsTile(
+                      icon: Icons.headset_mic_outlined,
+                      title: AppStrings.contactUs.tr(),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          //_buildSocialIcon('assets/icons/facebook.png', () {}),
+                          //gapW8,
+                          //_buildSocialIcon('assets/icons/insta.png', () {}),
+                          //gapW8,
+                          //_buildSocialIcon('assets/icons/tiktok.png', () {}),
+                          gapW8,
+                          _buildSocialIcon('assets/icons/whats.png', () {}),
+                        ],
+                      ),
+                    ),
+                    _buildSettingsTile(
+                      icon: Icons.privacy_tip_outlined,
+                      title: AppStrings.privacyPolicy.tr(),
+                      onTap: () {},
+                    ),
+                    _buildSettingsTile(
+                      icon: Icons.description_outlined,
+                      title: AppStrings.termsAndConditions.tr(),
+                      onTap: () {},
+                    ),
+                  ]),
+                  gapH24,
+
+                  // --- Danger Zone ---
+                  if (isSignedIn) ...[
+                    _buildSectionTitle(AppStrings.dangerZone.tr(), context),
+                    _buildSettingsGroup([
+                      _buildSettingsTile(
+                        icon: Icons.logout_outlined,
+                        title: AppStrings.signOut.tr(),
+                        textColor: Colors.red.shade600,
+                        iconColor: Colors.red.shade600,
+                        onTap: () => _handleSignOut(context, ref),
+                      ),
+                      //_buildSettingsTile(
+                      //  icon: Icons.person_remove_outlined,
+                      //  title: AppStrings.deleteAccount.tr(),
+                      //  textColor: Colors.red.shade600,
+                      //  iconColor: Colors.red.shade600,
+                      //  onTap: () => _handleDeleteAccount(context, ref),
+                      //),
+                    ]),
+                  ],
+
+                  gapH32,
+                  Center(
+                    child: Text(
+                      '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value ?? ""}',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  gapH32,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 8, right: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: Colors.grey.shade600,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsGroup(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: children.asMap().entries.map((entry) {
+          final int idx = entry.key;
+          final Widget child = entry.value;
+          if (idx == children.length - 1) {
+            return child;
+          }
+          return Column(
+            children: [
+              child,
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Colors.grey.shade100,
+                indent: 56,
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile({
+    required IconData icon,
+    required String title,
+    VoidCallback? onTap,
+    Widget? trailing,
+    Color? textColor,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: (iconColor ?? const Color(0xFF2D4739)).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: iconColor ?? const Color(0xFF2D4739),
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: textColor,
+          fontSize: 15,
+        ),
+      ),
+      trailing:
+          trailing ??
+          (onTap != null
+              ? Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20)
+              : null),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    );
+  }
+
+  Widget _buildSocialIcon(String assetPath, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Image.asset(assetPath, width: 32, height: 32, fit: BoxFit.contain),
+    );
+  }
+
+  Future<void> _handleSignOut(BuildContext context, WidgetRef ref) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppStrings.signOut.tr()),
+        content: Text(AppStrings.areYouSureToSignOut.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(AppStrings.signOut.tr()),
           ),
         ],
       ),
     );
+
+    if (result == true) {
+      ref.read(authControllerProvider.notifier).signOut().then((value) {
+        if (value && context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => SignInScreen()),
+            (route) => false,
+          );
+        }
+      });
+    }
+  }
+
+  Future<void> _handleDeleteAccount(BuildContext context, WidgetRef ref) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppStrings.deleteAccount.tr()),
+        content: Text(AppStrings.areYouSureToDeleteAccount.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(AppStrings.delete.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      // TODO: Handle delete account API call
+    }
   }
 }
 

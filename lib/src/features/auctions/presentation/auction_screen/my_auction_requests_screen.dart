@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/auction_screen.dart';
 
 import '../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -41,7 +42,7 @@ class MyAuctionRequestsScreen extends ConsumerWidget {
           if (requests.isEmpty) {
             return Center(
               child: Text(
-                'No requests found', // Can add to translation later
+                AppStrings.noRequestsFound.tr(),
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
               ),
             );
@@ -92,7 +93,7 @@ class _RequestCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     Color getStatusColor(String status) {
       switch (status.toUpperCase()) {
-        case 'GRANTED':
+        case 'APPROVED':
           return Colors.green;
         case 'DENIED':
         case 'BLOCKED':
@@ -105,7 +106,7 @@ class _RequestCardWidget extends StatelessWidget {
 
     String getStatusText(String status) {
       switch (status.toUpperCase()) {
-        case 'GRANTED':
+        case 'APPROVED':
           return AppStrings.accessGranted.tr();
         case 'DENIED':
         case 'BLOCKED':
@@ -116,7 +117,7 @@ class _RequestCardWidget extends StatelessWidget {
       }
     }
 
-    final isGranted = request.status.toUpperCase() == 'GRANTED';
+    final isGranted = request.status.toUpperCase() == 'APPROVED';
 
     return Container(
       decoration: BoxDecoration(
@@ -140,10 +141,7 @@ class _RequestCardWidget extends StatelessWidget {
               ? () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => LiveAuctionScreen(
-                        auctionId: request.auctionId,
-                        isAdmin: false,
-                      ),
+                      builder: (context) => AuctionScreen(request.auction!),
                     ),
                   );
                 }
@@ -178,7 +176,7 @@ class _RequestCardWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Auction #${request.auctionId}', // Fallback title
+                        request.auction?.title ?? '', // Fallback title
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
