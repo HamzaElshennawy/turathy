@@ -31,6 +31,7 @@ class AuctionPaymentsRepository {
       url: EndPoints.uploadReceipt,
       data: formData,
       token: CachedVariables.token,
+      isMultipart: true,
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {

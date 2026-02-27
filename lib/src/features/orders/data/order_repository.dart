@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/helper/cache/cached_variables.dart';
@@ -73,6 +74,37 @@ class OrderRepository {
       String message =
           result.data['error'] ?? 'An error occurred while updating the order';
       throw AuthException(message, result.statusCode);
+    }
+  }
+
+  Future<OrderModel> uploadStoreReceipt({
+    required int userId,
+    required int orderId,
+    required int amount,
+    required String filePath,
+  }) async {
+    final String fileName = filePath.split('/').last.split('\\').last;
+
+    final formData = FormData.fromMap({
+      'user_id': userId,
+      'order_id': orderId,
+      'amount': amount,
+      'receipt': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+
+    final response = await DioHelper.postData(
+      url: EndPoints.uploadStoreReceipt,
+      data: formData,
+      token: CachedVariables.token,
+      isMultipart: true,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return OrderModel.fromJson(response.data['data']);
+    } else {
+      String message =
+          response.data['error'] ?? 'An error occurred while uploading receipt';
+      throw AuthException(message, response.statusCode);
     }
   }
 }

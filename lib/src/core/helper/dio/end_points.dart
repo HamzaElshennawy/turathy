@@ -69,12 +69,15 @@ abstract class EndPoints {
 
   // Product Orders
   static const String addProductOrder = '/order/add-product-order';
+  static const String uploadStoreReceipt = 'order/upload-receipt';
 
   // Cart
   static const String cart = 'cart';
   static const String cartAdd = 'cart/add';
   static const String cartRemove = 'cart/remove';
   static const String cartClear = 'cart/clear';
+  static String cartUpdateQuantity(int userId, int productId, int quantity) =>
+      'cart/quantity/$userId/$productId/$quantity';
 
   // Products
   static const String getProducts = 'products/get-products';

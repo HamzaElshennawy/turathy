@@ -165,6 +165,8 @@ class OrderModel {
       'codAmt': num.tryParse(codAmt) ?? 0,
       'weight': weight,
       'itemDesc': itemDesc,
+      if (paymentStatus != null) 'payment_status': paymentStatus,
+      if (paymentId != null) 'payment_id': paymentId,
     };
   }
 

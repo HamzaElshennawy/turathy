@@ -23,6 +23,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      final userId = CachedVariables.userId;
+      if (userId != null) {
+        final _ = await ref.refresh(cartProvider(userId).future);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final userId = CachedVariables.userId;
     if (userId == null) {
@@ -64,19 +75,35 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       body: cartAsync.when(
         data: (cartItems) {
           if (cartItems.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            return RefreshIndicator(
+              onRefresh: () async {
+                return await ref.refresh(cartProvider(userId).future);
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  Icon(
-                    Icons.shopping_cart_outlined,
-                    size: 80,
-                    color: Colors.grey[300],
-                  ),
-                  gapH16,
-                  Text(
-                    AppStrings.cartEmpty.tr(),
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 80,
+                            color: Colors.grey[300],
+                          ),
+                          gapH16,
+                          Text(
+                            AppStrings.cartEmpty.tr(),
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -86,12 +113,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           return Column(
             children: [
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: cartItems.length,
-                  itemBuilder: (context, index) {
-                    return _buildCartItem(cartItems[index]);
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    return await ref.refresh(cartProvider(userId).future);
                   },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: cartItems.length,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return _buildCartItem(cartItems[index]);
+                    },
+                  ),
                 ),
               ),
               _buildBottomBar(cartItems),
@@ -175,9 +208,43 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   ),
                 ),
                 gapH4,
-                Text(
-                  '${AppStrings.quantity.tr()}: ${item.quantity}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                Row(
+                  children: [
+                    Text(
+                      '${AppStrings.quantity.tr()}:',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    gapW8,
+                    InkWell(
+                      onTap: () => _updateQuantity(item, item.quantity - 1),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(Icons.remove, size: 16),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '${item.quantity}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _updateQuantity(item, item.quantity + 1),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(Icons.add, size: 16),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -283,6 +350,28 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Future<void> _updateQuantity(CartItemModel item, int newQuantity) async {
+    if (newQuantity < 1) return;
+    final userId = CachedVariables.userId;
+    if (userId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ref
+          .read(cartRepositoryProvider)
+          .updateQuantity(userId, item.productId, newQuantity);
+      ref.invalidate(cartProvider(userId));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -48,6 +48,17 @@ class CartRepository {
     }
   }
 
+  Future<void> updateQuantity(int userId, int productId, int quantity) async {
+    final result = await DioHelper.patchData(
+      url: EndPoints.cartUpdateQuantity(userId, productId, quantity),
+      token: CachedVariables.token,
+      data: {}, // Sending empty data to avoid 400 Bad Request
+    );
+    if (result.statusCode != 200) {
+      throw Exception('Failed to update cart quantity');
+    }
+  }
+
   Future<void> clearCart(int userId) async {
     final result = await DioHelper.deleteData(
       url: '${EndPoints.cartClear}/$userId',

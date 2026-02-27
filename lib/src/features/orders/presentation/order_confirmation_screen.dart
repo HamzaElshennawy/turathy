@@ -10,10 +10,13 @@ import 'package:turathy/src/features/auctions/data/auction_payments_repository.d
 
 import '../../../core/common_widgets/custom_card.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/helper/cache/cached_variables.dart';
 import '../../addresses/domain/user_address_model.dart';
 import '../../addresses/presentation/address_selection_screen.dart';
+import '../../cart/data/cart_repository.dart';
 import '../data/order_repository.dart';
 import '../domain/order_model.dart';
+import '../../main_screen.dart';
 
 enum UnifiedPaymentMethod { creditCard, bankTransfer }
 
@@ -135,19 +138,30 @@ class _OrderConfirmationScreenState
 
     if (_paymentMethod == UnifiedPaymentMethod.bankTransfer) {
       try {
-        await ref
-            .read(auctionPaymentsRepositoryProvider)
-            .uploadReceipt(
-              userId: finalizedOrder.userId,
-              auctionId: finalizedOrder.auctionId,
-              productId:
-                  finalizedOrder.auctionProductId ??
-                  finalizedOrder.productId ??
-                  0,
-              orderId: finalizedOrder.id,
-              amount: finalizedOrder.total.toInt(),
-              filePath: _selectedFile!.path!,
-            );
+        if (finalizedOrder.auctionId != 0) {
+          await ref
+              .read(auctionPaymentsRepositoryProvider)
+              .uploadReceipt(
+                userId: finalizedOrder.userId,
+                auctionId: finalizedOrder.auctionId,
+                productId:
+                    (finalizedOrder.auctionProductId ??
+                        finalizedOrder.productId) ??
+                    0,
+                orderId: finalizedOrder.id,
+                amount: finalizedOrder.total.toInt(),
+                filePath: _selectedFile!.path!,
+              );
+        } else {
+          await ref
+              .read(orderRepositoryProvider)
+              .uploadStoreReceipt(
+                userId: finalizedOrder.userId,
+                orderId: finalizedOrder.id,
+                amount: finalizedOrder.total.toInt(),
+                filePath: _selectedFile!.path!,
+              );
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -156,7 +170,13 @@ class _OrderConfirmationScreenState
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.of(context).pop(true);
+          Navigator.popUntil(context, (route) => route.isFirst);
+          ref.read(pageControllerProvider).jumpToPage(3);
+          ref.invalidate(userWinningAuctionsProvider);
+          ref.invalidate(getUserOrdersProvider);
+          if (CachedVariables.userId != null) {
+            ref.invalidate(cartProvider(CachedVariables.userId!));
+          }
         }
       } catch (e) {
         setState(() => _errorMessage = e.toString());
@@ -166,18 +186,53 @@ class _OrderConfirmationScreenState
     if (mounted) setState(() => _isSubmitting = false);
   }
 
-  void _handleMoyasarResult(dynamic result) {
+  Future<void> _handleMoyasarResult(dynamic result) async {
     if (result is PaymentResponse) {
       if (result.status == PaymentStatus.paid) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment successful!'),
-            backgroundColor: Colors.green,
-          ),
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
         );
-        Navigator.popUntil(context, (route) => route.isFirst);
-        ref.invalidate(userWinningAuctionsProvider);
-        ref.invalidate(getUserOrdersProvider);
+
+        try {
+          final finalizedOrder = await _syncOrderDetails();
+          if (finalizedOrder != null) {
+            final updatedOrder = finalizedOrder.copyWith(
+              paymentStatus: 'paid',
+              paymentId: result.id,
+            );
+            await ref.read(orderRepositoryProvider).updateOrder(updatedOrder);
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error saving order: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } finally {
+          if (mounted) Navigator.pop(context);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.popUntil(context, (route) => route.isFirst);
+          ref.read(pageControllerProvider).jumpToPage(3);
+          ref.invalidate(userWinningAuctionsProvider);
+          ref.invalidate(getUserOrdersProvider);
+          if (CachedVariables.userId != null) {
+            ref.invalidate(cartProvider(CachedVariables.userId!));
+          }
+        }
       } else if (result.status == PaymentStatus.failed) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

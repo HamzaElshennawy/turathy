@@ -127,20 +127,30 @@ class DioHelper {
     dynamic data,
     String lang = 'en',
     String? token,
+    bool isMultipart = false,
   }) async {
     try {
-      dio.options.headers = {
-        'Authorization': 'Bearer $token',
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      };
+      if (isMultipart) {
+        dio.options.headers = {
+          'Authorization': 'Bearer $token',
+          "Accept": "application/json",
+          "lang": lang,
+        };
+      } else {
+        dio.options.headers = {
+          'Authorization': 'Bearer $token',
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "lang": lang,
+        };
+      }
       return await dio.post(
         url,
         queryParameters: query,
         data: data,
         options: Options(
           validateStatus: (_) => true,
-          contentType: Headers.jsonContentType,
+          contentType: isMultipart ? null : Headers.jsonContentType,
           responseType: ResponseType.json,
         ),
       );

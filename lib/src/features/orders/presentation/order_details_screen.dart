@@ -74,17 +74,30 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     });
 
     try {
-      await ref
-          .read(auctionPaymentsRepositoryProvider)
-          .uploadReceipt(
-            userId: _currentOrder.userId,
-            auctionId: _currentOrder.auctionId,
-            productId:
-                _currentOrder.auctionProductId ?? _currentOrder.productId ?? 0,
-            orderId: _currentOrder.id,
-            amount: _currentOrder.total.toInt(),
-            filePath: _selectedFile!.path!,
-          );
+      if (_currentOrder.auctionId != 0) {
+        await ref
+            .read(auctionPaymentsRepositoryProvider)
+            .uploadReceipt(
+              userId: _currentOrder.userId,
+              auctionId: _currentOrder.auctionId,
+              productId:
+                  _currentOrder.auctionProductId ??
+                  _currentOrder.productId ??
+                  0,
+              orderId: _currentOrder.id,
+              amount: _currentOrder.total.toInt(),
+              filePath: _selectedFile!.path!,
+            );
+      } else {
+        await ref
+            .read(orderRepositoryProvider)
+            .uploadStoreReceipt(
+              userId: _currentOrder.userId,
+              orderId: _currentOrder.id,
+              amount: _currentOrder.total.toInt(),
+              filePath: _selectedFile!.path!,
+            );
+      }
 
       if (mounted) {
         ref.invalidate(getUserOrdersProvider);
@@ -298,7 +311,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     final heroTag = 'order_product_${order.id}';
 
     return _buildCard(
-      title: AppStrings.auctionProducts.tr(),
+      title: order.auctionId != 0
+          ? AppStrings.auctionProducts.tr()
+          : AppStrings.products.tr(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
