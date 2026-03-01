@@ -16,6 +16,8 @@ import '../../domain/auction_access_model.dart';
 import '../../data/auctions_repository.dart';
 import 'widgets/auction_images_slider_widget.dart';
 import 'package:turathy/src/core/helper/socket/socket_providers.dart';
+import 'package:turathy/src/core/helper/socket/socket_models.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AuctionScreen extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -38,6 +40,15 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   bool _isLoadingDetails = false;
   late AuctionModel _currentAuction;
 
+  // --- Socket / Live Bid Tracking ---
+  // Maps productId → the current highest AuctionBid for that product
+  final Map<int, AuctionBid> _highestBids = {};
+  // Set of productIds where the current user has placed at least one bid
+  final Set<int> _userBidProductIds = {};
+  StreamSubscription? _bidSubscription;
+  StreamSubscription? _auctionStartedSubscription;
+  SocketActions? _socketActions;
+
   /// Whether the user can open item bottom sheets (only GRANTED or owner)
   bool get _canOpenItemBottomSheet =>
       _accessStatus == 'GRANTED' ||
@@ -58,6 +69,61 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     _startTimer();
     _checkAccess();
     _fetchAuctionDetails();
+    // Connect socket and join the auction room so we receive live bid events
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupSocketListeners();
+    });
+  }
+
+  void _setupSocketListeners() {
+    if (!mounted) return;
+    final socketService = ref.read(socketServiceProvider);
+    _socketActions = ref.read(socketActionsProvider);
+    final userId = CachedVariables.userId;
+    final auctionId = _currentAuction.id;
+    if (userId == null || auctionId == null) return;
+
+    // Ensure socket is connected and join the auction room
+    _socketActions?.joinAuction(auctionId, userId);
+
+    // Listen for new bids and track highest bid per product
+    _bidSubscription = socketService
+        .getEventStream<BidPlacedEvent>(
+          'newBid',
+          (data) => BidPlacedEvent.fromJson(data as Map<String, dynamic>),
+        )
+        .listen((event) {
+          if (!mounted) return;
+          final bid = event.newBid;
+          final productId = bid.productId;
+          if (productId == null) return;
+
+          setState(() {
+            // Track that THIS user bid on this product
+            if (bid.userId == userId) {
+              _userBidProductIds.add(productId);
+            }
+
+            // Update highest bid for this product
+            final existing = _highestBids[productId];
+            if (existing == null || (bid.bid ?? 0) >= (existing.bid ?? 0)) {
+              _highestBids[productId] = bid;
+            }
+          });
+        });
+
+    // Listen for auction started / pre-started events → re-check access
+    _auctionStartedSubscription = socketService
+        .getEventStream<AuctionModel>(
+          'auctionStarted',
+          (data) => AuctionModel.fromJson(data as Map<String, dynamic>),
+        )
+        .listen((event) {
+          if (!mounted) return;
+          if (event.id == auctionId) {
+            _checkAccess();
+          }
+        });
   }
 
   Future<void> _fetchAuctionDetails() async {
@@ -72,6 +138,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         setState(() {
           _currentAuction = fullAuction;
           _filteredProducts = _currentAuction.auctionProducts ?? [];
+          // Seed highest bids from loaded bid history
+          _seedHighestBidsFromAuction(fullAuction);
         });
         _calculateTimeLeft();
       }
@@ -82,6 +150,27 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         setState(() {
           _isLoadingDetails = false;
         });
+      }
+    }
+  }
+
+  /// Pre-populate _highestBids and _userBidProductIds from auction bid history
+  void _seedHighestBidsFromAuction(AuctionModel auction) {
+    final userId = CachedVariables.userId;
+    final products = auction.auctionProducts ?? [];
+    for (final product in products) {
+      final bids = product.bids ?? [];
+      if (bids.isEmpty) continue;
+      // Find the highest bid for this product
+      final sorted = [...bids]
+        ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
+      final highest = sorted.first;
+      if (product.id != null) {
+        _highestBids[product.id!] = highest;
+        // If current user has a bid on this product, track it
+        if (userId != null && bids.any((b) => b.userId == userId)) {
+          _userBidProductIds.add(product.id!);
+        }
       }
     }
   }
@@ -178,6 +267,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   void dispose() {
     _timer?.cancel();
     _searchController.dispose();
+    _bidSubscription?.cancel();
+    _auctionStartedSubscription?.cancel();
+    // Leave the auction socket room
+    final userId = CachedVariables.userId;
+    final auctionId = _currentAuction.id;
+    if (userId != null && auctionId != null) {
+      _socketActions?.leaveAuction(auctionId, userId);
+    }
     super.dispose();
   }
 
@@ -254,6 +351,46 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Returns a badge widget showing the user's bid status for a product,
+  /// or null if the user hasn't bid on this product.
+  /// Only shown once the auction has entered at least the pre-auction phase.
+  Widget? _buildBidStatusBadge(int? productId) {
+    if (productId == null) return null;
+    // Don't show any badge before the auction has started at all
+    if (!_hasPreAuctionStarted) return null;
+    if (!_userBidProductIds.contains(productId)) return null;
+
+    final highestBid = _highestBids[productId];
+    final isHighest = highestBid?.userId == CachedVariables.userId;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isHighest ? Colors.green.shade600 : Colors.red.shade600,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isHighest ? Icons.emoji_events : Icons.arrow_upward,
+            color: Colors.white,
+            size: 12,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isHighest ? AppStrings.highestBid.tr() : AppStrings.outbid.tr(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -471,6 +608,32 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Re-evaluate access when the auction starts (e.g. admin approves access)
+    ref.listen(auctionStartedProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event != null && event.id == _currentAuction.id) {
+        final wasNotGranted = _accessStatus != 'GRANTED';
+        _checkAccess().then((_) {
+          if (mounted && wasNotGranted && _accessStatus == 'GRANTED') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(AppStrings.accessGranted.tr()),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        });
+      }
+    });
+
+    // Also listen for pre-auction started event
+    ref.listen(auctionPreStartedProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event != null && event.id == _currentAuction.id) {
+        _checkAccess();
+      }
+    });
+
     if (_isLoadingDetails) {
       return Scaffold(
         appBar: AppBar(
@@ -736,29 +899,47 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: [
-                                          // Product Image
+                                          // Product Image with bid-status overlay
                                           Expanded(
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  const BorderRadius.vertical(
-                                                    top: Radius.circular(8),
-                                                  ),
-                                              child: Image.network(
-                                                product.imageUrl ?? '',
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (
-                                                      context,
-                                                      error,
-                                                      stackTrace,
-                                                    ) => Container(
-                                                      color: Colors.grey[200],
-                                                      child: const Icon(
-                                                        Icons
-                                                            .image_not_supported,
+                                            child: Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      const BorderRadius.vertical(
+                                                        top: Radius.circular(8),
                                                       ),
-                                                    ),
-                                              ),
+                                                  child: Image.network(
+                                                    product.imageUrl ?? '',
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder:
+                                                        (
+                                                          context,
+                                                          error,
+                                                          stackTrace,
+                                                        ) => Container(
+                                                          color:
+                                                              Colors.grey[200],
+                                                          child: const Icon(
+                                                            Icons
+                                                                .image_not_supported,
+                                                          ),
+                                                        ),
+                                                  ),
+                                                ),
+                                                // Bid status badge (top-right corner)
+                                                if (_buildBidStatusBadge(
+                                                      product.id,
+                                                    ) !=
+                                                    null)
+                                                  Positioned(
+                                                    top: 6,
+                                                    right: 6,
+                                                    child: _buildBidStatusBadge(
+                                                      product.id,
+                                                    )!,
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                           Padding(
@@ -789,15 +970,38 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                                       TextOverflow.ellipsis,
                                                 ),
                                                 gapH4,
-                                                Text(
-                                                  '${product.minBidPrice}\$',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      (_highestBids[product.id]
+                                                                  ?.bid ??
+                                                              product
+                                                                  .minBidPrice)
+                                                          .toString(),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium
+                                                          ?.copyWith(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    SvgPicture.asset(
+                                                      'assets/icons/RSA.svg',
+                                                      width: 14,
+                                                      height: 14,
+                                                      colorFilter:
+                                                          ColorFilter.mode(
+                                                            Theme.of(context)
+                                                                    .textTheme
+                                                                    .titleMedium
+                                                                    ?.color ??
+                                                                Colors.black,
+                                                            BlendMode.srcIn,
+                                                          ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
@@ -888,6 +1092,16 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                   ),
+                                                  // Bid status badge
+                                                  if (_buildBidStatusBadge(
+                                                        product.id,
+                                                      ) !=
+                                                      null) ...[
+                                                    gapH4,
+                                                    _buildBidStatusBadge(
+                                                      product.id,
+                                                    )!,
+                                                  ],
                                                 ],
                                               ),
                                             ),
@@ -895,15 +1109,38 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                               padding: const EdgeInsets.only(
                                                 top: 8.0,
                                               ),
-                                              child: Text(
-                                                '${product.minBidPrice}\$',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    (_highestBids[product.id]
+                                                                ?.bid ??
+                                                            product.minBidPrice)
+                                                        .toString(),
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  SvgPicture.asset(
+                                                    'assets/icons/RSA.svg',
+                                                    width: 16,
+                                                    height: 16,
+                                                    colorFilter:
+                                                        ColorFilter.mode(
+                                                          Theme.of(context)
+                                                                  .textTheme
+                                                                  .titleMedium
+                                                                  ?.color ??
+                                                              Colors.black,
+                                                          BlendMode.srcIn,
+                                                        ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
