@@ -473,6 +473,7 @@ class AuctionBid {
   int? productId;
   int? userId;
   num? bid;
+  bool? isActive; // Added to support proxy bidding UI
   String? createdAt;
   String? updatedAt;
   User? user;
@@ -483,6 +484,7 @@ class AuctionBid {
     this.productId,
     this.userId,
     this.bid,
+    this.isActive,
     this.createdAt,
     this.updatedAt,
     this.user,
@@ -494,6 +496,13 @@ class AuctionBid {
     productId = json['product_id'];
     userId = json['user_id'];
     bid = json['bid'];
+    if (json['is_active'] != null) {
+      if (json['is_active'] is bool) {
+        isActive = json['is_active'];
+      } else if (json['is_active'] is int) {
+        isActive = json['is_active'] == 1;
+      }
+    }
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     user = json['user'] != null ? User.fromJson(json['user']) : null;
@@ -506,6 +515,7 @@ class AuctionBid {
     data['product_id'] = productId;
     data['user_id'] = userId;
     data['bid'] = bid;
+    data['is_active'] = isActive;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
     if (user != null) {

@@ -186,7 +186,10 @@ class AppStrings {
   static const String dangerZone = "dangerZone";
   static const String products = "products";
   static const String bidNow = "bidNow";
+  static const String willStartSoon = "willStartSoon";
   static const String remainingTime = "remainingTime";
+  static const String untilLive = "untilLive";
+  static const String untilPreAuction = "untilPreAuction";
   static const String currency = "currency";
   static const String markAllAsRead = "markAllAsRead";
   static const String allNotificationsMarkedRead = "allNotificationsMarkedRead";

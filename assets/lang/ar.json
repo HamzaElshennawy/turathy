@@ -173,6 +173,7 @@
   "dangerZone": "منطقة الخطر",
   "products": "المنتجات",
   "bidNow": "زايد الآن",
+  "willStartSoon": "سيبدأ قريبًا",
   "remainingTime": "الوقت المتبقى",
   "currency": "ر.س",
   "buyNow": "أشتري الآن",
@@ -371,5 +372,7 @@
   "addAddress": "إضافة عنوان",
   "deleteAddressTitle": "حذف العنوان",
   "fieldRequired": "هذا الحقل مطلوب",
-  "noRequestsFound": "لا يوجد طلبات حاليا"
+  "noRequestsFound": "لا يوجد طلبات حاليا",
+  "untilLive": "حتى البث المباشر",
+  "untilPreAuction": "حتى المزاد التحضيري"
 }

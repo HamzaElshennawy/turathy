@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -161,12 +162,19 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     for (final product in products) {
       final bids = product.bids ?? [];
       if (bids.isEmpty) continue;
-      // Find the highest bid for this product
+      // Find the highest active bid for this product (fallback to highest any if none active)
       final sorted = [...bids]
         ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
-      final highest = sorted.first;
+
+      final activeSorted = [...bids.where((b) => b.isActive == true)]
+        ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
+
+      final highestActive = activeSorted.isNotEmpty
+          ? activeSorted.first
+          : sorted.first;
+
       if (product.id != null) {
-        _highestBids[product.id!] = highest;
+        _highestBids[product.id!] = highestActive;
         // If current user has a bid on this product, track it
         if (userId != null && bids.any((b) => b.userId == userId)) {
           _userBidProductIds.add(product.id!);
@@ -334,7 +342,11 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     ).format(date); // Example: 14 December, 10 AM
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    ui.TextDirection? textDirection,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -348,6 +360,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           ),
           Text(
             value,
+            textDirection: textDirection ?? ui.TextDirection.ltr,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -369,23 +382,91 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     final highestBid = _highestBids[productId];
     final isHighest = highestBid?.userId == CachedVariables.userId;
 
+    // Determine if this specific item has ended
+    bool isProductEnded = false;
+    // Whole auction is marked expired/canceled or ended
+    if (_currentAuction.isExpired == true ||
+        _currentAuction.isCanceled == true) {
+      isProductEnded = true;
+    } else if (_currentAuction.expiryDate != null &&
+        _currentAuction.expiryDate!.isBefore(DateTime.now())) {
+      isProductEnded = true;
+    } else if (_currentAuction.currentProduct != null &&
+        _currentAuction.auctionProducts != null) {
+      // In a live auction, if this item comes BEFORE the current item, it has ended
+      final currentIndex = _currentAuction.auctionProducts!.indexWhere(
+        (p) =>
+            p.product == _currentAuction.currentProduct ||
+            p.id == _currentAuction.currentProductId,
+      );
+      final thisIndex = _currentAuction.auctionProducts!.indexWhere(
+        (p) => p.id == productId,
+      );
+      if (currentIndex != -1 && thisIndex != -1 && thisIndex < currentIndex) {
+        isProductEnded = true;
+      }
+    } else if (_currentAuction.currentProduct == null &&
+        _currentAuction.isPreAuction == false &&
+        _timeLeft == Duration.zero) {
+      // Auction seems to have ended completely
+      isProductEnded = true;
+    }
+
+    // Need to also check if we have an inactive highest bid
+    bool isHighestInactive = false;
+    final ProductBids =
+        _currentAuction.auctionProducts
+            ?.firstWhere(
+              (p) => p.id == productId,
+              orElse: () => AuctionProducts(),
+            )
+            .bids ??
+        [];
+    if (ProductBids.isNotEmpty) {
+      final sorted = [...ProductBids]
+        ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
+      if (sorted.first.userId == CachedVariables.userId && !isHighest) {
+        isHighestInactive = true;
+      }
+    }
+
+    String badgeText;
+    IconData badgeIcon;
+    Color badgeColor;
+
+    if (isProductEnded) {
+      badgeText = isHighest ? AppStrings.youWon.tr() : AppStrings.youLost.tr();
+      badgeIcon = isHighest ? Icons.emoji_events : Icons.close;
+      badgeColor = isHighest ? Colors.green.shade600 : Colors.red.shade600;
+    } else {
+      if (isHighest) {
+        badgeText = AppStrings.highestBid.tr();
+        badgeIcon = Icons.emoji_events;
+        badgeColor = Colors.green.shade600;
+      } else if (isHighestInactive) {
+        badgeText = 'Max bid is registered'; // Typically from AppStrings
+        badgeIcon = Icons.check_circle_outline;
+        badgeColor = Colors.orange.shade600;
+      } else {
+        badgeText = AppStrings.outbid.tr();
+        badgeIcon = Icons.arrow_upward;
+        badgeColor = Colors.red.shade600;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isHighest ? Colors.green.shade600 : Colors.red.shade600,
+        color: badgeColor,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isHighest ? Icons.emoji_events : Icons.arrow_upward,
-            color: Colors.white,
-            size: 12,
-          ),
+          Icon(badgeIcon, color: Colors.white, size: 12),
           const SizedBox(width: 4),
           Text(
-            isHighest ? AppStrings.highestBid.tr() : AppStrings.outbid.tr(),
+            badgeText,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 11,
@@ -404,12 +485,29 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     bool isDenied = _accessStatus == 'DENIED';
     bool isOwner = _currentAuction.userId == CachedVariables.userId;
 
+    bool isAuctionEnded = false;
+    if (_currentAuction.isExpired == true ||
+        _currentAuction.isCanceled == true) {
+      isAuctionEnded = true;
+    } else if (_currentAuction.expiryDate != null &&
+        _currentAuction.expiryDate!.isBefore(DateTime.now())) {
+      isAuctionEnded = true;
+    } else if (_currentAuction.currentProduct == null &&
+        _currentAuction.isPreAuction == false &&
+        _timeLeft == Duration.zero) {
+      isAuctionEnded = true;
+    }
+
     VoidCallback? onPressed;
     String buttonText = '';
     Color? buttonColor;
     bool isPreAuction = _currentAuction.isPreAuction;
 
-    if (isOwner || isGranted) {
+    if (isAuctionEnded) {
+      buttonText = AppStrings.ended.tr();
+      buttonColor = Colors.grey;
+      onPressed = null;
+    } else if (isOwner || isGranted) {
       if (isUpcoming || isPreAuction) {
         // User already has access; wait for the live auction to actually start
         return const SizedBox.shrink();
@@ -727,19 +825,22 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                           AppStrings.startsAt.tr(),
                           _formatDate(_currentAuction.startDate),
                         ),
-                      _buildInfoRow(
-                        AppStrings.endsAt.tr(),
-                        _formatDate(_currentAuction.expiryDate),
-                      ),
-                      gapH8,
+                      //_buildInfoRow(
+                      //  AppStrings.endsAt.tr(),
+                      //  _formatDate(_currentAuction.expiryDate),
+                      //),
+                      //gapH8,
                       if (_timeLeft > Duration.zero)
                         Center(
-                          child: Text(
-                            '${AppStrings.countdownStartsIn.tr()} ${_formatDuration(_timeLeft)}',
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          child: Directionality(
+                            textDirection: ui.TextDirection.ltr,
+                            child: Text(
+                              '${_formatDuration(_timeLeft)} ${AppStrings.countdownStartsIn.tr()}',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
@@ -881,6 +982,19 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                     ),
                                 itemBuilder: (context, index) {
                                   final product = _filteredProducts[index];
+
+                                  // Determine if this is the currently live item
+                                  final bool isCurrentLiveItem =
+                                      _currentAuction.isPreAuction == false &&
+                                      _timeLeft == Duration.zero &&
+                                      _currentAuction.isExpired != true &&
+                                      _currentAuction.isCanceled != true &&
+                                      (product.id ==
+                                              _currentAuction
+                                                  .currentProductId ||
+                                          product.product ==
+                                              _currentAuction.currentProduct);
+
                                   return GestureDetector(
                                     onTap: _canOpenItemBottomSheet
                                         ? () => _showItemBottomSheet(
@@ -890,8 +1004,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                         : null,
                                     child: Container(
                                       decoration: BoxDecoration(
+                                        color: isCurrentLiveItem
+                                            ? Colors.green.shade50
+                                            : null,
                                         border: Border.all(
-                                          color: Colors.grey.shade200,
+                                          color: isCurrentLiveItem
+                                              ? Colors.green
+                                              : Colors.grey.shade200,
+                                          width: isCurrentLiveItem ? 2.0 : 1.0,
                                         ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -1019,6 +1139,19 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                 separatorBuilder: (context, index) => gapH8,
                                 itemBuilder: (context, index) {
                                   final product = _filteredProducts[index];
+
+                                  // Determine if this is the currently live item
+                                  final bool isCurrentLiveItem =
+                                      _currentAuction.isPreAuction == false &&
+                                      _timeLeft == Duration.zero &&
+                                      _currentAuction.isExpired != true &&
+                                      _currentAuction.isCanceled != true &&
+                                      (product.id ==
+                                              _currentAuction
+                                                  .currentProductId ||
+                                          product.product ==
+                                              _currentAuction.currentProduct);
+
                                   return GestureDetector(
                                     onTap: _canOpenItemBottomSheet
                                         ? () => _showItemBottomSheet(
@@ -1028,8 +1161,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                         : null,
                                     child: Container(
                                       decoration: BoxDecoration(
+                                        color: isCurrentLiveItem
+                                            ? Colors.green.shade50
+                                            : null,
                                         border: Border.all(
-                                          color: Colors.grey.shade200,
+                                          color: isCurrentLiveItem
+                                              ? Colors.green
+                                              : Colors.grey.shade200,
+                                          width: isCurrentLiveItem ? 2.0 : 1.0,
                                         ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),

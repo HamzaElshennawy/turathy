@@ -26,7 +26,8 @@ class AuctionCard extends ConsumerStatefulWidget {
 
 class _AuctionCardState extends ConsumerState<AuctionCard> {
   Timer? _timer;
-  Duration _remainingTime = Duration.zero;
+  Duration _remainingTimeForLive = Duration.zero;
+  Duration _remainingTimeForPreAuction = Duration.zero;
 
   @override
   void initState() {
@@ -44,16 +45,29 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
   }
 
   void _calculateRemainingTime() {
-    if (widget.product.expiryDate != null) {
-      final expiryDate = widget.product.expiryDate!;
+    if (widget.product.liveStartDate != null) {
+      final liveStartDate = widget.product.liveStartDate!;
       final now = DateTime.now();
-      if (expiryDate.isAfter(now)) {
+      if (liveStartDate.isAfter(now)) {
         setState(() {
-          _remainingTime = expiryDate.difference(now);
+          _remainingTimeForLive = liveStartDate.difference(now);
         });
       } else {
         setState(() {
-          _remainingTime = Duration.zero;
+          _remainingTimeForLive = Duration.zero;
+        });
+      }
+    }
+    if (widget.product.startDate != null) {
+      final startDate = widget.product.startDate!;
+      final now = DateTime.now();
+      if (startDate.isAfter(now)) {
+        setState(() {
+          _remainingTimeForPreAuction = startDate.difference(now);
+        });
+      } else {
+        setState(() {
+          _remainingTimeForPreAuction = Duration.zero;
         });
       }
     }
@@ -74,11 +88,14 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
       orElse: () => false,
     );
     final bool isEnded =
-        _remainingTime == Duration.zero ||
+        _remainingTimeForLive == Duration.zero ||
         widget.product.isExpired == true ||
         widget.product.isCanceled == true ||
-        (widget.product.expiryDate != null &&
-            widget.product.expiryDate!.isBefore(DateTime.now()));
+        (widget.product.liveStartDate != null &&
+            widget.product.liveStartDate!.isBefore(DateTime.now()))
+    //    ||
+    //_remainingTimeForPreAuction == Duration.zero
+    ;
 
     String? statusLabel;
     Color? statusColor;
@@ -270,7 +287,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                         //),
                         // Remaining Time
                         // Time Display
-                        if (widget.product.expiryDate != null &&
+                        if (widget.product.liveStartDate != null &&
                             widget.product.startDate != null)
                           Builder(
                             builder: (context) {
@@ -310,14 +327,14 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                           color: Color(0xFF1B5E20),
                                         ),
                                       ),
-                                      Text(
-                                        '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
+                                      //Text(
+                                      //  '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
+                                      //  style: const TextStyle(
+                                      //    fontSize: 12,
+                                      //    fontWeight: FontWeight.w500,
+                                      //    color: Colors.black54,
+                                      //  ),
+                                      //),
                                     ],
                                   ],
                                 );
@@ -333,13 +350,38 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                 );
                               } else {
                                 // Live Auction
-                                return Text(
-                                  '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFFD32F2F), // Red color
-                                  ),
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _remainingTimeForPreAuction > Duration.zero
+                                        ? Text(
+                                            '${AppStrings.remainingTime.tr()} ${AppStrings.untilPreAuction.tr()}:${_formatDuration(_remainingTimeForPreAuction)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(
+                                                0xFFD32F2F,
+                                              ), // Red color
+                                            ),
+                                          )
+                                        : Text(
+                                            'Pre-Auction Started',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.green, // Red color
+                                            ),
+                                          ),
+                                    gapH4,
+                                    Text(
+                                      '${AppStrings.remainingTime.tr()} ${AppStrings.untilLive.tr()}:${_formatDuration(_remainingTimeForLive)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFD32F2F), // Red color
+                                      ),
+                                    ),
+                                  ],
                                 );
                               }
                             },

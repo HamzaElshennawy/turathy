@@ -45,7 +45,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   late SocketActions socketActions = ref.read(socketActionsProvider);
   late AuctionModel auction;
   // RtcEngine? _engine;
-  bool _isVideoReady = false;
+  // video flag removed - not used anymore
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
 
@@ -200,6 +200,28 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     return p1.trim().toLowerCase() == p2.trim().toLowerCase();
   }
 
+  /// Picks the next product in the auctionProducts list relative to the
+  /// current live product. If the current product isn't found or there is no
+  /// next item, [_selectedProduct] is set to null.
+  void _selectNextProduct() {
+    if (auction.auctionProducts == null || auction.auctionProducts!.isEmpty) {
+      _selectedProduct = null;
+      return;
+    }
+
+    final currentIndex = auction.auctionProducts!.indexWhere(
+      (p) => _isSameProduct(p.product, auction.currentProduct),
+    );
+
+    if (currentIndex == -1 ||
+        currentIndex + 1 >= auction.auctionProducts!.length) {
+      // nothing to select (could also clear to let user pick any)
+      _selectedProduct = null;
+    } else {
+      _selectedProduct = auction.auctionProducts![currentIndex + 1];
+    }
+  }
+
   void _placeBid(
     int quantity,
     num currentBid, {
@@ -281,14 +303,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     // Listen for Auction Item Ended (Multi-item transition)
     ref.listen(auctionItemEndedProvider, (previous, next) {
       final event = next.valueOrNull;
-      if (event != null && event.nextItem != null) {
+      if (event != null) {
         // Cancel fail-safe timer as we got the event
         _cancelFailSafeTimer();
 
         // Mark that the user was live during this auction
         _wasLiveWhenJoined = true;
 
-        // Show result dialog for the item that just ended
+        // play sound/notification but do not show popup dialog
         if (event.winner != null && _wasLiveWhenJoined) {
           if (event.winner!.id == CachedVariables.userId) {
             _audioPlayer.play(
@@ -300,70 +322,84 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
               body: '${AppStrings.youWon.tr()} ${auction.currentProduct ?? ""}',
             );
           } else {
-            _audioPlayer.play(
-              AssetSource('sounds/lose_notification.wav'),
-              volume: 1.0,
+            // Check if current user actually participated in this item
+            final currentItemBids =
+                auction.auctionBids
+                    ?.where((b) => b.productId == auction.currentProductId)
+                    .toList() ??
+                [];
+            final didIParticipate = currentItemBids.any(
+              (b) => b.userId == CachedVariables.userId,
             );
+
+            if (didIParticipate) {
+              _audioPlayer.play(
+                AssetSource('sounds/lose_notification.wav'),
+                volume: 1.0,
+              );
+            }
           }
-
-          // Force reset flag temporarily to ensure dialog shows for this item
-          // (Though it should be false from previous state, safety first)
-          _hasShownResultDialog = false;
-
-          _showResultDialog(
-            winnerId: event.winner!.id,
-            winnerName: event.winner!.name,
-            finalPrice: auction.bidPrice,
-          );
         }
 
-        setState(() {
-          // Update auction details
-          auction.currentProduct = event.nextItem!.product;
-          auction.actualPrice =
-              num.tryParse(event.nextItem!.actualPrice ?? '0') ?? 0;
-          auction.minBidPrice =
-              num.tryParse(event.nextItem!.minBidPrice ?? '0') ?? 0;
-          auction.bidPrice = num.tryParse(event.nextItem!.bidPrice ?? '0') ?? 0;
-          if (event.nextItem!.imageUrl != null) {
-            auction.imageUrl = event.nextItem!.imageUrl;
-          }
+        if (event.nextItem != null) {
+          // Transition to the next item
+          setState(() {
+            // Update auction details
+            auction.currentProduct = event.nextItem!.product;
+            auction.currentProductId = event.nextItem!.id;
+            auction.actualPrice =
+                num.tryParse(event.nextItem!.actualPrice ?? '0') ?? 0;
+            auction.minBidPrice =
+                num.tryParse(event.nextItem!.minBidPrice ?? '0') ?? 0;
+            auction.bidPrice =
+                num.tryParse(event.nextItem!.bidPrice ?? '0') ?? 0;
+            if (event.nextItem!.imageUrl != null) {
+              auction.imageUrl = event.nextItem!.imageUrl;
+            }
 
-          // Calculate new expiry based on duration (or specific field if available)
-          // The event.auction might have the updated expiryDate
-          if (event.auction.expiryDate != null) {
-            auction.expiryDate = event.auction.expiryDate;
-          }
+            // Calculate new expiry based on duration (or specific field if available)
+            if (event.auction.expiryDate != null) {
+              auction.expiryDate = event.auction.expiryDate;
+            }
 
-          // Reset local state for new item
-          _isAuctionEnded = false;
-          _winnerId = null;
-          _winnerName = null;
-          _finalPrice = null;
-          _hasShownResultDialog = false;
-          _selectedProduct = null; // Reset selection to show new live product
+            // Reset local state for new item
+            _isAuctionEnded = false;
+            _winnerId = null;
+            _winnerName = null;
+            _finalPrice = null;
+            _hasShownResultDialog = false;
+            // auto-select the incoming product so the UI highlights it
+            if (event.nextItem!.id != null &&
+                auction.auctionProducts != null &&
+                auction.auctionProducts!.isNotEmpty) {
+              _selectedProduct = auction.auctionProducts!.firstWhere(
+                (p) => p.id == event.nextItem!.id,
+                orElse: () => event.nextItem!,
+              );
+            } else {
+              _selectedProduct = event.nextItem;
+            }
 
-          // Auto-scroll to new item
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToCurrentItem();
+            // Auto-scroll to new item
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToCurrentItem();
+            });
           });
-        });
 
-        // Schedule next fail-safe for the new item
-        if (auction.expiryDate != null) {
-          _scheduleFailSafeTimer(auction.expiryDate!);
+          // Schedule next fail-safe for the new item
+          if (auction.expiryDate != null) {
+            _scheduleFailSafeTimer(auction.expiryDate!);
+          }
+        } else {
+          // no next item means the final product has ended; clear live marker
+          setState(() {
+            _isAuctionEnded = true;
+            // still advance selection based on positional logic
+            _selectNextProduct();
+            auction.currentProduct = null;
+            auction.currentProductId = null;
+          });
         }
-
-        // Show brief notification for item change
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${AppStrings.nextItem.tr()}: ${event.nextItem!.product}',
-            ),
-            backgroundColor: Colors.blueAccent,
-            duration: const Duration(seconds: 2),
-          ),
-        );
       }
     });
 
@@ -387,6 +423,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           _winnerId = event.winnerId;
           _winnerName = event.winnerName;
           _finalPrice = event.finalBidAmount;
+          // advance selection using badge logic (pick next index)
+          _selectNextProduct();
+          // clear currentProduct so the thumbnail badge is no longer marked LIVE
+          auction.currentProduct = null;
+          auction.currentProductId = null;
         });
 
         if (event.winnerId == CachedVariables.userId) {
@@ -399,20 +440,26 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             body: '${AppStrings.youWon.tr()} ${auction.title ?? ""}',
           );
         } else {
-          _audioPlayer.play(
-            AssetSource('sounds/lose_notification.wav'),
-            volume: 1.0,
+          // Check if current user actually participated in the final item
+          final lastProductId = auction.currentProductId;
+          final lastItemBids =
+              auction.auctionBids
+                  ?.where((b) => b.productId == lastProductId)
+                  .toList() ??
+              [];
+          final didIParticipate = lastItemBids.any(
+            (b) => b.userId == CachedVariables.userId,
           );
-        }
 
-        // Only show dialog if user was present during the live auction
-        if (_wasLiveWhenJoined) {
-          _showResultDialog(
-            winnerId: event.winnerId,
-            winnerName: event.winnerName,
-            finalPrice: event.finalBidAmount,
-          );
+          if (didIParticipate) {
+            _audioPlayer.play(
+              AssetSource('sounds/lose_notification.wav'),
+              volume: 1.0,
+            );
+          }
         }
+        // We intentionally no longer pop up a result dialog on the live screen.
+        // The bottom bidding controls already reflect the winner/loser state.
       }
     });
 
@@ -565,39 +612,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                   children: [
                     // Agora Video (shrinks if no video)
                     /* 
+                        // video feature currently disabled
                         if (auction.isLiveAuction && auction.isLive == true)
                           AnimatedSize(
                             duration: const Duration(milliseconds: 300),
-                            child: _isVideoReady
-                                ? SizedBox(
+                            child: SizedBox(
                                     height: 300,
-                                    child: Consumer(
-                                      builder: (context, ref, child) {
-                                        final agoraTokenValue = ref.watch(
-                                          agoraTokenProvider(
-                                            AgoraTokenRequest(
-                                              auctionID: widget.auctionId,
-                                              isPublisher: widget.isAdmin,
-                                            ),
-                                          ),
-                                        );
-                                        return AsyncValueWidget(
-                                          value: agoraTokenValue,
-                                          data: (token) => AgoraVideoWidget(
-                                            isAdmin: widget.isAdmin,
-                                            agoraToken: token,
-                                            auctionId: widget.auctionId,
-                                            onEngineInitialized: (engine) {
-                                              // _engine = engine;
-                                              if (mounted) {
-                                                setState(() {
-                                                  _isVideoReady = true;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                        );
-                                      },
+                                    // AgoraVideoWidget removed
                                     ),
                           ),
                         */
@@ -1077,40 +1098,6 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     _cancelFailSafeTimer();
     // Refresh the provider to get latest data from backend
     ref.invalidate(auctionDetailsProvider(widget.auctionId));
-  }
-
-  void _showResultDialog({
-    required int? winnerId,
-    required String? winnerName,
-    required num? finalPrice,
-  }) {
-    if (_hasShownResultDialog || _apiLoadedAsEnded) return;
-
-    setState(() {
-      _hasShownResultDialog = true;
-    });
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Auction Result',
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return AuctionResultDialog(
-          winnerId: winnerId,
-          winnerName: winnerName,
-          finalPrice: finalPrice,
-          currentUserId: CachedVariables.userId,
-          auction: auction,
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      },
-    );
   }
 }
 
