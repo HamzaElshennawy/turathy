@@ -72,8 +72,8 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
               ),
               child: Row(
                 children: [
-                  _buildTabItem(0, AppStrings.store.tr()),
-                  _buildTabItem(1, AppStrings.auctions.tr()),
+                  _buildTabItem(0, AppStrings.auctions.tr()),
+                  _buildTabItem(1, AppStrings.store.tr()),
                 ],
               ),
             ),
@@ -110,14 +110,6 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
     final paymentsValue = ref.watch(myPaymentsProvider);
 
     if (_selectedTab == 0) {
-      return AsyncValueWidget(
-        value: ordersValue,
-        data: (orders) {
-          final filtered = _filterOrders(orders);
-          return _buildOrderListView(filtered, [], []);
-        },
-      );
-    } else {
       // For Auctions, combine orders, winnings, and payments
       return ordersValue.when(
         data: (orders) {
@@ -149,6 +141,14 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
+      );
+    } else {
+      return AsyncValueWidget(
+        value: ordersValue,
+        data: (orders) {
+          final filtered = _filterOrders(orders);
+          return _buildOrderListView(filtered, [], []);
+        },
       );
     }
   }
@@ -288,15 +288,15 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
   }
 
   List<OrderModel> _filterOrders(List<OrderModel> orders) {
+    // Auction Orders: Has auctionId OR auction data
     if (_selectedTab == 0) {
+      return orders
+          .where((order) => order.auctionId != 0 || order.auction != null)
+          .toList();
+    } else {
       // Store Orders: No auctionId AND no auction data
       return orders
           .where((order) => order.auctionId == 0 && order.auction == null)
-          .toList();
-    } else {
-      // Auction Orders: Has auctionId OR auction data
-      return orders
-          .where((order) => order.auctionId != 0 || order.auction != null)
           .toList();
     }
   }

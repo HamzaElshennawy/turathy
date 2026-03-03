@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 
 /// Model representing a notification from the backend API
@@ -82,13 +83,70 @@ class NotificationModel {
   }
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    debugPrint('################ Notification Received ################');
+    debugPrint('Raw JSON: $json');
+
+    // Handle data parsing safely
+    Map<String, dynamic>? parsedData;
+    if (json['data'] != null) {
+      if (json['data'] is Map) {
+        parsedData = Map<String, dynamic>.from(json['data'] as Map);
+      } else if (json['data'] is String) {
+        String dataStr = json['data'] as String;
+        // Sometimes data comes as an unquoted string like "{winning_id: 56, payment_id: 18...}"
+        // Let's try to extract key-value pairs if jsonDecode fails
+        try {
+          // Add import 'dart:convert'; to top of file if not present
+          parsedData =
+              json['data']
+                  as Map<
+                    String,
+                    dynamic
+                  >; // This would fail if it's actually String, handled below
+        } catch (e) {
+          debugPrint(
+            'Error parsing notification payload normally, attempting manual parsing: $e',
+          );
+        }
+
+        if (parsedData == null) {
+          try {
+            // Basic manual parsing of "{key: value, key2: value2}" format
+            parsedData = {};
+            String content = dataStr
+                .replaceAll('{', '')
+                .replaceAll('}', '')
+                .trim();
+            if (content.isNotEmpty) {
+              List<String> pairs = content.split(',');
+              for (String pair in pairs) {
+                List<String> keyValue = pair.split(':');
+                if (keyValue.length >= 2) {
+                  String key = keyValue[0].trim();
+                  // Rejoin in case value had colons
+                  String value = keyValue.sublist(1).join(':').trim();
+                  parsedData[key] = value;
+                }
+              }
+            }
+          } catch (e2) {
+            debugPrint('Failed to manually parse notification data: $e2');
+          }
+        }
+      }
+    }
+
+    debugPrint('Parsed data field type: ${parsedData?.runtimeType}');
+    debugPrint('Parsed data field value: $parsedData');
+    debugPrint('#######################################################');
+
     return NotificationModel(
       id: json['id'] as int,
       userId: json['user_id'] as int,
       title: json['title'] as String? ?? '',
       body: json['body'] as String? ?? '',
       type: json['type'] as String?,
-      data: json['data'] as Map<String, dynamic>?,
+      data: parsedData,
       isRead: json['isRead'] as bool? ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -130,6 +188,7 @@ class NotificationModel {
       case 'AUCTION_ENDING_SOON':
         return AppStrings.notificationAuctionEndingSoon.tr();
       case 'ORDER_STATUS':
+      case 'PAYMENT_APPROVED':
         return AppStrings.notificationOrderStatus.tr();
       default:
         return title;

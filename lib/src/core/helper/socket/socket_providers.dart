@@ -96,6 +96,37 @@ void resetNewBidStream(WidgetRef ref) {
   ref.read(currentBidStateProvider.notifier).state = null;
 }
 
+/// Notifier that accumulates ALL incoming socket bids (newest first)
+class AccumulatedBidsNotifier extends StateNotifier<List<AuctionBid>> {
+  AccumulatedBidsNotifier() : super([]);
+
+  void addBid(AuctionBid bid) {
+    // Avoid duplicates by checking bid id
+    if (bid.id != null && state.any((b) => b.id == bid.id)) return;
+    state = [bid, ...state];
+  }
+}
+
+/// Provider that accumulates every real-time socket bid into a list
+final accumulatedBidsProvider =
+    StateNotifierProvider.autoDispose<
+      AccumulatedBidsNotifier,
+      List<AuctionBid>
+    >((ref) {
+      final notifier = AccumulatedBidsNotifier();
+      // Listen to new bid events and accumulate them
+      ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (
+        previous,
+        next,
+      ) {
+        final bid = next.valueOrNull?.newBid;
+        if (bid != null) {
+          notifier.addBid(bid);
+        }
+      });
+      return notifier;
+    });
+
 /// Auction canceled event stream
 final auctionCanceledProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   final service = ref.watch(socketServiceProvider);

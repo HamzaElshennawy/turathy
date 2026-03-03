@@ -9,6 +9,7 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_details_widget.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
+import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/sign_in_screen.dart';
@@ -16,6 +17,7 @@ import '../../domain/auction_model.dart';
 import '../../domain/auction_access_model.dart';
 import '../../data/auctions_repository.dart';
 import 'widgets/auction_images_slider_widget.dart';
+import 'widgets/auction_bids_history_widget.dart';
 import 'package:turathy/src/core/helper/socket/socket_providers.dart';
 import 'package:turathy/src/core/helper/socket/socket_models.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -29,12 +31,18 @@ class AuctionScreen extends ConsumerStatefulWidget {
   ConsumerState<AuctionScreen> createState() => _AuctionScreenState();
 }
 
+enum ProductSortOption { none, priceLowToHigh, priceHighToLow }
+
 class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
   bool _isGridView = false; // State for toggling view
   List<AuctionProducts> _filteredProducts = [];
   final TextEditingController _searchController = TextEditingController();
+
+  // Filtering & Sorting State
+  ProductSortOption _currentSortOption = ProductSortOption.none;
+  bool _filterBiddedOnly = false;
 
   String? _accessStatus;
   bool _isAccessLoading = true;
@@ -138,9 +146,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       if (mounted) {
         setState(() {
           _currentAuction = fullAuction;
-          _filteredProducts = _currentAuction.auctionProducts ?? [];
           // Seed highest bids from loaded bid history
           _seedHighestBidsFromAuction(fullAuction);
+          // Re-apply filters with the new data
+          _applyFiltersAndSort();
         });
         _calculateTimeLeft();
       }
@@ -266,7 +275,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.auction.auctionProducts != oldWidget.auction.auctionProducts) {
       setState(() {
-        _filteredProducts = widget.auction.auctionProducts ?? [];
+        _applyFiltersAndSort();
       });
     }
   }
@@ -287,22 +296,55 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   }
 
   void _filterProducts(String query) {
+    _applyFiltersAndSort(query: query);
+  }
+
+  void _applyFiltersAndSort({String? query}) {
     setState(() {
-      if (query.isEmpty) {
-        _filteredProducts = widget.auction.auctionProducts ?? [];
-      } else {
-        _filteredProducts =
-            widget.auction.auctionProducts
-                ?.where(
-                  (product) =>
-                      product.product?.toLowerCase().contains(
-                        query.toLowerCase(),
-                      ) ??
-                      false,
-                )
-                .toList() ??
-            [];
+      final String searchQuery = (query ?? _searchController.text)
+          .toLowerCase();
+      List<AuctionProducts> results = _currentAuction.auctionProducts ?? [];
+
+      // 1. Text Search Filter
+      if (searchQuery.isNotEmpty) {
+        results = results.where((product) {
+          return product.product?.toLowerCase().contains(searchQuery) ?? false;
+        }).toList();
       }
+
+      // 2. Bidded Items Filter
+      if (_filterBiddedOnly) {
+        results = results.where((product) {
+          return product.id != null && _userBidProductIds.contains(product.id!);
+        }).toList();
+      }
+
+      // 3. Sorting Helper
+      num getProductPrice(AuctionProducts p) {
+        final highestBid = _highestBids[p.id]?.bid;
+        if (highestBid != null) return highestBid;
+        return num.tryParse(p.minBidPrice ?? '0') ?? 0;
+      }
+
+      // 4. Sorting
+      // IMPORTANT: Use a clone of the list for sorting to preserve the original order
+      // in _currentAuction.auctionProducts for persistent item numbering.
+      List<AuctionProducts> processedResults = List.from(results);
+
+      if (_currentSortOption == ProductSortOption.priceLowToHigh) {
+        processedResults.sort(
+          (a, b) => getProductPrice(a).compareTo(getProductPrice(b)),
+        );
+      } else if (_currentSortOption == ProductSortOption.priceHighToLow) {
+        processedResults.sort(
+          (a, b) => getProductPrice(b).compareTo(getProductPrice(a)),
+        );
+      } else {
+        // Default sort by ID to maintain stability
+        processedResults.sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+      }
+
+      _filteredProducts = processedResults;
     });
   }
 
@@ -414,7 +456,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
     // Need to also check if we have an inactive highest bid
     bool isHighestInactive = false;
-    final ProductBids =
+    final productBids =
         _currentAuction.auctionProducts
             ?.firstWhere(
               (p) => p.id == productId,
@@ -422,8 +464,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             )
             .bids ??
         [];
-    if (ProductBids.isNotEmpty) {
-      final sorted = [...ProductBids]
+    if (productBids.isNotEmpty) {
+      final sorted = [...productBids]
         ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
       if (sorted.first.userId == CachedVariables.userId && !isHighest) {
         isHighestInactive = true;
@@ -489,10 +531,12 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     if (_currentAuction.isExpired == true ||
         _currentAuction.isCanceled == true) {
       isAuctionEnded = true;
-    } else if (_currentAuction.expiryDate != null &&
-        _currentAuction.expiryDate!.isBefore(DateTime.now())) {
-      isAuctionEnded = true;
-    } else if (_currentAuction.currentProduct == null &&
+    }
+    //else if (_currentAuction.expiryDate != null &&
+    //    _currentAuction.expiryDate!.isBefore(DateTime.now())) {
+    //  isAuctionEnded = true;
+    //}
+    else if (_currentAuction.currentProduct == null &&
         _currentAuction.isPreAuction == false &&
         _timeLeft == Duration.zero) {
       isAuctionEnded = true;
@@ -561,76 +605,97 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     );
   }
 
-  void _showItemBottomSheet(BuildContext context, AuctionProducts product) {
+  void _showItemBottomSheet(
+    BuildContext context,
+    AuctionProducts product,
+    int itemIndex,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (sheetContext, ref, child) {
+            // Watch for real-time bid updates so the entire sheet rebuilds
+            // ignore: unused_local_variable
+            final lastBid = ref.watch(currentBidStateProvider);
+
+            // Merge real-time bids into a combined list for this product
+            final initialBids =
+                product.bids ?? _currentAuction.auctionBids ?? [];
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(sheetContext).size.height * 0.9,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        '${AppStrings.itemNumber.tr()}: ${product.id}',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  gapH16,
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          AuctionItemDetailsWidget(
-                            auction: _currentAuction,
-                            activeProduct: product,
-                            isAuctionEnded: false,
+                          Text(
+                            '${AppStrings.itemNumber.tr()}: ${itemIndex}',
+                            style: Theme.of(sheetContext).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(sheetContext),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  // Only show max bid controls if pre-auction has started
-                  if (_hasPreAuctionStarted) ...[
-                    gapH16,
-                    Consumer(
-                      builder: (context, ref, child) {
-                        final socketActions = ref.read(socketActionsProvider);
-                        return AuctionBiddingControlsWidget(
+                      gapH16,
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              AuctionItemDetailsWidget(
+                                auction: _currentAuction,
+                                activeProduct: product,
+                                isAuctionEnded: false,
+                              ),
+                              // Real-time bid history for this product
+                              gapH16,
+                              AuctionBidsHistoryWidget(
+                                initialBids: initialBids,
+                                productId: product.id,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Only show max bid controls if pre-auction has started
+                      if (_hasPreAuctionStarted) ...[
+                        gapH16,
+                        AuctionBiddingControlsWidget(
                           auction: _currentAuction,
                           selectedProduct: product,
                           showOnlyMaxBid: true,
                           onPlaceBid: (qty, price, productId) {
                             if (productId != null) {
+                              final socketActions = ref.read(
+                                socketActionsProvider,
+                              );
                               socketActions.placeBid(
                                 _currentAuction.id ?? 0,
                                 CachedVariables.userId ?? 0,
                                 price.toDouble(),
                                 productId,
                               );
-                              final overlay = Overlay.of(context);
+                              final overlay = Overlay.of(sheetContext);
                               late OverlayEntry overlayEntry;
                               bool isRemoved = false;
 
@@ -691,14 +756,133 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               });
                             }
                           },
-                        );
-                      },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setBottomSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        AppStrings.filterOptions.tr(),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  gapH8,
+                  Text(
+                    AppStrings.filters.tr(),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
+                  ),
+                  CheckboxListTile(
+                    title: Text(AppStrings.itemsIBiddedOn.tr()),
+                    value: _filterBiddedOnly,
+                    onChanged: (value) {
+                      setBottomSheetState(() {
+                        _filterBiddedOnly = value ?? false;
+                      });
+                      setState(() {});
+                      _applyFiltersAndSort();
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  gapH16,
+                  Text(
+                    AppStrings.price.tr(),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  RadioListTile<ProductSortOption>(
+                    title: Text(AppStrings.defaultSort.tr()),
+                    value: ProductSortOption.none,
+                    groupValue: _currentSortOption,
+                    onChanged: (value) {
+                      setBottomSheetState(() {
+                        _currentSortOption = value!;
+                      });
+                      setState(() {});
+                      _applyFiltersAndSort();
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  RadioListTile<ProductSortOption>(
+                    title: Text(AppStrings.sortByPriceLowToHigh.tr()),
+                    value: ProductSortOption.priceLowToHigh,
+                    groupValue: _currentSortOption,
+                    onChanged: (value) {
+                      setBottomSheetState(() {
+                        _currentSortOption = value!;
+                      });
+                      setState(() {});
+                      _applyFiltersAndSort();
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  RadioListTile<ProductSortOption>(
+                    title: Text(AppStrings.sortByPriceHighToLow.tr()),
+                    value: ProductSortOption.priceHighToLow,
+                    groupValue: _currentSortOption,
+                    onChanged: (value) {
+                      setBottomSheetState(() {
+                        _currentSortOption = value!;
+                      });
+                      setState(() {});
+                      _applyFiltersAndSort();
+                    },
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  gapH24,
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(AppStrings.applyFilters.tr()),
+                  ),
                 ],
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -752,7 +936,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                new MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
             icon: const Icon(Icons.notifications_outlined),
           ),
         ],
@@ -865,7 +1056,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             ),
                             child: IconButton(
                               icon: const Icon(Icons.filter_list),
-                              onPressed: () {},
+                              onPressed: _showFilterBottomSheet,
                             ),
                           ),
                           gapW8,
@@ -966,329 +1157,320 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       gapH8,
-                      if (_filteredProducts.isNotEmpty)
-                        _isGridView
-                            ? GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _filteredProducts.length,
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      childAspectRatio:
-                                          0.75, // Adjust as needed
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
-                                    ),
-                                itemBuilder: (context, index) {
-                                  final product = _filteredProducts[index];
+                      if (_filteredProducts.isNotEmpty && _isGridView)
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredProducts.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.75, // Adjust as needed
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemBuilder: (context, index) {
+                            final product = _filteredProducts[index];
 
-                                  // Determine if this is the currently live item
-                                  final bool isCurrentLiveItem =
-                                      _currentAuction.isPreAuction == false &&
-                                      _timeLeft == Duration.zero &&
-                                      _currentAuction.isExpired != true &&
-                                      _currentAuction.isCanceled != true &&
-                                      (product.id ==
-                                              _currentAuction
-                                                  .currentProductId ||
-                                          product.product ==
-                                              _currentAuction.currentProduct);
+                            // Determine if this is the currently live item
+                            final bool isCurrentLiveItem =
+                                _currentAuction.isPreAuction == false &&
+                                _timeLeft == Duration.zero &&
+                                _currentAuction.isExpired != true &&
+                                _currentAuction.isCanceled != true &&
+                                (product.id ==
+                                        _currentAuction.currentProductId ||
+                                    product.product ==
+                                        _currentAuction.currentProduct);
 
-                                  return GestureDetector(
-                                    onTap: _canOpenItemBottomSheet
-                                        ? () => _showItemBottomSheet(
-                                            context,
-                                            product,
-                                          )
-                                        : null,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: isCurrentLiveItem
-                                            ? Colors.green.shade50
-                                            : null,
-                                        border: Border.all(
-                                          color: isCurrentLiveItem
-                                              ? Colors.green
-                                              : Colors.grey.shade200,
-                                          width: isCurrentLiveItem ? 2.0 : 1.0,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
+                            return GestureDetector(
+                              onTap: _canOpenItemBottomSheet
+                                  ? () => _showItemBottomSheet(
+                                      context,
+                                      product,
+                                      (_currentAuction.auctionProducts
+                                                  ?.indexWhere(
+                                                    (p) => p.id == product.id,
+                                                  ) ??
+                                              -1) +
+                                          1,
+                                    )
+                                  : null,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isCurrentLiveItem
+                                      ? Colors.green.shade50
+                                      : null,
+                                  border: Border.all(
+                                    color: isCurrentLiveItem
+                                        ? Colors.green
+                                        : Colors.grey.shade200,
+                                    width: isCurrentLiveItem ? 2.0 : 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Product Image with bid-status overlay
+                                    Expanded(
+                                      child: Stack(
+                                        fit: StackFit.expand,
                                         children: [
-                                          // Product Image with bid-status overlay
-                                          Expanded(
-                                            child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      const BorderRadius.vertical(
-                                                        top: Radius.circular(8),
-                                                      ),
-                                                  child: Image.network(
-                                                    product.imageUrl ?? '',
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder:
-                                                        (
-                                                          context,
-                                                          error,
-                                                          stackTrace,
-                                                        ) => Container(
-                                                          color:
-                                                              Colors.grey[200],
-                                                          child: const Icon(
-                                                            Icons
-                                                                .image_not_supported,
-                                                          ),
-                                                        ),
-                                                  ),
+                                          ClipRRect(
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                                  top: Radius.circular(8),
                                                 ),
-                                                // Bid status badge (top-right corner)
-                                                if (_buildBidStatusBadge(
-                                                      product.id,
-                                                    ) !=
-                                                    null)
-                                                  Positioned(
-                                                    top: 6,
-                                                    right: 6,
-                                                    child: _buildBidStatusBadge(
-                                                      product.id,
-                                                    )!,
+                                            child: Image.network(
+                                              product.imageUrl ?? '',
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => Container(
+                                                    color: Colors.grey[200],
+                                                    child: const Icon(
+                                                      Icons.image_not_supported,
+                                                    ),
                                                   ),
-                                              ],
                                             ),
                                           ),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '${AppStrings.itemNumber.tr()}: ${product.id}',
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.bodySmall,
+                                          // Bid status badge (top-right corner)
+                                          if (_buildBidStatusBadge(
+                                                product.id,
+                                              ) !=
+                                              null)
+                                            Positioned(
+                                              top: 6,
+                                              right: 6,
+                                              child: _buildBidStatusBadge(
+                                                product.id,
+                                              )!,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${AppStrings.itemNumber.tr()}: ${(_currentAuction.auctionProducts?.indexWhere((p) => p.id == product.id) ?? -1) + 1}',
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                          ),
+                                          gapH4,
+                                          Text(
+                                            product.product ?? '',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
                                                 ),
-                                                gapH4,
-                                                Text(
-                                                  product.product ?? '',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 14,
-                                                      ),
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                                gapH4,
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      (_highestBids[product.id]
-                                                                  ?.bid ??
-                                                              product
-                                                                  .minBidPrice)
-                                                          .toString(),
-                                                      style: Theme.of(context)
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          gapH4,
+                                          Row(
+                                            children: [
+                                              Text(
+                                                (_highestBids[product.id]
+                                                            ?.bid ??
+                                                        product.minBidPrice)
+                                                    .toString(),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              SvgPicture.asset(
+                                                'assets/icons/RSA.svg',
+                                                width: 14,
+                                                height: 14,
+                                                colorFilter: ColorFilter.mode(
+                                                  Theme.of(context)
                                                           .textTheme
                                                           .titleMedium
-                                                          ?.copyWith(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    SvgPicture.asset(
-                                                      'assets/icons/RSA.svg',
-                                                      width: 14,
-                                                      height: 14,
-                                                      colorFilter:
-                                                          ColorFilter.mode(
-                                                            Theme.of(context)
-                                                                    .textTheme
-                                                                    .titleMedium
-                                                                    ?.color ??
-                                                                Colors.black,
-                                                            BlendMode.srcIn,
-                                                          ),
-                                                    ),
-                                                  ],
+                                                          ?.color ??
+                                                      Colors.black,
+                                                  BlendMode.srcIn,
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
                                     ),
-                                  );
-                                },
-                              )
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _filteredProducts.length,
-                                separatorBuilder: (context, index) => gapH8,
-                                itemBuilder: (context, index) {
-                                  final product = _filteredProducts[index];
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      else if (_filteredProducts.isNotEmpty && !_isGridView)
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _filteredProducts.length,
+                          separatorBuilder: (context, index) => gapH8,
+                          itemBuilder: (context, index) {
+                            final product = _filteredProducts[index];
 
-                                  // Determine if this is the currently live item
-                                  final bool isCurrentLiveItem =
-                                      _currentAuction.isPreAuction == false &&
-                                      _timeLeft == Duration.zero &&
-                                      _currentAuction.isExpired != true &&
-                                      _currentAuction.isCanceled != true &&
-                                      (product.id ==
-                                              _currentAuction
-                                                  .currentProductId ||
-                                          product.product ==
-                                              _currentAuction.currentProduct);
+                            // Determine if this is the currently live item
+                            final bool isCurrentLiveItem =
+                                _currentAuction.isPreAuction == false &&
+                                _timeLeft == Duration.zero &&
+                                _currentAuction.isExpired != true &&
+                                _currentAuction.isCanceled != true &&
+                                (product.id ==
+                                        _currentAuction.currentProductId ||
+                                    product.product ==
+                                        _currentAuction.currentProduct);
 
-                                  return GestureDetector(
-                                    onTap: _canOpenItemBottomSheet
-                                        ? () => _showItemBottomSheet(
-                                            context,
-                                            product,
-                                          )
-                                        : null,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: isCurrentLiveItem
-                                            ? Colors.green.shade50
-                                            : null,
-                                        border: Border.all(
-                                          color: isCurrentLiveItem
-                                              ? Colors.green
-                                              : Colors.grey.shade200,
-                                          width: isCurrentLiveItem ? 2.0 : 1.0,
-                                        ),
+                            return GestureDetector(
+                              onTap: _canOpenItemBottomSheet
+                                  ? () => _showItemBottomSheet(
+                                      context,
+                                      product,
+                                      (_currentAuction.auctionProducts
+                                                  ?.indexWhere(
+                                                    (p) => p.id == product.id,
+                                                  ) ??
+                                              -1) +
+                                          1,
+                                    )
+                                  : null,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isCurrentLiveItem
+                                      ? Colors.green.shade50
+                                      : null,
+                                  border: Border.all(
+                                    color: isCurrentLiveItem
+                                        ? Colors.green
+                                        : Colors.grey.shade200,
+                                    width: isCurrentLiveItem ? 2.0 : 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Product Image
+                                      ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          product.imageUrl ?? '',
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                                    width: 80,
+                                                    height: 80,
+                                                    color: Colors.grey[200],
+                                                    child: const Icon(
+                                                      Icons.image_not_supported,
+                                                    ),
+                                                  ),
+                                        ),
                                       ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Row(
+                                      gapW12,
+                                      // Product Details
+                                      Expanded(
+                                        child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            // Product Image
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: Image.network(
-                                                product.imageUrl ?? '',
-                                                width: 80,
-                                                height: 80,
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (
-                                                      context,
-                                                      error,
-                                                      stackTrace,
-                                                    ) => Container(
-                                                      width: 80,
-                                                      height: 80,
-                                                      color: Colors.grey[200],
-                                                      child: const Icon(
-                                                        Icons
-                                                            .image_not_supported,
-                                                      ),
-                                                    ),
-                                              ),
+                                            Text(
+                                              '${AppStrings.itemNumber.tr()}: ${(_currentAuction.auctionProducts?.indexWhere((p) => p.id == product.id) ?? -1) + 1}',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
                                             ),
-                                            gapW12,
-                                            // Product Details
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    '${AppStrings.itemNumber.tr()}: ${product.id}',
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.bodySmall,
+                                            gapH4,
+                                            Text(
+                                              product.product ?? '',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
                                                   ),
-                                                  gapH4,
-                                                  Text(
-                                                    product.product ?? '',
-                                                    style: Theme.of(context)
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            // Bid status badge
+                                            if (_buildBidStatusBadge(
+                                                  product.id,
+                                                ) !=
+                                                null) ...[
+                                              gapH4,
+                                              _buildBidStatusBadge(product.id)!,
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              (_highestBids[product.id]?.bid ??
+                                                      product.minBidPrice)
+                                                  .toString(),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            SvgPicture.asset(
+                                              'assets/icons/RSA.svg',
+                                              width: 16,
+                                              height: 16,
+                                              colorFilter: ColorFilter.mode(
+                                                Theme.of(context)
                                                         .textTheme
                                                         .titleMedium
-                                                        ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 14,
-                                                        ),
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                  // Bid status badge
-                                                  if (_buildBidStatusBadge(
-                                                        product.id,
-                                                      ) !=
-                                                      null) ...[
-                                                    gapH4,
-                                                    _buildBidStatusBadge(
-                                                      product.id,
-                                                    )!,
-                                                  ],
-                                                ],
-                                              ),
-                                            ),
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 8.0,
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    (_highestBids[product.id]
-                                                                ?.bid ??
-                                                            product.minBidPrice)
-                                                        .toString(),
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .titleMedium
-                                                        ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  SvgPicture.asset(
-                                                    'assets/icons/RSA.svg',
-                                                    width: 16,
-                                                    height: 16,
-                                                    colorFilter:
-                                                        ColorFilter.mode(
-                                                          Theme.of(context)
-                                                                  .textTheme
-                                                                  .titleMedium
-                                                                  ?.color ??
-                                                              Colors.black,
-                                                          BlendMode.srcIn,
-                                                        ),
-                                                  ),
-                                                ],
+                                                        ?.color ??
+                                                    Colors.black,
+                                                BlendMode.srcIn,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
                       else
                         Center(
                           child: Padding(

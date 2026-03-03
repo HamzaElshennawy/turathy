@@ -2,6 +2,7 @@
   "youWon": "You Won",
   "youLost": "You Lost",
   "sold": "Sold",
+  "expired": "Expired",
   "appName": "turathy",
   "player": "player",
   "coach": "coach",
@@ -325,6 +326,7 @@
   "yourMaxBid": "Your Max Bid",
   "liveStartsAt": "Live starts at",
   "preAuctionStartsAt": "Pre-auction starts at",
+  "preAuctionStarted": "Pre-auction started",
   "myAddresses": "My Addresses",
   "addNewAddress": "Add New Address",
   "editAddress": "Edit Address",
@@ -374,5 +376,12 @@
   "fieldRequired": "This field is required",
   "noRequestsFound": "No requests found",
   "untilLive": "until live auction phase",
-  "untilPreAuction": "until pre auction phase"
+  "untilPreAuction": "until pre auction phase",
+  "filterOptions": "Filter Options",
+  "sortByPriceLowToHigh": "Price: Low to High",
+  "sortByPriceHighToLow": "Price: High to Low",
+  "itemsIBiddedOn": "Items I Bidded On",
+  "defaultSort": "Default Sort",
+  "notificationOrderStatus": "Order Status",
+  "notificationOutbid": "You Got Outbid"
 }

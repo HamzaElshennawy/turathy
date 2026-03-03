@@ -124,22 +124,28 @@ class NotificationsScreen extends ConsumerWidget {
     BuildContext context,
     NotificationModel notification,
   ) {
+    debugPrint('Notification tapped: ${notification.title}');
+    debugPrint('Notification type: ${notification.type}');
+    debugPrint('Notification data: ${notification.data}');
+
     // Check if notification has data for navigation
     final data = notification.data;
     final type = notification.type;
 
     if (type == 'AUCTION_STARTED' ||
-        type == 'NEW_BID' ||
-        type == 'OUTBID' ||
         type == 'AUCTION_WON' ||
         type == 'AUCTION_ENDING_SOON') {
-      // Try to get auction ID from data
+      // These types definitively mean the auction is live
       String? auctionId;
       if (data != null && data.containsKey('auction_id')) {
         auctionId = data['auction_id'].toString();
       } else if (data != null && data.containsKey('id')) {
         auctionId = data['id'].toString();
+      } else if (data != null && data.containsKey('auctionId')) {
+        auctionId = data['auctionId'].toString();
       }
+
+      debugPrint('Extracted auctionId: $auctionId');
 
       if (auctionId != null) {
         context.pushNamed(
@@ -147,8 +153,36 @@ class NotificationsScreen extends ConsumerWidget {
           pathParameters: {'id': auctionId},
         );
       }
-    } else if (type == 'ORDER_STATUS') {
-      context.pushNamed(RouteConstants.orders);
+    } else if (type == 'OUTBID' || type == 'NEW_BID') {
+      // Route to adaptive auction details — shows AuctionScreen
+      // (pre-auction) or LiveAuctionScreen (live) based on auction state
+      String? auctionId;
+      if (data != null && data.containsKey('auction_id')) {
+        auctionId = data['auction_id'].toString();
+      } else if (data != null && data.containsKey('id')) {
+        auctionId = data['id'].toString();
+      } else if (data != null && data.containsKey('auctionId')) {
+        auctionId = data['auctionId'].toString();
+      }
+
+      debugPrint('Extracted auctionId: $auctionId');
+
+      if (auctionId != null) {
+        context.pushNamed(
+          RouteConstants.auctionDetails,
+          pathParameters: {'id': auctionId},
+        );
+      }
+    } else if (type == 'ORDER_STATUS' || type == 'PAYMENT_APPROVED') {
+      final orderId = data?['orderid'] ?? data?['orderId'];
+      if (orderId != null) {
+        context.pushNamed(
+          RouteConstants.orderDetails,
+          pathParameters: {'id': orderId.toString()},
+        );
+      } else {
+        context.pushNamed(RouteConstants.orders);
+      }
     } else if (type == 'BROADCAST') {
       _showNotificationDialog(context, notification);
     } else if (data != null) {
@@ -158,8 +192,17 @@ class NotificationsScreen extends ConsumerWidget {
           RouteConstants.liveAuction,
           pathParameters: {'id': data['auction_id'].toString()},
         );
-      } else if (data.containsKey('order_id')) {
-        context.pushNamed(RouteConstants.orders);
+      } else if (data.containsKey('auctionId')) {
+        context.pushNamed(
+          RouteConstants.liveAuction,
+          pathParameters: {'id': data['auctionId'].toString()},
+        );
+      } else if (data.containsKey('order_id') || data.containsKey('orderId')) {
+        final orderId = data['order_id'] ?? data['orderId'];
+        context.pushNamed(
+          RouteConstants.orderDetails,
+          pathParameters: {'id': orderId.toString()},
+        );
       } else {
         _showNotificationDialog(context, notification);
       }

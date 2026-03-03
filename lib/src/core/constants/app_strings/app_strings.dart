@@ -190,6 +190,7 @@ class AppStrings {
   static const String remainingTime = "remainingTime";
   static const String untilLive = "untilLive";
   static const String untilPreAuction = "untilPreAuction";
+  static const String preAuctionStarted = "preAuctionStarted";
   static const String currency = "currency";
   static const String markAllAsRead = "markAllAsRead";
   static const String allNotificationsMarkedRead = "allNotificationsMarkedRead";
@@ -250,6 +251,7 @@ class AppStrings {
   static const String youWon = 'youWon';
   static const String youLost = 'youLost';
   static const String sold = 'sold';
+  static const String expired = 'expired';
   static const String noBidsYet = 'noBidsYet';
   static const String noResultsFound = 'noResultsFound';
 
@@ -397,4 +399,9 @@ class AppStrings {
   static const String higherBidThanYours = 'higherBidThanYours';
   static const String bidPlacedSuccessfully = 'bidPlacedSuccessfully';
   static const String noRequestsFound = 'noRequestsFound';
+  static const String filterOptions = 'filterOptions';
+  static const String sortByPriceLowToHigh = 'sortByPriceLowToHigh';
+  static const String sortByPriceHighToLow = 'sortByPriceHighToLow';
+  static const String itemsIBiddedOn = 'itemsIBiddedOn';
+  static const String defaultSort = 'defaultSort';
 }

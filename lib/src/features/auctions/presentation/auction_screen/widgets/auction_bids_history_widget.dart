@@ -19,17 +19,30 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch for new bids from the socket
-    final newBid = ref.watch(currentBidStateProvider);
+    // Watch for ALL accumulated socket bids (not just the latest one)
+    final socketBids = ref.watch(accumulatedBidsProvider);
 
-    // Combine initial bids with new bids (new bids on top)
-    // Filter by productId if provided
+    // Filter socket bids by productId if provided
+    final filteredSocketBids = socketBids
+        .where((b) => productId == null || b.productId == productId)
+        .toList();
+
+    // Filter initial bids by productId
+    final filteredInitialBids = initialBids
+        .where((b) => productId == null || b.productId == productId)
+        .toList();
+
+    // Collect IDs from socket bids so we can deduplicate
+    final socketBidIds = <int>{};
+    for (final b in filteredSocketBids) {
+      if (b.id != null) socketBidIds.add(b.id!);
+    }
+
+    // Combine: socket bids first (newest on top), then initial bids not already in socket list
     final allBids = <AuctionBid>[
-      if (newBid != null &&
-          (productId == null || newBid.productId == productId))
-        newBid,
-      ...initialBids.where(
-        (b) => productId == null || b.productId == productId,
+      ...filteredSocketBids,
+      ...filteredInitialBids.where(
+        (b) => b.id == null || !socketBidIds.contains(b.id),
       ),
     ];
 
@@ -64,11 +77,22 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final bid = allBids[index];
-              final isLatest = index == 0;
               final isMyBid =
                   CachedVariables.userId != null &&
                   bid.userId == CachedVariables.userId;
-              final showHighlight = isLatest && isMyBid;
+
+              // Highlight the user's highest ACTIVE bid (not just the latest bid)
+              bool showHighlight = false;
+              if (isMyBid && bid.isActive == true) {
+                // Check that no other active bid from this user has a higher amount
+                final hasHigherActiveBid = allBids.any(
+                  (b) =>
+                      b.userId == CachedVariables.userId &&
+                      b.isActive == true &&
+                      (b.bid ?? 0) > (bid.bid ?? 0),
+                );
+                showHighlight = !hasHigherActiveBid;
+              }
 
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),

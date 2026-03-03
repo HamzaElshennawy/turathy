@@ -2,6 +2,7 @@
   "youWon": "أنت الفائز",
   "youLost": "لقد خسرت",
   "sold": "تم البيع",
+  "expired": "منتهي",
   "appName": "تراثي",
   "player": "لاعب",
   "coach": "مدرب",
@@ -374,5 +375,13 @@
   "fieldRequired": "هذا الحقل مطلوب",
   "noRequestsFound": "لا يوجد طلبات حاليا",
   "untilLive": "حتى البث المباشر",
-  "untilPreAuction": "حتى المزاد التحضيري"
+  "untilPreAuction": "حتى المزاد التحضيري",
+  "preAuctionStarted": "بدأ المزاد التحضيري",
+  "filterOptions": "خيارات التصفية",
+  "sortByPriceLowToHigh": "السعر: من الأقل للأعلى",
+  "sortByPriceHighToLow": "السعر: من الأعلى للأقل",
+  "itemsIBiddedOn": "العناصر التي زايدت عليها",
+  "defaultSort": "الترتيب الافتراضي",
+  "notificationOrderStatus": "حالة الطلب",
+  "notificationOutbid": "تم تجاوز مزايدتك"
 }

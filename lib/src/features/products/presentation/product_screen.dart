@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/helper/cache/cached_variables.dart';
@@ -103,7 +104,14 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),

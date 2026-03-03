@@ -8,4 +8,6 @@ class RouteConstants {
   static const String liveAuction = "/live-auction/:id";
   static const String productDetails = "/product-details/:id";
   static const String orders = "/orders";
+  static const String orderDetails = "/order-details/:id";
+  static const String auctionDetails = "/auction-details/:id";
 }

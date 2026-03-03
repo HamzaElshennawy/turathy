@@ -355,7 +355,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                   children: [
                                     _remainingTimeForPreAuction > Duration.zero
                                         ? Text(
-                                            '${AppStrings.remainingTime.tr()} ${AppStrings.untilPreAuction.tr()}:${_formatDuration(_remainingTimeForPreAuction)}',
+                                            '${AppStrings.remainingTime.tr()} ${AppStrings.untilPreAuction.tr()}: ${_formatDuration(_remainingTimeForPreAuction)}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
@@ -365,7 +365,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                             ),
                                           )
                                         : Text(
-                                            'Pre-Auction Started',
+                                            AppStrings.preAuctionStarted.tr(),
                                             style: const TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
@@ -374,7 +374,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                           ),
                                     gapH4,
                                     Text(
-                                      '${AppStrings.remainingTime.tr()} ${AppStrings.untilLive.tr()}:${_formatDuration(_remainingTimeForLive)}',
+                                      '${AppStrings.remainingTime.tr()} ${AppStrings.untilLive.tr()}: ${_formatDuration(_remainingTimeForLive)}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,

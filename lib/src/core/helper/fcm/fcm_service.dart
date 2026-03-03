@@ -303,11 +303,35 @@ class FCMService {
     );
 
     if (response.payload != null) {
+      Map<String, dynamic> data = {};
       try {
-        final data = jsonDecode(response.payload!) as Map<String, dynamic>;
-        _navigateBasedOnData(data);
+        data = jsonDecode(response.payload!) as Map<String, dynamic>;
       } catch (e) {
-        log('Error parsing notification payload: $e');
+        log('Error parsing notification payload initially: $e');
+        // Try manual parsing for unquoted key-values
+        try {
+          String content = response.payload!
+              .replaceAll('{', '')
+              .replaceAll('}', '')
+              .trim();
+          if (content.isNotEmpty) {
+            List<String> pairs = content.split(',');
+            for (String pair in pairs) {
+              List<String> keyValue = pair.split(':');
+              if (keyValue.length >= 2) {
+                String key = keyValue[0].trim();
+                String value = keyValue.sublist(1).join(':').trim();
+                data[key] = value;
+              }
+            }
+          }
+        } catch (e2) {
+          log('Failed to manually parse notification data payload: $e2');
+        }
+      }
+
+      if (data.isNotEmpty) {
+        _navigateBasedOnData(data);
       }
     }
   }
@@ -321,8 +345,63 @@ class FCMService {
     // Check for specific types or keys
     // Adjust keys (auction_id, product_id, order_id) based on actual backend payload
 
+    // First let's check exact Notification Screen logic
+    final type = data['type']?.toString();
+
+    if (type == 'AUCTION_STARTED' ||
+        type == 'AUCTION_WON' ||
+        type == 'AUCTION_ENDING_SOON') {
+      String? auctionId;
+      if (data.containsKey('auction_id')) {
+        auctionId = data['auction_id'].toString();
+      } else if (data.containsKey('id')) {
+        auctionId = data['id'].toString();
+      } else if (data.containsKey('auctionId')) {
+        auctionId = data['auctionId'].toString();
+      }
+
+      if (auctionId != null) {
+        goRouter.pushNamed(
+          RouteConstants.liveAuction,
+          pathParameters: {'id': auctionId},
+        );
+        return;
+      }
+    } else if (type == 'OUTBID' || type == 'NEW_BID') {
+      // Route to adaptive auction details — will show AuctionScreen
+      // (pre-auction) or LiveAuctionScreen (live) based on auction state
+      String? auctionId;
+      if (data.containsKey('auction_id')) {
+        auctionId = data['auction_id'].toString();
+      } else if (data.containsKey('id')) {
+        auctionId = data['id'].toString();
+      } else if (data.containsKey('auctionId')) {
+        auctionId = data['auctionId'].toString();
+      }
+
+      if (auctionId != null) {
+        goRouter.pushNamed(
+          RouteConstants.auctionDetails,
+          pathParameters: {'id': auctionId},
+        );
+        return;
+      }
+    } else if (type == 'ORDER_STATUS' || type == 'PAYMENT_APPROVED') {
+      final orderId = data['order_id'] ?? data['orderId'];
+      if (orderId != null) {
+        goRouter.pushNamed(
+          RouteConstants.orderDetails,
+          pathParameters: {'id': orderId.toString()},
+        );
+      } else {
+        goRouter.pushNamed(RouteConstants.orders);
+      }
+      return;
+    }
+
+    // Fallbacks
     if (data.containsKey('auction_id') || data['type'] == 'AUCTION') {
-      final auctionId = data['auction_id'];
+      final auctionId = data['auction_id'] ?? data['auctionId'];
       if (auctionId != null) {
         goRouter.pushNamed(
           RouteConstants.liveAuction,
@@ -338,10 +417,19 @@ class FCMService {
         );
       }
     } else if (data.containsKey('order_id') ||
+        data.containsKey('orderId') ||
         data['type'] == 'ORDER' ||
         data['type'] == 'ORDER_STATUS') {
-      // Currently just navigating to orders list
-      goRouter.pushNamed(RouteConstants.orders);
+      // Navigate to specific order if ID available
+      final orderId = data['order_id'] ?? data['orderId'];
+      if (orderId != null) {
+        goRouter.pushNamed(
+          RouteConstants.orderDetails,
+          pathParameters: {'id': orderId.toString()},
+        );
+      } else {
+        goRouter.pushNamed(RouteConstants.orders);
+      }
     }
   }
 
