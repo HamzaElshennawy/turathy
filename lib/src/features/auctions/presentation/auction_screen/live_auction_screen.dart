@@ -1259,13 +1259,17 @@ class AuctionResultDialog extends ConsumerWidget {
                           final existingOrder = orders.firstWhere(
                             (o) =>
                                 o.auctionId == auction.id &&
-                                (o.productId == currentProductId ||
-                                    o.auctionProductId == currentProductId),
+                                o.items.any(
+                                  (item) =>
+                                      item.productId == currentProductId ||
+                                      item.auctionProductId == currentProductId,
+                                ),
                             orElse: () => OrderModel(
                               id: -1,
                               userId: -1,
                               total: 0,
                               itemDesc: '',
+                              items: const [],
                               createdAt: DateTime.now(),
                               auctionId: -1,
                               pCs: 0,

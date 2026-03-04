@@ -383,5 +383,7 @@
   "itemsIBiddedOn": "العناصر التي زايدت عليها",
   "defaultSort": "الترتيب الافتراضي",
   "notificationOrderStatus": "حالة الطلب",
-  "notificationOutbid": "تم تجاوز مزايدتك"
+  "notificationOutbid": "تم تجاوز مزايدتك",
+  "itemEndedSoldFor": "انتهى البند - بيع بمبلغ",
+  "comingSoon": "قادم قريبًا"
 }

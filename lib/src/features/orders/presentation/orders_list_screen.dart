@@ -374,55 +374,8 @@ class _OrderItemWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    String? imageUrl;
-    if (order.product != null) {
-      final product = order.product!;
-      if (product['images'] != null && (product['images'] as List).isNotEmpty) {
-        imageUrl = (product['images'] as List).first.toString();
-      } else {
-        imageUrl = product['imageUrl']?.toString();
-      }
-    } else if (order.auction != null) {
-      if (order.auctionProductId != null &&
-          order.auction!['auction_products'] != null) {
-        final products = order.auction!['auction_products'] as List;
-        final specificProduct = products.firstWhere(
-          (p) => p['id'] == order.auctionProductId,
-          orElse: () => null,
-        );
-        if (specificProduct != null && specificProduct['image'] != null) {
-          imageUrl = specificProduct['image'].toString();
-        }
-      }
-
-      if (imageUrl == null && order.auctionProductId != null) {
-        final auctionAsync = ref.watch(auctionDetailsProvider(order.auctionId));
-        auctionAsync.whenData((auction) {
-          if (auction.auctionProducts != null) {
-            for (var p in auction.auctionProducts!) {
-              if (p.id == order.auctionProductId) {
-                if (p.images != null && p.images!.isNotEmpty) {
-                  imageUrl = p.images!.first;
-                } else if (p.imageUrl != null && p.imageUrl!.isNotEmpty) {
-                  imageUrl = p.imageUrl;
-                }
-                break;
-              }
-            }
-          }
-        });
-      }
-
-      imageUrl ??=
-          order.auction!['image_url']?.toString() ??
-          order.auction!['main_image']?.toString();
-    }
-
-    if (imageUrl != null && !imageUrl!.startsWith('http')) {
-      imageUrl = '${EndPoints.baseUrl}$imageUrl';
-    }
-
-    final String finalImageUrl = imageUrl ?? '';
+    final firstItem = order.items.firstOrNull;
+    final String finalImageUrl = firstItem?.fullImageUrl ?? '';
 
     return OrderCard(
       title: _getOrderTitle(order),

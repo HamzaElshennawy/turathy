@@ -65,7 +65,7 @@ class LiveAuctionsWidget extends StatelessWidget {
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
                       return AuctionCard(
-                        product: product,
+                        auction: product,
                         heroTag: 'live_auctions_${product.id}_$index',
                       );
                     },

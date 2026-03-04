@@ -20,8 +20,14 @@ class OrderRepository {
     if (isProductOrder) {
       data = {
         'user_id': order.userId,
-        'product_id': order.productId,
-        'quantity': order.pCs,
+        'items': order.items
+            .map(
+              (item) => {
+                'product_id': item.productId,
+                'quantity': item.quantity,
+              },
+            )
+            .toList(),
         'address_id': order.addressId,
       };
     } else {

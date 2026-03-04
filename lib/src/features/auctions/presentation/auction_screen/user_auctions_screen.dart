@@ -144,7 +144,7 @@ class _CurrentAuctionsTabState extends ConsumerState<_CurrentAuctionsTab> {
                 itemCount: data.length,
                 itemBuilder: (BuildContext context, int index) {
                   final product = data[index];
-                  return AuctionCard(product: product);
+                  return AuctionCard(auction: product);
                 },
               );
             },

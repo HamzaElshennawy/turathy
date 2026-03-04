@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'package:turathy/src/features/orders/domain/order_item_model.dart';
+
 import '../../auctions/domain/winning_auction_model.dart';
 
 class OrderModel {
@@ -31,9 +33,36 @@ class OrderModel {
 
   final Map<String, dynamic>? product;
   final Map<String, dynamic>? auction;
-  final int? productId;
-  final int? winningId;
-  final int? auctionProductId;
+  final List<OrderItemModel> items;
+
+  // Backward-compatible getters
+  int? get productId => items.isNotEmpty
+      ? items
+            .firstWhere(
+              (i) => i.productId != null,
+              orElse: () =>
+                  OrderItemModel(id: 0, orderId: 0, quantity: 0, price: 0),
+            )
+            .productId
+      : null;
+  int? get auctionProductId => items.isNotEmpty
+      ? items
+            .firstWhere(
+              (i) => i.auctionProductId != null,
+              orElse: () =>
+                  OrderItemModel(id: 0, orderId: 0, quantity: 0, price: 0),
+            )
+            .auctionProductId
+      : null;
+  int? get winningId => items.isNotEmpty
+      ? items
+            .firstWhere(
+              (i) => i.winningId != null,
+              orElse: () =>
+                  OrderItemModel(id: 0, orderId: 0, quantity: 0, price: 0),
+            )
+            .winningId
+      : null;
 
   const OrderModel({
     required this.id,
@@ -63,9 +92,7 @@ class OrderModel {
     this.updatedAt,
     this.product,
     this.auction,
-    this.productId,
-    this.winningId,
-    this.auctionProductId,
+    this.items = const [],
   });
 
   // Address helper getters — read from nested address object when available
@@ -113,9 +140,7 @@ class OrderModel {
     DateTime? updatedAt,
     Map<String, dynamic>? product,
     Map<String, dynamic>? auction,
-    int? productId,
-    int? winningId,
-    int? auctionProductId,
+    List<OrderItemModel>? items,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -145,9 +170,7 @@ class OrderModel {
       updatedAt: updatedAt ?? this.updatedAt,
       product: product ?? this.product,
       auction: auction ?? this.auction,
-      productId: productId ?? this.productId,
-      winningId: winningId ?? this.winningId,
-      auctionProductId: auctionProductId ?? this.auctionProductId,
+      items: items ?? this.items,
     );
   }
 
@@ -155,16 +178,14 @@ class OrderModel {
     return {
       'user_id': userId,
       'auction_id': auctionId,
-      'product_id': productId,
-      'auction_product_id': auctionProductId,
-      'winning_id': winningId,
       'total': total,
       'date': DateFormat('yyyy-MM-dd', 'en_US').format(date),
       'address_id': addressId,
       'PCs': pCs,
-      'codAmt': num.tryParse(codAmt) ?? 0,
+      'cod_amt': num.tryParse(codAmt) ?? 0,
       'weight': weight,
       'itemDesc': itemDesc,
+      'items': items.map((e) => e.toJson()).toList(),
       if (paymentStatus != null) 'payment_status': paymentStatus,
       if (paymentId != null) 'payment_id': paymentId,
     };
@@ -181,7 +202,7 @@ class OrderModel {
       address:
           (json['address'] ?? json['user_addresses']) as Map<String, dynamic>?,
       pCs: (json['PCs'] ?? 1) as int,
-      codAmt: (json['codAmt'] ?? 0).toString(),
+      codAmt: (json['cod_amt'] ?? 0).toString(),
       weight: (json['weight'] ?? '1').toString(),
       itemDesc: json['itemDesc'] as String? ?? '',
       shipType: json['shipType'] as String?,
@@ -204,9 +225,11 @@ class OrderModel {
           : null,
       product: json['product'],
       auction: json['auction'],
-      productId: json['product_id'] as int?,
-      auctionProductId: json['auction_product_id'] as int?,
-      winningId: json['winning_id'] as int?,
+      items:
+          (json['items'] as List?)
+              ?.map((item) => OrderItemModel.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 
@@ -215,15 +238,23 @@ class OrderModel {
       id: 0,
       userId: winningAuction.userId,
       auctionId: winningAuction.auctionId,
-      productId: null,
-      auctionProductId: winningAuction.productId,
-      winningId: winningAuction.id != 0 ? winningAuction.id : null,
       total: winningAuction.price,
       date: DateTime.now(),
       pCs: 1,
       codAmt: '0',
       weight: '1',
       itemDesc: winningAuction.product,
+      items: [
+        OrderItemModel(
+          id: 0,
+          orderId: 0,
+          productId: winningAuction.productId,
+          auctionProductId: winningAuction.productId,
+          winningId: winningAuction.id != 0 ? winningAuction.id : null,
+          quantity: 1,
+          price: winningAuction.price,
+        ),
+      ],
     );
   }
 }

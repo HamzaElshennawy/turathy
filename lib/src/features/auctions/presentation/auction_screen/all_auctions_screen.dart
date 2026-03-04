@@ -124,7 +124,7 @@ class AllAuctionsScreen extends ConsumerWidget {
                         return Container(
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           child: AuctionCard(
-                            product: product,
+                            auction: product,
                             heroTag: 'all_auctions_${product.id}_$index',
                           ),
                         );

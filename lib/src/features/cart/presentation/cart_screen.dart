@@ -11,6 +11,7 @@ import '../../addresses/domain/user_address_model.dart';
 import '../../addresses/presentation/address_selection_screen.dart';
 import '../../orders/presentation/order_confirmation_screen.dart';
 import '../../orders/domain/order_model.dart';
+import '../../orders/domain/order_item_model.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -402,7 +403,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         id: 0,
         userId: CachedVariables.userId!,
         auctionId: 0,
-        productId: cartItems.isNotEmpty ? cartItems.first.productId : null,
+        items: cartItems
+            .map(
+              (item) => OrderItemModel(
+                id: 0,
+                orderId: 0,
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.product?.price ?? 0.0,
+                product: item.product?.toJson(),
+              ),
+            )
+            .toList(),
         total: total,
         date: DateTime.now(),
         addressId: selectedAddress.id,

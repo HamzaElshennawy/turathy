@@ -145,8 +145,8 @@ class _OrderConfirmationScreenState
                 userId: finalizedOrder.userId,
                 auctionId: finalizedOrder.auctionId,
                 productId:
-                    (finalizedOrder.auctionProductId ??
-                        finalizedOrder.productId) ??
+                    (finalizedOrder.items.firstOrNull?.auctionProductId ??
+                        finalizedOrder.items.firstOrNull?.productId) ??
                     0,
                 orderId: finalizedOrder.id,
                 amount: finalizedOrder.total.toInt(),
@@ -280,12 +280,62 @@ class _OrderConfirmationScreenState
             CustomCard(
               child: Column(
                 children: [
-                  _buildDetailRow(
-                    theme,
-                    AppStrings.itemDescription.tr(),
-                    widget.order.itemDesc,
-                  ),
-                  const Divider(),
+                  ...List.generate(widget.order.items.length, (index) {
+                    final item = widget.order.items[index];
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  item.fullImageUrl,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        width: 50,
+                                        height: 50,
+                                        color: Colors.grey[200],
+                                        child: const Icon(
+                                          Icons.image,
+                                          size: 20,
+                                        ),
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '${item.quantity} x ${item.price} ${AppStrings.currency.tr()}',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (index < widget.order.items.length - 1)
+                          const Divider(),
+                      ],
+                    );
+                  }),
+                  const Divider(thickness: 1.2),
                   _buildDetailRow(
                     theme,
                     AppStrings.totalAmount.tr(),

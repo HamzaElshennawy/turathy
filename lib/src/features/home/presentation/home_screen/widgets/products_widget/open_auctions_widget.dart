@@ -27,48 +27,46 @@ class OpenAuctionsWidget extends StatelessWidget {
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final openAuctionsListValue = ref.watch(openAuctionsProvider);
               return openAuctionsListValue.when(
-                  data: (data) {
-                    if (data.isEmpty) {
-                      return Center(
-                        child: Text(AppStrings.noThingFound.tr()),
-                      );
-                    }
-                    return ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemExtent: MediaQuery.of(context).size.width * .7,
-                      itemCount: data.length,
-                      // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      //     crossAxisCount:
-                      //         AppFunctions.isMobile(context: context) ? 2 : 3,
-                      //     childAspectRatio: .7,
-                      //     crossAxisSpacing: 8,
-                      //     mainAxisSpacing: 8),
-                      itemBuilder: (BuildContext context, int index) {
-                        final product = data[index];
-                        return AuctionCard(
-                          product: product,
-                        );
-                      },
-                    );
-                  },
-                  loading: () => GridView.builder(
-                        shrinkWrap: true,
-                        itemCount: 4,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:
-                                AppFunctions.isMobile(context: context) ? 2 : 3,
-                            childAspectRatio: .7,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8),
-                        itemBuilder: (context, index) =>
-                            const ShimmerWidget(width: 400, height: 0),
-                      ),
-                  error: (error, stackTrace) => Center(
-                        child: Text('Error: $error'),
-                      ));
+                data: (data) {
+                  if (data.isEmpty) {
+                    return Center(child: Text(AppStrings.noThingFound.tr()));
+                  }
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemExtent: MediaQuery.of(context).size.width * .7,
+                    itemCount: data.length,
+                    // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    //     crossAxisCount:
+                    //         AppFunctions.isMobile(context: context) ? 2 : 3,
+                    //     childAspectRatio: .7,
+                    //     crossAxisSpacing: 8,
+                    //     mainAxisSpacing: 8),
+                    itemBuilder: (BuildContext context, int index) {
+                      final product = data[index];
+                      return AuctionCard(auction: product);
+                    },
+                  );
+                },
+                loading: () => GridView.builder(
+                  shrinkWrap: true,
+                  itemCount: 4,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: AppFunctions.isMobile(context: context)
+                        ? 2
+                        : 3,
+                    childAspectRatio: .7,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemBuilder: (context, index) =>
+                      const ShimmerWidget(width: 400, height: 0),
+                ),
+                error: (error, stackTrace) =>
+                    Center(child: Text('Error: $error')),
+              );
             },
           ),
-        )
+        ),
       ],
     );
   }

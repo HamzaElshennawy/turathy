@@ -677,84 +677,200 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                           ),
                         ),
                       ),
-                      // Only show max bid controls if pre-auction has started
+                      // Determine item status relative to current product
+                      // during live auction phase
                       if (_hasPreAuctionStarted) ...[
                         gapH16,
-                        AuctionBiddingControlsWidget(
-                          auction: _currentAuction,
-                          selectedProduct: product,
-                          showOnlyMaxBid: true,
-                          onPlaceBid: (qty, price, productId) {
-                            if (productId != null) {
-                              final socketActions = ref.read(
-                                socketActionsProvider,
-                              );
-                              socketActions.placeBid(
-                                _currentAuction.id ?? 0,
-                                CachedVariables.userId ?? 0,
-                                price.toDouble(),
-                                productId,
-                              );
-                              final overlay = Overlay.of(sheetContext);
-                              late OverlayEntry overlayEntry;
-                              bool isRemoved = false;
+                        Builder(
+                          builder: (builderContext) {
+                            // Check if we're in the live phase (a current
+                            // product is set and the live auction has started)
+                            final bool isInLivePhase =
+                                _currentAuction.currentProductId != null ||
+                                (_currentAuction.currentProduct != null &&
+                                    !_currentAuction.isPreAuction);
 
-                              overlayEntry = OverlayEntry(
-                                builder: (context) => Positioned(
-                                  bottom:
-                                      MediaQuery.of(context).viewInsets.bottom +
-                                      100,
-                                  left: 16.0,
-                                  right: 16.0,
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.shade600,
-                                        borderRadius: BorderRadius.circular(10),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.2,
-                                            ),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.check_circle,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              AppStrings.bidPlacedSuccessfully
-                                                  .tr(),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                            if (isInLivePhase &&
+                                _currentAuction.auctionProducts != null) {
+                              final products = _currentAuction.auctionProducts!;
+                              final currentIndex = products.indexWhere(
+                                (p) =>
+                                    p.id == _currentAuction.currentProductId ||
+                                    p.product == _currentAuction.currentProduct,
+                              );
+                              final thisIndex = products.indexWhere(
+                                (p) => p.id == product.id,
+                              );
+
+                              // Item has ENDED (before current item)
+                              if (currentIndex != -1 &&
+                                  thisIndex != -1 &&
+                                  thisIndex < currentIndex) {
+                                final highestBid = _highestBids[product.id];
+                                final soldPrice =
+                                    highestBid?.bid?.toStringAsFixed(0) ?? '—';
+
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                    horizontal: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
                                     ),
                                   ),
-                                ),
-                              );
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.gavel,
+                                        color: Colors.grey.shade600,
+                                        size: 28,
+                                      ),
+                                      gapH8,
+                                      Text(
+                                        '${AppStrings.itemEndedSoldFor.tr()} $soldPrice ${AppStrings.currency.tr()}',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
 
-                              overlay.insert(overlayEntry);
-                              Future.delayed(const Duration(seconds: 3), () {
-                                if (!isRemoved) {
-                                  overlayEntry.remove();
-                                  isRemoved = true;
-                                }
-                              });
+                              // Item is COMING SOON (after current item)
+                              if (currentIndex != -1 &&
+                                  thisIndex != -1 &&
+                                  thisIndex > currentIndex) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                    horizontal: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.blue.shade200,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.schedule,
+                                        color: Colors.blue.shade700,
+                                        size: 28,
+                                      ),
+                                      gapH8,
+                                      Text(
+                                        AppStrings.comingSoon.tr(),
+                                        style: TextStyle(
+                                          color: Colors.blue.shade700,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
                             }
+
+                            // Current item OR pre-auction phase → show
+                            // normal bidding controls
+                            return AuctionBiddingControlsWidget(
+                              auction: _currentAuction,
+                              selectedProduct: product,
+                              showOnlyMaxBid: true,
+                              onPlaceBid: (qty, price, productId) {
+                                if (productId != null) {
+                                  final socketActions = ref.read(
+                                    socketActionsProvider,
+                                  );
+                                  socketActions.placeBid(
+                                    _currentAuction.id ?? 0,
+                                    CachedVariables.userId ?? 0,
+                                    price.toDouble(),
+                                    productId,
+                                  );
+                                  final overlay = Overlay.of(sheetContext);
+                                  late OverlayEntry overlayEntry;
+                                  bool isRemoved = false;
+
+                                  overlayEntry = OverlayEntry(
+                                    builder: (context) => Positioned(
+                                      bottom:
+                                          MediaQuery.of(
+                                            context,
+                                          ).viewInsets.bottom +
+                                          100,
+                                      left: 16.0,
+                                      right: 16.0,
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade600,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(
+                                                  0.2,
+                                                ),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  AppStrings
+                                                      .bidPlacedSuccessfully
+                                                      .tr(),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+
+                                  overlay.insert(overlayEntry);
+                                  Future.delayed(
+                                    const Duration(seconds: 3),
+                                    () {
+                                      if (!isRemoved) {
+                                        overlayEntry.remove();
+                                        isRemoved = true;
+                                      }
+                                    },
+                                  );
+                                }
+                              },
+                            );
                           },
                         ),
                       ],

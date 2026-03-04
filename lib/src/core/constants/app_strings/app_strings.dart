@@ -404,4 +404,6 @@ class AppStrings {
   static const String sortByPriceHighToLow = 'sortByPriceHighToLow';
   static const String itemsIBiddedOn = 'itemsIBiddedOn';
   static const String defaultSort = 'defaultSort';
+  static const String itemEndedSoldFor = 'itemEndedSoldFor';
+  static const String comingSoon = 'comingSoon';
 }

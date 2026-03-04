@@ -526,8 +526,11 @@ class _AuctionBiddingControlsWidgetState
                       final existingOrder = orders
                           .where(
                             (o) =>
-                                (o.auctionProductId == productId ||
-                                    o.productId == productId) &&
+                                o.items.any(
+                                  (item) =>
+                                      item.auctionProductId == productId ||
+                                      item.productId == productId,
+                                ) &&
                                 o.auctionId == widget.auction.id,
                           )
                           .firstOrNull;
@@ -948,8 +951,11 @@ class _AuctionBiddingControlsWidgetState
       final existingOrder = orders
           .where(
             (o) =>
-                (o.auctionProductId == currentProductId ||
-                    o.productId == currentProductId) &&
+                o.items.any(
+                  (item) =>
+                      item.auctionProductId == currentProductId ||
+                      item.productId == currentProductId,
+                ) &&
                 o.auctionId == widget.auction.id,
           )
           .firstOrNull;

@@ -15,10 +15,10 @@ import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
 
 class AuctionCard extends ConsumerStatefulWidget {
-  final AuctionModel product;
+  final AuctionModel auction;
   final String? heroTag;
 
-  const AuctionCard({super.key, required this.product, this.heroTag});
+  const AuctionCard({super.key, required this.auction, this.heroTag});
 
   @override
   ConsumerState<AuctionCard> createState() => _AuctionCardState();
@@ -45,8 +45,8 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
   }
 
   void _calculateRemainingTime() {
-    if (widget.product.liveStartDate != null) {
-      final liveStartDate = widget.product.liveStartDate!;
+    if (widget.auction.liveStartDate != null) {
+      final liveStartDate = widget.auction.liveStartDate!;
       final now = DateTime.now();
       if (liveStartDate.isAfter(now)) {
         setState(() {
@@ -58,8 +58,8 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
         });
       }
     }
-    if (widget.product.startDate != null) {
-      final startDate = widget.product.startDate!;
+    if (widget.auction.startDate != null) {
+      final startDate = widget.auction.startDate!;
       final now = DateTime.now();
       if (startDate.isAfter(now)) {
         setState(() {
@@ -84,15 +84,16 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
   Widget build(BuildContext context) {
     final favoritesState = ref.watch(favoritesControllerProvider);
     final isLiked = favoritesState.maybeWhen(
-      data: (state) => state.likedAuctionIds.contains(widget.product.id),
+      data: (state) => state.likedAuctionIds.contains(widget.auction.id),
       orElse: () => false,
     );
     final bool isEnded =
-        _remainingTimeForLive == Duration.zero ||
-        widget.product.isExpired == true ||
-        widget.product.isCanceled == true ||
-        (widget.product.liveStartDate != null &&
-            widget.product.liveStartDate!.isBefore(DateTime.now()))
+        //_remainingTimeForLive == Duration.zero ||
+        widget.auction.isExpired == true
+    //||
+    //widget.product.isCanceled == true ||
+    //(widget.product.liveStartDate != null &&
+    //    widget.product.liveStartDate!.isBefore(DateTime.now()))
     //    ||
     //_remainingTimeForPreAuction == Duration.zero
     ;
@@ -124,15 +125,15 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AuctionScreen(widget.product),
+              builder: (context) => AuctionScreen(widget.auction),
             ),
           );
         },
         onLongPress: () {
           AppFunctions.showImageDialog(
             context: context,
-            imageUrl: widget.product.imageUrl ?? '',
-            id: widget.product.id ?? 0,
+            imageUrl: widget.auction.imageUrl ?? '',
+            id: widget.auction.id ?? 0,
           );
         },
         child: Column(
@@ -146,14 +147,14 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                 fit: StackFit.expand,
                 children: [
                   Hero(
-                    tag: widget.heroTag ?? widget.product.id ?? 0,
+                    tag: widget.heroTag ?? widget.auction.id ?? 0,
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(16),
                         topRight: Radius.circular(16),
                       ),
                       child: CachedNetworkImage(
-                        imageUrl: widget.product.imageUrl ?? '',
+                        imageUrl: widget.auction.imageUrl ?? '',
                         width: double.infinity,
                         fit: BoxFit.cover,
                         progressIndicatorBuilder:
@@ -187,7 +188,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                         }
                         ref
                             .read(favoritesControllerProvider.notifier)
-                            .toggleLikeAuction(widget.product);
+                            .toggleLikeAuction(widget.auction);
                       },
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -250,7 +251,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                   children: [
                     // Title
                     Text(
-                      widget.product.title ?? '',
+                      widget.auction.title ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -262,7 +263,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                     gapH4,
                     // Description
                     Text(
-                      widget.product.description ?? '',
+                      widget.auction.description ?? '',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -287,20 +288,20 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                         //),
                         // Remaining Time
                         // Time Display
-                        if (widget.product.liveStartDate != null &&
-                            widget.product.startDate != null)
+                        if (widget.auction.liveStartDate != null &&
+                            widget.auction.startDate != null)
                           Builder(
                             builder: (context) {
                               final now = DateTime.now();
-                              final startDate = widget.product.startDate!;
-                              final expiryDate = widget.product.expiryDate!;
+                              final startDate = widget.auction.startDate!;
+                              final expiryDate = widget.auction.expiryDate!;
 
                               if (startDate.isAfter(now)) {
                                 // Future Auction
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (widget.product.liveStartDate !=
+                                    if (widget.auction.liveStartDate !=
                                         null) ...[
                                       Text(
                                         '${'preAuctionStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
@@ -311,7 +312,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                                         ),
                                       ),
                                       Text(
-                                        '${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(widget.product.liveStartDate!)}',
+                                        '${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(widget.auction.liveStartDate!)}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
@@ -399,7 +400,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    AuctionScreen(widget.product),
+                                    AuctionScreen(widget.auction),
                               ),
                             );
                           },

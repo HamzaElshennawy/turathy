@@ -46,7 +46,7 @@ class SearchResultsWidget extends ConsumerWidget {
               return SizedBox(
                 height: 320, // Approximate height for AuctionCard
                 child: AuctionCard(
-                  product: item,
+                  auction: item,
                   heroTag: 'search_auction_${item.id}',
                 ),
               );

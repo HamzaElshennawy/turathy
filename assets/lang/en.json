@@ -383,5 +383,7 @@
   "itemsIBiddedOn": "Items I Bidded On",
   "defaultSort": "Default Sort",
   "notificationOrderStatus": "Order Status",
-  "notificationOutbid": "You Got Outbid"
+  "notificationOutbid": "You Got Outbid",
+  "itemEndedSoldFor": "Item Ended - Sold for",
+  "comingSoon": "Coming Soon"
 }
