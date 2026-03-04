@@ -29,6 +29,7 @@ class AuctionModel {
   List<AuctionProducts>? auctionProducts;
   List<SocketComment>? auctionComments;
   List<AuctionBid>? auctionBids;
+  num? itemDuration;
   late bool isLiveAuction;
   List<String>? auctionImages;
 
@@ -63,6 +64,7 @@ class AuctionModel {
     this.auctionComments,
     this.auctionBids,
     this.auctionImages,
+    this.itemDuration,
   });
 
   @override
@@ -193,6 +195,7 @@ class AuctionModel {
         }
       });
     }
+    itemDuration = json['item_duration'] ?? json['duration'];
     isLiveAuction = json['type'] == 'Live';
   }
 
@@ -231,6 +234,7 @@ class AuctionModel {
           .map((v) => v.toJson())
           .toList();
     }
+    data['item_duration'] = itemDuration;
     return data;
   }
 
@@ -354,6 +358,7 @@ class AuctionProducts {
   String? usage;
   List<String>? images;
   List<AuctionBid>? bids;
+  num? itemDuration;
 
   AuctionProducts({
     this.id,
@@ -371,6 +376,7 @@ class AuctionProducts {
     this.origin,
     this.usage,
     this.images,
+    this.itemDuration,
   });
 
   @override
@@ -444,6 +450,7 @@ class AuctionProducts {
         bids!.add(AuctionBid.fromJson(v));
       });
     }
+    itemDuration = json['item_duration'] ?? json['duration'];
   }
 
   Map<String, dynamic> toJson() {
@@ -463,6 +470,7 @@ class AuctionProducts {
     data['origin'] = origin;
     data['usage'] = usage;
     data['images'] = images;
+    data['item_duration'] = itemDuration;
     return data;
   }
 }

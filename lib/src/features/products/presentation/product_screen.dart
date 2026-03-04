@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
@@ -496,13 +497,19 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
               gapW16,
 
               // Price
-              Text(
-                '${widget.product.price?.toStringAsFixed(0) ?? '0'}\$',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${widget.product.price?.toStringAsFixed(0) ?? '0'} ',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SvgPicture.asset('assets/icons/RSA.svg', height: 20),
+                ],
               ),
             ],
           ),

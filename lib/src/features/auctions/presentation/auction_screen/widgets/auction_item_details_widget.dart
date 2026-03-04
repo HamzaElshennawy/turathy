@@ -48,7 +48,8 @@ class AuctionItemDetailsWidget extends StatelessWidget {
 
               bool isProductEnded = false;
 
-              if (auction.isPreAuction) {
+              if (auction.isPreAuction ||
+                  auction.startDate!.isAfter(DateTime.now())) {
                 isProductEnded = false;
               } else if (isCurrentLiveProduct) {
                 isProductEnded =

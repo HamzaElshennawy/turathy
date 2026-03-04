@@ -56,6 +56,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   final Set<int> _userBidProductIds = {};
   StreamSubscription? _bidSubscription;
   StreamSubscription? _auctionStartedSubscription;
+  StreamSubscription? _itemEndedSubscription;
   SocketActions? _socketActions;
 
   /// Whether the user can open item bottom sheets (only GRANTED or owner)
@@ -131,6 +132,24 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           if (!mounted) return;
           if (event.id == auctionId) {
             _checkAccess();
+          }
+        });
+
+    // Listen for item ended events → update current product highlight
+    _itemEndedSubscription = socketService
+        .getEventStream<AuctionItemEndedEvent>(
+          'auctionItemEnded',
+          (data) =>
+              AuctionItemEndedEvent.fromJson(data as Map<String, dynamic>),
+        )
+        .listen((event) {
+          if (!mounted) return;
+          if (event.auction.id == auctionId) {
+            setState(() {
+              _currentAuction.currentProduct = event.auction.currentProduct;
+              _currentAuction.currentProductId = event.auction.currentProductId;
+              _currentAuction.expiryDate = event.auction.expiryDate;
+            });
           }
         });
   }
@@ -286,6 +305,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     _searchController.dispose();
     _bidSubscription?.cancel();
     _auctionStartedSubscription?.cancel();
+    _itemEndedSubscription?.cancel();
     // Leave the auction socket room
     final userId = CachedVariables.userId;
     final auctionId = _currentAuction.id;
@@ -371,10 +391,17 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   }
 
   String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+
+    if (duration.inHours > 0) {
+      final hours = duration.inHours.toString().padLeft(2, '0');
+      return '$hours:$minutes:$seconds';
+    } else if (duration.inMinutes > 0) {
+      return '$minutes:$seconds';
+    } else {
+      return '${duration.inSeconds} sec';
+    }
   }
 
   String _formatDate(DateTime? date) {
@@ -545,6 +572,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     VoidCallback? onPressed;
     String buttonText = '';
     Color? buttonColor;
+    Color? buttonTextColor;
     bool isPreAuction = _currentAuction.isPreAuction;
 
     if (isAuctionEnded) {
@@ -558,6 +586,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       } else {
         buttonText = AppStrings.joinNow.tr();
         buttonColor = Theme.of(context).primaryColor;
+        buttonTextColor = Colors.red;
         onPressed = () {
           if (CachedVariables.userId == null) {
             Navigator.of(
@@ -600,7 +629,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       ),
       child: Text(
         buttonText,
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: TextStyle(fontWeight: FontWeight.bold, color: buttonTextColor),
       ),
     );
   }

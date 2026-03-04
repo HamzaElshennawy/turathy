@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
@@ -293,8 +294,19 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           ),
           _buildInfoRow(
             AppStrings.totalAmount.tr(),
-            '${order.total} ${AppStrings.currency.tr()}',
-            isBold: true,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${order.total} ',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                SvgPicture.asset('assets/icons/RSA.svg', height: 12),
+              ],
+            ),
           ),
           if (order.paymentStatus != null)
             _buildInfoRow(
@@ -372,12 +384,24 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '${item.price} ${AppStrings.currency.tr()}',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            '${item.price} ',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SvgPicture.asset(
+                            'assets/icons/RSA.svg',
+                            height: 12,
+                            colorFilter: ColorFilter.mode(
+                              theme.colorScheme.primary,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -634,20 +658,23 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isBold = false}) {
+  Widget _buildInfoRow(String label, dynamic value, {bool isBold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              fontSize: 14,
+          if (value is Widget)
+            value
+          else
+            Text(
+              value.toString(),
+              style: TextStyle(
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
             ),
-          ),
         ],
       ),
     );

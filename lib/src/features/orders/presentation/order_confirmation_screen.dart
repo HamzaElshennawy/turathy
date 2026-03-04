@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/data/auction_payments_repository.dart';
@@ -319,10 +320,22 @@ class _OrderConfirmationScreenState
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    Text(
-                                      '${item.quantity} x ${item.price} ${AppStrings.currency.tr()}',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(color: Colors.grey),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${item.quantity} x ${item.price} ',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(color: Colors.grey),
+                                        ),
+                                        SvgPicture.asset(
+                                          'assets/icons/RSA.svg',
+                                          height: 10,
+                                          colorFilter: const ColorFilter.mode(
+                                            Colors.grey,
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -339,8 +352,26 @@ class _OrderConfirmationScreenState
                   _buildDetailRow(
                     theme,
                     AppStrings.totalAmount.tr(),
-                    widget.order.total.toString(),
-                    isPrice: true,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${widget.order.total} ',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        SvgPicture.asset(
+                          'assets/icons/RSA.svg',
+                          height: 12,
+                          colorFilter: ColorFilter.mode(
+                            theme.colorScheme.primary,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -516,7 +547,7 @@ class _OrderConfirmationScreenState
   Widget _buildDetailRow(
     ThemeData theme,
     String label,
-    String value, {
+    dynamic value, {
     bool isPrice = false,
   }) {
     return Padding(
@@ -530,13 +561,30 @@ class _OrderConfirmationScreenState
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
-          Text(
-            isPrice ? 'SAR $value' : value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: isPrice ? theme.colorScheme.primary : null,
+          if (isPrice)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                value,
+                SvgPicture.asset(
+                  'assets/icons/RSA.svg',
+                  height: 12,
+                  colorFilter: ColorFilter.mode(
+                    theme.colorScheme.primary,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ],
+            )
+          else if (value is Widget)
+            value
+          else
+            Text(
+              value.toString(),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
         ],
       ),
     );

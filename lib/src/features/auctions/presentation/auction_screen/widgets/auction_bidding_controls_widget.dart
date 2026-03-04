@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
@@ -106,20 +107,19 @@ class _AuctionBiddingControlsWidgetState
       });
     }
 
-    if (difference.isNegative) {
+    if (difference.inSeconds <= 0) {
       _timer?.cancel();
     }
   }
 
   String _formatDuration(Duration duration) {
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+
     if (duration.inHours > 0) {
       final hours = duration.inHours.toString().padLeft(2, '0');
-      final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-      final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
       return '$hours:$minutes:$seconds';
     } else if (duration.inMinutes > 0) {
-      final minutes = duration.inMinutes.toString().padLeft(2, '0');
-      final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
       return '$minutes:$seconds';
     } else {
       return '${duration.inSeconds} sec';
@@ -261,12 +261,33 @@ class _AuctionBiddingControlsWidgetState
     final bool auctionNotStarted = !hasStarted;
 
     // Filter all bids to just the ones for the current product
-    final List<AuctionBid> currentProductBids = currentProductId != null
+    // Start with initial bids from the API
+    final List<AuctionBid> initialProductBids = currentProductId != null
         ? (widget.auction.auctionBids
                   ?.where((bid) => bid.productId == currentProductId)
                   .toList() ??
               [])
         : (widget.auction.auctionBids ?? []);
+
+    // Merge in accumulated socket bids for the current product
+    final socketBids = ref.watch(accumulatedBidsProvider);
+    final filteredSocketBids = socketBids
+        .where(
+          (b) => currentProductId == null || b.productId == currentProductId,
+        )
+        .toList();
+
+    // Deduplicate: socket bids take priority over initial bids with the same ID
+    final socketBidIds = <int>{};
+    for (final b in filteredSocketBids) {
+      if (b.id != null) socketBidIds.add(b.id!);
+    }
+    final List<AuctionBid> currentProductBids = <AuctionBid>[
+      ...filteredSocketBids,
+      ...initialProductBids.where(
+        (b) => b.id == null || !socketBidIds.contains(b.id),
+      ),
+    ];
 
     // Find the highest user bid vs the highest active bid
     final AuctionBid? highestBidAny = currentProductBids.isNotEmpty
@@ -437,11 +458,12 @@ class _AuctionBiddingControlsWidgetState
           if (!isAuctionEnded) ...[
             Builder(
               builder: (context) {
+                final num durationThreshold = widget.auction.itemDuration ?? 30;
                 final bool showProgressBar =
-                    _remainingTime.inSeconds <= 30 &&
+                    _remainingTime.inSeconds <= durationThreshold &&
                     _remainingTime.inSeconds > 0;
                 final double progress = showProgressBar
-                    ? _remainingTime.inSeconds / 30.0
+                    ? _remainingTime.inSeconds / durationThreshold.toDouble()
                     : 0.0;
 
                 return Container(
@@ -561,12 +583,34 @@ class _AuctionBiddingControlsWidgetState
                                   ),
                                 ),
                                 gapH4,
-                                Text(
-                                  '${AppStrings.finalPrice.tr()}: \$${wonPrice.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontSize: 14,
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${AppStrings.finalPrice.tr()}: ',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${wonPrice.toStringAsFixed(0)} ',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SvgPicture.asset(
+                                      'assets/icons/RSA.svg',
+                                      height: 12,
+                                      colorFilter: const ColorFilter.mode(
+                                        Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -720,40 +764,39 @@ class _AuctionBiddingControlsWidgetState
               ),
             ),
           ] else if (!isAuctionEnded) ...[
-            if (!auctionNotStarted && !widget.showOnlyMaxBid) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildBidMultiplierButton(
-                      multiplier: 1.0,
-                      bidIncrement: bidIncrement,
-                      currentPrice: currentPrice,
-                      isDisabled: isAuctionEnded,
-                    ),
-                  ),
-                  gapW8,
-                  Expanded(
-                    child: _buildBidMultiplierButton(
-                      multiplier: 1.5,
-                      bidIncrement: bidIncrement,
-                      currentPrice: currentPrice,
-                      isDisabled: isAuctionEnded,
-                    ),
-                  ),
-                  gapW8,
-                  Expanded(
-                    child: _buildBidMultiplierButton(
-                      multiplier: 2.0,
-                      bidIncrement: bidIncrement,
-                      currentPrice: currentPrice,
-                      isDisabled: isAuctionEnded,
-                    ),
-                  ),
-                ],
-              ),
-              gapH16,
-            ],
-
+            // if (!auctionNotStarted && !widget.showOnlyMaxBid) ...[
+            //   Row(
+            //     children: [
+            //       Expanded(
+            //         child: _buildBidMultiplierButton(
+            //           multiplier: 1.0,
+            //           bidIncrement: bidIncrement,
+            //           currentPrice: currentPrice,
+            //           isDisabled: isAuctionEnded,
+            //         ),
+            //       ),
+            //       gapW8,
+            //       Expanded(
+            //         child: _buildBidMultiplierButton(
+            //           multiplier: 1.5,
+            //           bidIncrement: bidIncrement,
+            //           currentPrice: currentPrice,
+            //           isDisabled: isAuctionEnded,
+            //         ),
+            //       ),
+            //       gapW8,
+            //       Expanded(
+            //         child: _buildBidMultiplierButton(
+            //           multiplier: 2.0,
+            //           bidIncrement: bidIncrement,
+            //           currentPrice: currentPrice,
+            //           isDisabled: isAuctionEnded,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            //   gapH16,
+            // ],
             if (!auctionNotStarted) ...[
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -915,13 +958,34 @@ class _AuctionBiddingControlsWidgetState
                                 color: Colors.orange.shade700,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                '${'yourMaxBid'.tr()}: \$${displayMaxBid.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange.shade800,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${'yourMaxBid'.tr()}: ',
+                                    style: TextStyle(
+                                      color: Colors.orange.shade800,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${displayMaxBid.toStringAsFixed(0)} ',
+                                    style: TextStyle(
+                                      color: Colors.orange.shade800,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SvgPicture.asset(
+                                    'assets/icons/RSA.svg',
+                                    height: 10,
+                                    colorFilter: ColorFilter.mode(
+                                      Colors.orange.shade800,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -987,9 +1051,34 @@ class _AuctionBiddingControlsWidgetState
                     ),
                   ),
                   gapH4,
-                  Text(
-                    '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
-                    style: const TextStyle(color: Colors.green, fontSize: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${'finalPrice'.tr()}: ',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      Text(
+                        '${finalPrice.toStringAsFixed(0)} ',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        height: 16,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.green,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1100,9 +1189,34 @@ class _AuctionBiddingControlsWidgetState
                     '${'winner'.tr()}: ${widget.winnerName}',
                     style: const TextStyle(color: Colors.red, fontSize: 14),
                   ),
-                Text(
-                  '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
-                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${'finalPrice'.tr()}: ',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    Text(
+                      '${finalPrice.toStringAsFixed(0)} ',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    SvgPicture.asset(
+                      'assets/icons/RSA.svg',
+                      height: 16,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.red,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1132,9 +1246,34 @@ class _AuctionBiddingControlsWidgetState
                     '${'winner'.tr()}: ${widget.winnerName}',
                     style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
                   ),
-                Text(
-                  '${'finalPrice'.tr()}: \$${finalPrice.toStringAsFixed(0)}',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${'finalPrice'.tr()}: ',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    Text(
+                      '${finalPrice.toStringAsFixed(0)} ',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SvgPicture.asset(
+                      'assets/icons/RSA.svg',
+                      height: 16,
+                      colorFilter: ColorFilter.mode(
+                        Colors.grey.shade700,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -100,6 +100,11 @@ void resetNewBidStream(WidgetRef ref) {
 class AccumulatedBidsNotifier extends StateNotifier<List<AuctionBid>> {
   AccumulatedBidsNotifier() : super([]);
 
+  /// Replace the entire bid list with the authoritative list from the backend
+  void updateAll(List<AuctionBid> bids) {
+    state = bids;
+  }
+
   void addBid(AuctionBid bid) {
     // Avoid duplicates by checking bid id
     if (bid.id != null && state.any((b) => b.id == bid.id)) return;
@@ -114,14 +119,20 @@ final accumulatedBidsProvider =
       List<AuctionBid>
     >((ref) {
       final notifier = AccumulatedBidsNotifier();
-      // Listen to new bid events and accumulate them
+      // Listen to new bid events and use the full authoritative list from backend
       ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (
         previous,
         next,
       ) {
-        final bid = next.valueOrNull?.newBid;
-        if (bid != null) {
-          notifier.addBid(bid);
+        final event = next.valueOrNull;
+        if (event != null) {
+          // Use the full auctionBids list from the backend as the source of truth
+          if (event.auctionBids.isNotEmpty) {
+            notifier.updateAll(event.auctionBids);
+          } else {
+            // Fallback: if auctionBids is empty, just add the new bid
+            notifier.addBid(event.newBid);
+          }
         }
       });
       return notifier;

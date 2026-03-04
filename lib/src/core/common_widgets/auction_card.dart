@@ -74,10 +74,17 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
   }
 
   String _formatDuration(Duration duration) {
-    final hours = duration.inHours.toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return '$hours:$minutes:$seconds';
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+
+    if (duration.inHours > 0) {
+      final hours = duration.inHours.toString().padLeft(2, '0');
+      return '$hours:$minutes:$seconds';
+    } else if (duration.inMinutes > 0) {
+      return '$minutes:$seconds';
+    } else {
+      return '${duration.inSeconds} sec';
+    }
   }
 
   @override

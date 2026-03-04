@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
@@ -444,7 +445,13 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
                   decoration: InputDecoration(
                     labelText: AppStrings.actualPrice.tr(),
                     border: const OutlineInputBorder(),
-                    prefixText: '\$ ',
+                    prefix: Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 4),
+                      child: SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        height: 16,
+                      ),
+                    ),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) =>
@@ -458,7 +465,13 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
                   decoration: InputDecoration(
                     labelText: AppStrings.minBidPriceLabel.tr(),
                     border: const OutlineInputBorder(),
-                    prefixText: '\$ ',
+                    prefix: Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 4),
+                      child: SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        height: 16,
+                      ),
+                    ),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) =>
@@ -472,7 +485,13 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
                   decoration: InputDecoration(
                     labelText: AppStrings.bidIncrement.tr(),
                     border: const OutlineInputBorder(),
-                    prefixText: '\$ ',
+                    prefix: Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 4),
+                      child: SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        height: 16,
+                      ),
+                    ),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) =>
@@ -594,7 +613,13 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
                   decoration: InputDecoration(
                     labelText: AppStrings.price.tr(),
                     border: const OutlineInputBorder(),
-                    prefixText: '\$ ',
+                    prefix: Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 4),
+                      child: SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        height: 16,
+                      ),
+                    ),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) =>

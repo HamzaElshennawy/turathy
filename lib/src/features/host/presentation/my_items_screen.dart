@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
@@ -94,8 +95,15 @@ class _MyAuctionsList extends ConsumerWidget {
                     ),
                   ),
                   title: Text(auction.title ?? AppStrings.untitledAuction.tr()),
-                  subtitle: Text(
-                    '${AppStrings.startPrice.tr()}: \$${auction.minBidPrice ?? 0}',
+                  subtitle: Row(
+                    children: [
+                      Text('${AppStrings.startPrice.tr()}: '),
+                      Text(
+                        '${auction.minBidPrice ?? 0} ',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SvgPicture.asset('assets/icons/RSA.svg', height: 14),
+                    ],
                   ),
                   trailing: Chip(
                     label: Text(
@@ -175,8 +183,15 @@ class _MyProductsList extends ConsumerWidget {
                         product.name ??
                         AppStrings.untitledProduct.tr(),
                   ),
-                  subtitle: Text(
-                    '${AppStrings.price.tr()}: \$${product.price ?? 0}',
+                  subtitle: Row(
+                    children: [
+                      Text('${AppStrings.price.tr()}: '),
+                      Text(
+                        '${product.price ?? 0} ',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SvgPicture.asset('assets/icons/RSA.svg', height: 14),
+                    ],
                   ),
                 ),
               );

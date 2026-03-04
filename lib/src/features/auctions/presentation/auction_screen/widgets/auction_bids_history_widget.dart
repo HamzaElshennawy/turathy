@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
@@ -39,12 +40,22 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
     }
 
     // Combine: socket bids first (newest on top), then initial bids not already in socket list
-    final allBids = <AuctionBid>[
+    final allBidsRaw = <AuctionBid>[
       ...filteredSocketBids,
       ...filteredInitialBids.where(
         (b) => b.id == null || !socketBidIds.contains(b.id),
       ),
     ];
+
+    // Hide inactive bids from other users — only the current user sees their own inactive bids
+    final currentUserId = CachedVariables.userId;
+    final allBids = allBidsRaw.where((b) {
+      if (b.isActive == false) {
+        // Only show inactive bids that belong to the current user
+        return b.userId == currentUserId;
+      }
+      return true;
+    }).toList();
 
     if (allBids.isEmpty) {
       return Padding(
@@ -57,6 +68,17 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
         ),
       );
     }
+
+    // Determine the overall highest active bid across ALL users
+    final activeBids = allBidsRaw.where((b) => b.isActive == true).toList();
+    AuctionBid? overallHighestActive;
+    if (activeBids.isNotEmpty) {
+      activeBids.sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
+      overallHighestActive = activeBids.first;
+    }
+    final bool isCurrentUserOverallHighest =
+        overallHighestActive != null &&
+        overallHighestActive.userId == currentUserId;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -78,16 +100,17 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
             itemBuilder: (context, index) {
               final bid = allBids[index];
               final isMyBid =
-                  CachedVariables.userId != null &&
-                  bid.userId == CachedVariables.userId;
+                  currentUserId != null && bid.userId == currentUserId;
 
-              // Highlight the user's highest ACTIVE bid (not just the latest bid)
+              // Green highlight: only when this is the user's highest active bid
+              // AND the user is the overall highest active bidder
               bool showHighlight = false;
-              if (isMyBid && bid.isActive == true) {
-                // Check that no other active bid from this user has a higher amount
+              if (isMyBid &&
+                  bid.isActive == true &&
+                  isCurrentUserOverallHighest) {
                 final hasHigherActiveBid = allBids.any(
                   (b) =>
-                      b.userId == CachedVariables.userId &&
+                      b.userId == currentUserId &&
                       b.isActive == true &&
                       (b.bid ?? 0) > (bid.bid ?? 0),
                 );
@@ -150,15 +173,29 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
                         ),
                       ),
                       // Bid amount
-                      Text(
-                        '\$${bid.bid?.toStringAsFixed(0) ?? '0'}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: showHighlight
-                              ? const Color(0xFF2D4739)
-                              : Colors.black87,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            '${bid.bid?.toStringAsFixed(0) ?? '0'} ',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: showHighlight
+                                  ? const Color(0xFF2D4739)
+                                  : Colors.black87,
+                            ),
+                          ),
+                          SvgPicture.asset(
+                            'assets/icons/RSA.svg',
+                            height: 12,
+                            colorFilter: ColorFilter.mode(
+                              showHighlight
+                                  ? const Color(0xFF2D4739)
+                                  : Colors.black87,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ],
                       ),
                       if (showHighlight) ...[
                         gapW8,

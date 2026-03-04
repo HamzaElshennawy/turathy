@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/helper/cache/cached_variables.dart';
@@ -200,13 +201,25 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 gapH4,
-                Text(
-                  '${product.price?.toStringAsFixed(0) ?? '0'}\$',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B5E20),
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '${product.price?.toStringAsFixed(0) ?? '0'} ',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1B5E20),
+                      ),
+                    ),
+                    SvgPicture.asset(
+                      'assets/icons/RSA.svg',
+                      height: 14,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF1B5E20),
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ],
                 ),
                 gapH4,
                 Row(
@@ -287,13 +300,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   AppStrings.total.tr(),
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
-                Text(
-                  '${total.toStringAsFixed(0)}\$',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${total.toStringAsFixed(0)} ',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SvgPicture.asset('assets/icons/RSA.svg', height: 18),
+                  ],
                 ),
               ],
             ),
