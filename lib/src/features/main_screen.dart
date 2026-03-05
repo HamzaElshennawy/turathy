@@ -395,6 +395,7 @@ class _UserAvatar extends StatelessWidget {
             )
           : CachedNetworkImage(
               imageUrl: image!,
+              memCacheHeight: 150,
               fit: BoxFit.cover,
               placeholder: (context, url) =>
                   const Center(child: CircularProgressIndicator()),

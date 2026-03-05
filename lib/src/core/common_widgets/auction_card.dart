@@ -162,6 +162,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                       ),
                       child: CachedNetworkImage(
                         imageUrl: widget.auction.imageUrl ?? '',
+                        memCacheHeight: 400,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         progressIndicatorBuilder:

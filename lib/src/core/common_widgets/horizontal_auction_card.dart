@@ -112,6 +112,7 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
                     ),
                     child: CachedNetworkImage(
                       imageUrl: widget.product.imageUrl ?? '',
+                      memCacheHeight: 400,
                       fit: BoxFit.cover,
                       errorWidget: (context, url, error) => Container(
                         color: Colors.grey[200],

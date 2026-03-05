@@ -175,6 +175,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
               imageUrl: product.fullImageUrl,
+              memCacheHeight: 200,
               width: 80,
               height: 80,
               fit: BoxFit.cover,

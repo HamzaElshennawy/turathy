@@ -738,6 +738,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                       borderRadius: BorderRadius.circular(6),
                                       child: CachedNetworkImage(
                                         imageUrl: item.imageUrl ?? '',
+                                        memCacheHeight: 150,
                                         fit: BoxFit.cover,
                                         placeholder: (context, url) =>
                                             const SizedBox(),

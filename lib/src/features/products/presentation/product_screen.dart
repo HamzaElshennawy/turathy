@@ -192,6 +192,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
               itemBuilder: (context, index) {
                 return CachedNetworkImage(
                   imageUrl: _images[index],
+                  memCacheHeight: 800,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   progressIndicatorBuilder: (context, url, progress) => Center(
@@ -334,6 +335,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 borderRadius: BorderRadius.circular(6),
                 child: CachedNetworkImage(
                   imageUrl: _images[index],
+                  memCacheWidth: 200,
                   fit: BoxFit.cover,
                   errorWidget: (context, url, error) => Container(
                     color: Colors.grey[200],

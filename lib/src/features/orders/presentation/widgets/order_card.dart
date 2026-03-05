@@ -42,6 +42,7 @@ class OrderCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
               imageUrl: imageUrl ?? '',
+              memCacheHeight: 200,
               width: 80,
               height: 80,
               fit: BoxFit.cover,

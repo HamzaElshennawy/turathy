@@ -79,6 +79,7 @@ class HorizontalProductCard extends ConsumerWidget {
                     ),
                     child: CachedNetworkImage(
                       imageUrl: _imageUrl,
+                      memCacheHeight: 400,
                       fit: BoxFit.cover,
                       errorWidget: (context, url, error) => Container(
                         color: Colors.grey[200],

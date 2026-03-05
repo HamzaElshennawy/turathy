@@ -1,4 +1,4 @@
-import 'dart:async';
+//import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -26,47 +26,15 @@ class ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<ProductCard> {
-  Timer? _timer;
-  //Duration _remainingTime = Duration.zero;
-
   @override
   void initState() {
     super.initState();
-    _calculateRemainingTime();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _calculateRemainingTime();
-    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     super.dispose();
   }
-
-  void _calculateRemainingTime() {
-    //if (widget.product.expiryDate != null) {
-    //  final expiryDate = DateTime.parse(widget.product.expiryDate!);
-    //  final now = DateTime.now();
-    //  if (expiryDate.isAfter(now)) {
-    //    setState(() {
-    //      _remainingTime = expiryDate.difference(now);
-    //    });
-    //  } else {
-    //    setState(() {
-    //      _remainingTime = Duration.zero;
-    //    });
-    //  }
-    //}
-  }
-
-  //String _formatDuration(Duration duration) {
-  //  final hours = duration.inHours.toString().padLeft(2, '0');
-  //  final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-  //  final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-  //  return '$hours:$minutes:$seconds';
-  //  return '$hours:$minutes:$seconds';
-  //}
 
   String get _imageUrl {
     String? url;
@@ -141,6 +109,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                       ),
                       child: CachedNetworkImage(
                         imageUrl: _imageUrl,
+                        memCacheHeight: 400,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         progressIndicatorBuilder:

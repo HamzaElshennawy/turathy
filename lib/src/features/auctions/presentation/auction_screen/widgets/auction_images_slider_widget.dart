@@ -59,6 +59,7 @@ class _AuctionImagesSliderWidgetState extends State<AuctionImagesSliderWidget> {
                     );
                   },
                   child: CachedNetworkImage(
+                    memCacheHeight: 800,
                     fit: BoxFit.contain,
                     imageUrl: widget.images[index],
                     progressIndicatorBuilder: (context, url, progress) =>
