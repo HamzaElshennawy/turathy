@@ -79,7 +79,9 @@ class WinningAuctionModel {
       sold: json['sold'] as bool,
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
-      auctionTitle: json['auction']['title'] as String,
+      auctionTitle:
+          (json['auction']['title_ar'] ?? json['auction']['title_en'] ?? '')
+              as String,
       auctionImage:
           json['auction']['image_url'] as String? ??
           json['auction']['main_image'] as String?,

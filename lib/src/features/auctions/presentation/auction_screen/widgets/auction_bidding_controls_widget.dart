@@ -154,7 +154,7 @@ class _AuctionBiddingControlsWidgetState
         widget.auction.currentProduct != null &&
         widget.auction.auctionProducts != null) {
       final match = widget.auction.auctionProducts!.firstWhere(
-        (p) => p.product == widget.auction.currentProduct,
+        (p) => p.displayName == widget.auction.currentProduct,
         orElse: () => AuctionProducts(),
       );
       currentProductId = match.id;
@@ -637,13 +637,13 @@ class _AuctionBiddingControlsWidgetState
                                   userId: currentUserId ?? 0,
                                   auctionId: widget.auction.id ?? 0,
                                   product:
-                                      widget.selectedProduct?.product ?? '',
+                                      widget.selectedProduct?.displayName ?? '',
                                   productId: widget.selectedProduct?.id ?? 0,
                                   price: wonPrice.toDouble(),
                                   sold: false,
                                   createdAt: DateTime.now(),
                                   updatedAt: DateTime.now(),
-                                  auctionTitle: widget.auction.title ?? '',
+                                  auctionTitle: widget.auction.displayTitle,
                                   auctionStartDate:
                                       widget.auction.startDate ??
                                       DateTime.now(),
@@ -1109,7 +1109,7 @@ class _AuctionBiddingControlsWidgetState
                     sold: false,
                     createdAt: DateTime.now(),
                     updatedAt: DateTime.now(),
-                    auctionTitle: widget.auction.title ?? '',
+                    auctionTitle: widget.auction.displayTitle,
                     auctionStartDate:
                         widget.auction.startDate ?? DateTime.now(),
                     winnerName: '',

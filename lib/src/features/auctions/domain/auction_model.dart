@@ -4,8 +4,10 @@ import 'package:turathy/src/features/home/domain/category_model.dart';
 
 class AuctionModel {
   int? id;
-  String? title;
-  String? description;
+  String? titleAr;
+  String? titleEn;
+  String? descriptionAr;
+  String? descriptionEn;
   String? currentProduct;
   int? currentProductId;
   num? actualPrice;
@@ -35,10 +37,26 @@ class AuctionModel {
 
   String get type => isLiveAuction ? 'live' : 'public';
 
+  /// Returns the title for the given [locale] ('ar' or 'en').
+  String localizedTitle(String locale) =>
+      locale == 'ar' ? (titleAr ?? '') : (titleEn ?? '');
+
+  /// Returns the description for the given [locale] ('ar' or 'en').
+  String localizedDescription(String locale) =>
+      locale == 'ar' ? (descriptionAr ?? '') : (descriptionEn ?? '');
+
+  /// Convenience getter for non-UI contexts (notifications, filters).
+  String get displayTitle => titleAr ?? titleEn ?? '';
+
+  /// Convenience getter for non-UI contexts.
+  String get displayDescription => descriptionAr ?? descriptionEn ?? '';
+
   AuctionModel({
     this.id,
-    this.title,
-    this.description,
+    this.titleAr,
+    this.titleEn,
+    this.descriptionAr,
+    this.descriptionEn,
     this.currentProduct,
     this.currentProductId,
     this.actualPrice,
@@ -73,8 +91,10 @@ class AuctionModel {
       other is AuctionModel &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          title == other.title &&
-          description == other.description &&
+          titleAr == other.titleAr &&
+          titleEn == other.titleEn &&
+          descriptionAr == other.descriptionAr &&
+          descriptionEn == other.descriptionEn &&
           currentProduct == other.currentProduct &&
           currentProductId == other.currentProductId &&
           actualPrice == other.actualPrice &&
@@ -101,8 +121,10 @@ class AuctionModel {
   @override
   int get hashCode =>
       id.hashCode ^
-      title.hashCode ^
-      description.hashCode ^
+      titleAr.hashCode ^
+      titleEn.hashCode ^
+      descriptionAr.hashCode ^
+      descriptionEn.hashCode ^
       currentProduct.hashCode ^
       currentProductId.hashCode ^
       actualPrice.hashCode ^
@@ -128,8 +150,10 @@ class AuctionModel {
 
   AuctionModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    title = json['title'];
-    description = json['description'];
+    titleAr = json['title_ar'] ?? json['title'];
+    titleEn = json['title_en'];
+    descriptionAr = json['description_ar'] ?? json['description'];
+    descriptionEn = json['description_en'];
     currentProduct = json['current_product'];
     currentProductId = json['current_product_id'];
     actualPrice = json['actualPrice'];
@@ -202,8 +226,10 @@ class AuctionModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['id'] = id;
-    data['title'] = title;
-    data['description'] = description;
+    data['title_ar'] = titleAr;
+    data['title_en'] = titleEn;
+    data['description_ar'] = descriptionAr;
+    data['description_en'] = descriptionEn;
     data['current_product'] = currentProduct;
     data['current_product_id'] = currentProductId;
     data['actualPrice'] = actualPrice;
@@ -240,7 +266,7 @@ class AuctionModel {
 
   @override
   String toString() {
-    return 'AuctionModel{id: $id, title: $title, description: $description, currentProduct: $currentProduct, currentProductId: $currentProductId, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, liveStartDate: $liveStartDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
+    return 'AuctionModel{id: $id, titleAr: $titleAr, titleEn: $titleEn, descriptionAr: $descriptionAr, descriptionEn: $descriptionEn, currentProduct: $currentProduct, currentProductId: $currentProductId, actualPrice: $actualPrice, minBidPrice: $minBidPrice, quantity: $quantity, bidPrice: $bidPrice, expiryDate: $expiryDate, startDate: $startDate, liveStartDate: $liveStartDate, isLive: $isLive, isExpired: $isExpired, isCanceled: $isCanceled, imageUrl: $imageUrl, userId: $userId, winningUserId: $winningUserId, categoryId: $categoryId, createdAt: $createdAt, updatedAt: $updatedAt, category: $category, user: $user, auctionProducts: $auctionProducts, auctionComments: $auctionComments, auctionBids: $auctionBids}';
   }
 
   bool get isCanceledLocal {
@@ -343,7 +369,10 @@ class User {
 
 class AuctionProducts {
   int? id;
-  String? product;
+  String? productAr;
+  String? productEn;
+  String? descriptionAr;
+  String? descriptionEn;
   String? bidPrice;
   String? minBidPrice;
   String? actualPrice;
@@ -360,9 +389,26 @@ class AuctionProducts {
   List<AuctionBid>? bids;
   num? itemDuration;
 
+  /// Returns the product name for the given [locale] ('ar' or 'en').
+  String localizedName(String locale) =>
+      locale == 'ar' ? (productAr ?? '') : (productEn ?? '');
+
+  /// Returns the product description for the given [locale] ('ar' or 'en').
+  String localizedDescription(String locale) =>
+      locale == 'ar' ? (descriptionAr ?? '') : (descriptionEn ?? '');
+
+  /// Convenience getter for non-UI contexts.
+  String get displayName => productAr ?? productEn ?? '';
+
+  /// Convenience getter for non-UI contexts.
+  String get displayDescription => descriptionAr ?? descriptionEn ?? '';
+
   AuctionProducts({
     this.id,
-    this.product,
+    this.productAr,
+    this.productEn,
+    this.descriptionAr,
+    this.descriptionEn,
     this.bidPrice,
     this.minBidPrice,
     this.actualPrice,
@@ -385,7 +431,10 @@ class AuctionProducts {
       other is AuctionProducts &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          product == other.product &&
+          productAr == other.productAr &&
+          productEn == other.productEn &&
+          descriptionAr == other.descriptionAr &&
+          descriptionEn == other.descriptionEn &&
           bidPrice == other.bidPrice &&
           minBidPrice == other.minBidPrice &&
           actualPrice == other.actualPrice &&
@@ -403,7 +452,10 @@ class AuctionProducts {
   @override
   int get hashCode =>
       id.hashCode ^
-      product.hashCode ^
+      productAr.hashCode ^
+      productEn.hashCode ^
+      descriptionAr.hashCode ^
+      descriptionEn.hashCode ^
       bidPrice.hashCode ^
       minBidPrice.hashCode ^
       actualPrice.hashCode ^
@@ -420,7 +472,10 @@ class AuctionProducts {
 
   AuctionProducts.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    product = json['product'];
+    productAr = json['product_ar'] ?? json['product'];
+    productEn = json['product_en'];
+    descriptionAr = json['description_ar'] ?? json['description'];
+    descriptionEn = json['description_en'];
     bidPrice = json['bidPrice'];
     minBidPrice = json['minBidPrice'];
     actualPrice = json['actualPrice'];
@@ -456,7 +511,10 @@ class AuctionProducts {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['id'] = id;
-    data['product'] = product;
+    data['product_ar'] = productAr;
+    data['product_en'] = productEn;
+    data['description_ar'] = descriptionAr;
+    data['description_en'] = descriptionEn;
     data['bidPrice'] = bidPrice;
     data['minBidPrice'] = minBidPrice;
     data['actualPrice'] = actualPrice;

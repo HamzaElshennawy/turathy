@@ -39,7 +39,7 @@ class AuctionItemDetailsWidget extends StatelessWidget {
             // Determine status for the ACTIVE product (displayed in big view)
             if (activeProduct != null && activeProduct!.id != null) {
               final bool isCurrentLiveProduct = _isSameProduct(
-                activeProduct!.product,
+                activeProduct!.displayName,
                 auction.currentProduct,
               );
 
@@ -63,7 +63,7 @@ class AuctionItemDetailsWidget extends StatelessWidget {
               } else {
                 final currentIndex = auction.auctionProducts!.indexWhere(
                   (p) =>
-                      _isSameProduct(p.product, auction.currentProduct) ||
+                      _isSameProduct(p.displayName, auction.currentProduct) ||
                       p.id == auction.currentProductId,
                 );
                 final activeIndex = auction.auctionProducts!.indexWhere(

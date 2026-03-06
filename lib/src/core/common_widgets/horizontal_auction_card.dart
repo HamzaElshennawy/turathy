@@ -168,7 +168,9 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.product.title ?? '',
+                          widget.product.localizedTitle(
+                            context.locale.languageCode,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -179,7 +181,9 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.product.description ?? '',
+                          widget.product.localizedDescription(
+                            context.locale.languageCode,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

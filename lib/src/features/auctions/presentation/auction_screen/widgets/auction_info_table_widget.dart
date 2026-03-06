@@ -19,7 +19,9 @@ class AuctionInfoTableWidget extends StatelessWidget {
     final activeProduct =
         currentProduct ??
         auction.auctionProducts?.firstWhere(
-          (p) => p.product == auction.currentProduct,
+          (p) =>
+              p.localizedName(context.locale.languageCode) ==
+              auction.currentProduct,
           orElse: () => AuctionProducts(),
         );
 
@@ -30,7 +32,8 @@ class AuctionInfoTableWidget extends StatelessWidget {
         children: [
           Center(
             child: Text(
-              activeProduct?.product ?? auction.title ?? '',
+              activeProduct?.localizedName(context.locale.languageCode) ??
+                  auction.localizedTitle(context.locale.languageCode),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),

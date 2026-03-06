@@ -445,5 +445,5 @@ class AuctionItemEndedEvent {
 
   @override
   String toString() =>
-      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.product}, winner: ${winner?.name})';
+      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.displayName}, winner: ${winner?.name})';
 }

@@ -176,7 +176,10 @@ class _RequestCardWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        request.auction?.title ?? '', // Fallback title
+                        request.auction?.localizedTitle(
+                              context.locale.languageCode,
+                            ) ??
+                            '',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

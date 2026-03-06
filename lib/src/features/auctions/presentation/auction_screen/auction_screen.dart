@@ -328,7 +328,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       // 1. Text Search Filter
       if (searchQuery.isNotEmpty) {
         results = results.where((product) {
-          return product.product?.toLowerCase().contains(searchQuery) ?? false;
+          return product.displayName.toLowerCase().contains(searchQuery);
         }).toList();
       }
 
@@ -465,7 +465,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       // In a live auction, if this item comes BEFORE the current item, it has ended
       final currentIndex = _currentAuction.auctionProducts!.indexWhere(
         (p) =>
-            p.product == _currentAuction.currentProduct ||
+            p.displayName == _currentAuction.currentProduct ||
             p.id == _currentAuction.currentProductId,
       );
       final thisIndex = _currentAuction.auctionProducts!.indexWhere(
@@ -725,7 +725,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               final currentIndex = products.indexWhere(
                                 (p) =>
                                     p.id == _currentAuction.currentProductId ||
-                                    p.product == _currentAuction.currentProduct,
+                                    p.displayName ==
+                                        _currentAuction.currentProduct,
                               );
                               final thisIndex = products.indexWhere(
                                 (p) => p.id == product.id,
@@ -1121,14 +1122,18 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _currentAuction.title ?? '',
+                        _currentAuction.localizedTitle(
+                          context.locale.languageCode,
+                        ),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       gapH8,
                       Text(
-                        _currentAuction.description ?? '',
+                        _currentAuction.localizedDescription(
+                          context.locale.languageCode,
+                        ),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey[600],
                         ),
@@ -1325,7 +1330,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                 _currentAuction.isCanceled != true &&
                                 (product.id ==
                                         _currentAuction.currentProductId ||
-                                    product.product ==
+                                    product.displayName ==
                                         _currentAuction.currentProduct);
 
                             return GestureDetector(
@@ -1413,7 +1418,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                           ),
                                           gapH4,
                                           Text(
-                                            product.product ?? '',
+                                            product.localizedName(
+                                              context.locale.languageCode,
+                                            ),
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .titleMedium
@@ -1482,7 +1489,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                 _currentAuction.isCanceled != true &&
                                 (product.id ==
                                         _currentAuction.currentProductId ||
-                                    product.product ==
+                                    product.displayName ==
                                         _currentAuction.currentProduct);
 
                             return GestureDetector(
@@ -1552,7 +1559,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                             ),
                                             gapH4,
                                             Text(
-                                              product.product ?? '',
+                                              product.localizedName(
+                                                context.locale.languageCode,
+                                              ),
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .titleMedium

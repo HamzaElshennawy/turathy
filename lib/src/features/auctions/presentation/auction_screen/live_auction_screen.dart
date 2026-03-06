@@ -213,7 +213,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     }
 
     final currentIndex = auction.auctionProducts!.indexWhere(
-      (p) => _isSameProduct(p.product, auction.currentProduct),
+      (p) => _isSameProduct(p.displayName, auction.currentProduct),
     );
 
     if (currentIndex == -1 ||
@@ -245,7 +245,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     } else {
       productToBidOn = auction.auctionProducts?.firstWhere(
         (element) =>
-            element.product == auction.currentProduct ||
+            element.displayName == auction.currentProduct ||
             element.id == auction.currentProductId,
         orElse: () => AuctionProducts(),
       );
@@ -348,7 +348,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           // Transition to the next item
           setState(() {
             // Update auction details
-            auction.currentProduct = event.nextItem!.product;
+            auction.currentProduct = event.nextItem!.displayName;
             auction.currentProductId = event.nextItem!.id;
             auction.actualPrice =
                 num.tryParse(event.nextItem!.actualPrice ?? '0') ?? 0;
@@ -440,7 +440,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           );
           FCMService().showLocalNotification(
             title: AppStrings.youWon.tr(),
-            body: '${AppStrings.youWon.tr()} ${auction.title ?? ""}',
+            body: '${AppStrings.youWon.tr()} ${auction.displayTitle}',
           );
         } else {
           // Check if current user actually participated in the final item
@@ -500,13 +500,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       // Find the product that matches the current_product name or ID
       final currentProductObj = auction.auctionProducts!.firstWhere(
         (p) =>
-            p.product == auction.currentProduct ||
+            p.displayName == auction.currentProduct ||
             p.id == auction.currentProductId,
         orElse: () => auction.auctionProducts![0],
       );
 
       // Update pricing fields on the main auction object for the UI to use
-      if (currentProductObj.product != null) {
+      if (currentProductObj.productAr != null ||
+          currentProductObj.productEn != null) {
         if (currentProductObj.minBidPrice != null) {
           auction.minBidPrice =
               num.tryParse(currentProductObj.minBidPrice!) ??
@@ -572,7 +573,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          auction.currentProduct ?? auction.title ?? 'auctionDetails'.tr(),
+          auction.currentProduct ??
+              (auction.titleAr ?? auction.titleEn ?? 'auctionDetails'.tr()),
         ),
         centerTitle: true,
         leading: const BackButton(),
@@ -604,7 +606,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         final activeProduct =
             _selectedProduct ??
             auction.auctionProducts?.firstWhere((p) {
-              return p.product == auction.currentProduct ||
+              return p.displayName == auction.currentProduct ||
                   p.id == auction.currentProductId;
             }, orElse: () => AuctionProducts());
 
@@ -693,7 +695,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                           itemBuilder: (context, index) {
                             final item = auction.auctionProducts![index];
                             final bool isLive =
-                                item.product == auction.currentProduct ||
+                                item.displayName == auction.currentProduct ||
                                 item.id == auction.currentProductId;
                             final bool isSelected =
                                 item.id ==
@@ -701,7 +703,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                     (auction.auctionProducts
                                             ?.firstWhere(
                                               (p) =>
-                                                  p.product ==
+                                                  p.displayName ==
                                                   auction.currentProduct,
                                               orElse: () => AuctionProducts(),
                                             )
@@ -760,7 +762,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                             .auctionProducts!
                                             .indexWhere(
                                               (p) => _isSameProduct(
-                                                p.product,
+                                                p.displayName,
                                                 auction.currentProduct,
                                               ),
                                             );
@@ -928,7 +930,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                   _selectedProduct?.id !=
                       (auction.auctionProducts
                               ?.firstWhere(
-                                (p) => p.product == auction.currentProduct,
+                                (p) => p.displayName == auction.currentProduct,
                                 orElse: () => AuctionProducts(),
                               )
                               .id ??
@@ -1038,7 +1040,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
     final index = auction.auctionProducts!.indexWhere(
       (p) =>
-          p.product == auction.currentProduct ||
+          p.displayName == auction.currentProduct ||
           p.id == auction.currentProductId,
     );
 
@@ -1241,7 +1243,8 @@ class AuctionResultDialog extends ConsumerWidget {
                         final currentProductId =
                             auction.auctionProducts
                                 ?.firstWhere(
-                                  (p) => p.product == auction.currentProduct,
+                                  (p) =>
+                                      p.displayName == auction.currentProduct,
                                   orElse: () => AuctionProducts(),
                                 )
                                 .id ??
@@ -1305,7 +1308,7 @@ class AuctionResultDialog extends ConsumerWidget {
                           sold: false,
                           createdAt: DateTime.now(),
                           updatedAt: DateTime.now(),
-                          auctionTitle: auction.title ?? '',
+                          auctionTitle: auction.displayTitle,
                           auctionStartDate: auction.startDate ?? DateTime.now(),
                           winnerName: winnerName ?? '',
                         );

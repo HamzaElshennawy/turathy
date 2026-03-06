@@ -94,7 +94,13 @@ class _MyAuctionsList extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  title: Text(auction.title ?? AppStrings.untitledAuction.tr()),
+                  title: Text(
+                    auction
+                            .localizedTitle(context.locale.languageCode)
+                            .isNotEmpty
+                        ? auction.localizedTitle(context.locale.languageCode)
+                        : AppStrings.untitledAuction.tr(),
+                  ),
                   subtitle: Row(
                     children: [
                       Text('${AppStrings.startPrice.tr()}: '),

@@ -259,7 +259,9 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                   children: [
                     // Title
                     Text(
-                      widget.auction.title ?? '',
+                      widget.auction.localizedTitle(
+                        context.locale.languageCode,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -271,7 +273,9 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                     gapH4,
                     // Description
                     Text(
-                      widget.auction.description ?? '',
+                      widget.auction.localizedDescription(
+                        context.locale.languageCode,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
