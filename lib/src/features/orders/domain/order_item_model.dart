@@ -78,8 +78,73 @@ class OrderItemModel {
   String get title {
     if (product != null) return product!['title'] ?? product!['name'] ?? '';
     if (auctionProduct != null) return auctionProduct!['product'] ?? '';
-    if (winning != null && winning!['product'] != null)
+    if (winning != null && winning!['product'] != null) {
       return winning!['product']['product'] ?? '';
+    }
+    return '';
+  }
+
+  String localizedTitle(String locale) {
+    if (locale == 'ar') {
+      if (product != null) {
+        return product!['title_ar'] ?? product!['name_ar'] ?? title;
+      }
+      if (auctionProduct != null) {
+        return auctionProduct!['product_ar'] ?? title;
+      }
+      if (winning != null && winning!['product'] != null) {
+        return winning!['product']['product_ar'] ?? title;
+      }
+    } else {
+      if (product != null) {
+        return product!['title_en'] ?? product!['name_en'] ?? title;
+      }
+      if (auctionProduct != null) {
+        return auctionProduct!['product_en'] ?? title;
+      }
+      if (winning != null && winning!['product'] != null) {
+        return winning!['product']['product_en'] ?? title;
+      }
+    }
+    return title;
+  }
+
+  String localizedDescription(String locale) {
+    if (locale == 'ar') {
+      if (product != null) {
+        return product!['description_ar'] ??
+            product!['desc_ar'] ??
+            product!['description'] ??
+            '';
+      }
+      if (auctionProduct != null) {
+        return auctionProduct!['description_ar'] ??
+            auctionProduct!['description'] ??
+            '';
+      }
+      if (winning != null && winning!['product'] != null) {
+        return winning!['product']['description_ar'] ??
+            winning!['product']['description'] ??
+            '';
+      }
+    } else {
+      if (product != null) {
+        return product!['description_en'] ??
+            product!['desc_en'] ??
+            product!['description'] ??
+            '';
+      }
+      if (auctionProduct != null) {
+        return auctionProduct!['description_en'] ??
+            auctionProduct!['description'] ??
+            '';
+      }
+      if (winning != null && winning!['product'] != null) {
+        return winning!['product']['description_en'] ??
+            winning!['product']['description'] ??
+            '';
+      }
+    }
     return '';
   }
 }

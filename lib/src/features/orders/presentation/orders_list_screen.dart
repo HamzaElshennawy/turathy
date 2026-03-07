@@ -223,7 +223,10 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
           }
 
           return OrderCard(
-            title: winning.auctionTitle,
+            title: winning.localizedAuctionTitle(context.locale.languageCode),
+            description: winning.localizedAuctionDescription(
+              context.locale.languageCode,
+            ),
             price: winning.formattedPrice,
             status: statusStr,
             statusColor: statusColor,
@@ -314,17 +317,70 @@ class _OrderItemWidget extends ConsumerWidget {
 
   const _OrderItemWidget({required this.order});
 
-  String _getOrderTitle(OrderModel order) {
+  String _getOrderTitle(BuildContext context, OrderModel order) {
+    final locale = context.locale.languageCode;
+    final isAr = locale == 'ar';
     if (order.product != null) {
-      return order.product!['title'] ??
-          order.product!['name'] ??
-          order.itemDesc;
+      if (isAr) {
+        return order.product!['title_ar'] ??
+            order.product!['name_ar'] ??
+            order.product!['title'] ??
+            order.product!['name'] ??
+            order.itemDesc;
+      } else {
+        return order.product!['title_en'] ??
+            order.product!['name_en'] ??
+            order.product!['title'] ??
+            order.product!['name'] ??
+            order.itemDesc;
+      }
     } else if (order.auction != null) {
-      return order.auction!['title'] ??
-          order.auction!['name'] ??
-          order.itemDesc;
+      if (isAr) {
+        return order.auction!['title_ar'] ??
+            order.auction!['name_ar'] ??
+            order.auction!['title'] ??
+            order.auction!['name'] ??
+            order.itemDesc;
+      } else {
+        return order.auction!['title_en'] ??
+            order.auction!['name_en'] ??
+            order.auction!['title'] ??
+            order.auction!['name'] ??
+            order.itemDesc;
+      }
     }
     return order.itemDesc;
+  }
+
+  String _getOrderDescription(BuildContext context, OrderModel order) {
+    final locale = context.locale.languageCode;
+    final isAr = locale == 'ar';
+    if (order.product != null) {
+      if (isAr) {
+        return order.product!['description_ar'] ??
+            order.product!['desc_ar'] ??
+            order.product!['description'] ??
+            '';
+      } else {
+        return order.product!['description_en'] ??
+            order.product!['desc_en'] ??
+            order.product!['description'] ??
+            '';
+      }
+    } else if (order.auction != null) {
+      if (isAr) {
+        return order.auction!['description_ar'] ??
+            order.auction!['desc_ar'] ??
+            order.auction!['description'] ??
+            '';
+      } else {
+        return order.auction!['description_en'] ??
+            order.auction!['desc_en'] ??
+            order.auction!['description'] ??
+            '';
+      }
+    }
+    return '';
   }
 
   String _getOrderStatusText(String? status) {
@@ -378,7 +434,8 @@ class _OrderItemWidget extends ConsumerWidget {
     final String finalImageUrl = firstItem?.fullImageUrl ?? '';
 
     return OrderCard(
-      title: _getOrderTitle(order),
+      title: _getOrderTitle(context, order),
+      description: _getOrderDescription(context, order),
       price: '${order.total} ${AppStrings.currency.tr()}',
       status: _getOrderStatusText(order.orderStatus ?? order.paymentStatus),
       statusColor: _getOrderStatusColor(

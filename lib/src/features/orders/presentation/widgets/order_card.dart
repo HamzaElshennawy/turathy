@@ -7,6 +7,7 @@ import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 
 class OrderCard extends StatelessWidget {
   final String title;
+  final String? description;
   final String price;
   final String? status;
   final Color? statusColor;
@@ -16,6 +17,7 @@ class OrderCard extends StatelessWidget {
   const OrderCard({
     super.key,
     required this.title,
+    this.description,
     required this.price,
     this.status,
     this.statusColor,
@@ -75,6 +77,15 @@ class OrderCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (description != null && description!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    description!,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text(
                   price,

@@ -370,7 +370,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.title,
+                        item.localizedTitle(context.locale.languageCode),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -378,6 +378,22 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (item
+                          .localizedDescription(context.locale.languageCode)
+                          .isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          item.localizedDescription(
+                            context.locale.languageCode,
+                          ),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         '${item.quantity} ${AppStrings.items.tr()}',
