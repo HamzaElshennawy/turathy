@@ -385,5 +385,8 @@
   "notificationOrderStatus": "حالة الطلب",
   "notificationOutbid": "تم تجاوز مزايدتك",
   "itemEndedSoldFor": "انتهى البند - بيع بمبلغ",
-  "comingSoon": "قادم قريبًا"
+  "comingSoon": "قادم قريبًا",
+  "maxBid": "الحد الأقصى",
+  "oneStepBid": "مزايدة واحدة",
+  "bid": "مزايدة"
 }

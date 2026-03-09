@@ -281,6 +281,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep socket bids alive while the parent screen is open
+    ref.watch(accumulatedBidsProvider);
+    ref.watch(latestExpiryDateStateProvider);
+
     ref.listen(userCountUpdateProvider, (previous, next) {});
 
     // Listen for pre-auction start

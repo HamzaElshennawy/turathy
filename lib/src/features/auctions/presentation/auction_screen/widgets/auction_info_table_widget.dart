@@ -15,99 +15,51 @@ class AuctionInfoTableWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.locale.languageCode;
+
     // Use passed product or find active product based on name, or fallback
     final activeProduct =
         currentProduct ??
         auction.auctionProducts?.firstWhere(
-          (p) =>
-              p.localizedName(context.locale.languageCode) ==
-              auction.currentProduct,
+          (p) => p.localizedName(locale) == auction.currentProduct,
           orElse: () => AuctionProducts(),
         );
 
+    final String title = activeProduct?.localizedName(locale).isNotEmpty == true
+        ? activeProduct!.localizedName(locale)
+        : auction.localizedTitle(locale);
+
+    final String description =
+        activeProduct?.localizedDescription(locale).isNotEmpty == true
+        ? activeProduct!.localizedDescription(locale)
+        : auction.localizedDescription(locale);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title
           Center(
             child: Text(
-              activeProduct?.localizedName(context.locale.languageCode) ??
-                  auction.localizedTitle(context.locale.languageCode),
+              title,
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ),
-          gapH16,
-          Text(
-            'basicData'.tr(),
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          gapH12,
-          _buildInfoRow(
-            context,
-            'productType'.tr(),
-            auction.type
-                .tr(), // Type usually remains with auction, or could be product specific
-          ),
-          _buildInfoRow(
-            context,
-            'material'.tr(),
-            activeProduct?.material ?? 'notSpecified'.tr(),
-          ),
-          _buildInfoRow(
-            context,
-            'approximateAge'.tr(),
-            activeProduct?.approximateAge ?? 'notSpecified'.tr(),
-          ),
-          _buildInfoRow(
-            context,
-            'productCondition'.tr(),
-            activeProduct?.condition ?? 'notSpecified'.tr(),
-          ),
-          _buildInfoRow(
-            context,
-            'origin'.tr(),
-            activeProduct?.origin ?? 'notSpecified'.tr(),
-          ),
-          _buildInfoRow(
-            context,
-            'usage'.tr(),
-            activeProduct?.usage ?? 'notSpecified'.tr(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(BuildContext context, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+          // Description
+          if (description.isNotEmpty) ...[
+            gapH12,
+            Text(
+              description,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
             ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
+          ],
         ],
       ),
     );

@@ -4,7 +4,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 abstract class SocketConfig {
   //static const String _baseUrl = 'wss://backend.barakkh.sa/';
   static String get _baseUrl {
-    return 'https://144.91.124.224:4005/';
+    return 'http://144.91.124.224';
   }
 
   static const int _reconnectionDelay = 3000;

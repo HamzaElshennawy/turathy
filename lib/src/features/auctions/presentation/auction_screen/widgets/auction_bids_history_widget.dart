@@ -93,9 +93,9 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: allBids.length > 10
-                ? 10
-                : allBids.length, // Show last 10 bids
+            itemCount: allBids.length > 3
+                ? 3
+                : allBids.length, // Show last 3 bids
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final bid = allBids[index];

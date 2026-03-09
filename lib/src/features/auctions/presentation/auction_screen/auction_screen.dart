@@ -407,8 +407,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     return DateFormat(
-      'd MMMM, h a',
-    ).format(date); // Example: 14 December, 10 AM
+      'd MMMM, h:mm a',
+    ).format(date); // Example: 14 December, 10:30 AM
   }
 
   Widget _buildInfoRow(
@@ -495,7 +495,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       final sorted = [...productBids]
         ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
       if (sorted.first.userId == CachedVariables.userId && !isHighest) {
-        isHighestInactive = true;
+        final currentHighestSocketBid = _highestBids[productId]?.bid ?? 0;
+        if ((sorted.first.bid ?? 0) > currentHighestSocketBid) {
+          isHighestInactive = true;
+        }
       }
     }
 
@@ -1036,6 +1039,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep socket bids alive while the parent screen is open
+    ref.watch(accumulatedBidsProvider);
+    ref.watch(latestExpiryDateStateProvider);
+
     // Re-evaluate access when the auction starts (e.g. admin approves access)
     ref.listen(auctionStartedProvider, (previous, next) {
       final event = next.valueOrNull;

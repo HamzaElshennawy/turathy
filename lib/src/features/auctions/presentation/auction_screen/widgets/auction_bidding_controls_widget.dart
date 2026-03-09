@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_svg/svg.dart';
+
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
@@ -13,7 +14,7 @@ import 'package:turathy/src/features/orders/presentation/order_confirmation_scre
 import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
-import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
+
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 
@@ -58,8 +59,9 @@ class _AuctionBiddingControlsWidgetState
   final TextEditingController _customBidController = TextEditingController();
   final FocusNode _customBidFocus = FocusNode();
 
-  // Track the user's max bids set during this session per product ID
-  final Map<int, double> _userMaxBids = {};
+  // 0 = Max Bid list, 1 = One Step Bid (pre-auction only)
+  int _preAuctionTab = 0;
+  int _selectedMaxBidIndex = 0;
 
   @override
   void initState() {
@@ -85,6 +87,9 @@ class _AuctionBiddingControlsWidgetState
     if (widget.auction.isPreAuction && widget.auction.liveStartDate != null) {
       expiry = widget.auction.liveStartDate;
     } else {
+      // In case the widget is rebuilt, we check if the newBidEventProvider
+      // has a newer expiryDate, although we usually listen to it in build().
+      // For initialization, we rely on the passed widget.expiryDate or widget.auction.expiryDate.
       expiry = widget.expiryDate ?? widget.auction.expiryDate;
     }
 
@@ -138,13 +143,38 @@ class _AuctionBiddingControlsWidgetState
   Widget build(BuildContext context) {
     final auctionProduct = ref.watch(auctionProductChangeProvider);
     final lastBid = ref.watch(currentBidStateProvider);
+    final latestExpiry = ref.watch(latestExpiryDateStateProvider);
     final ordersValue = ref.watch(
       getUserOrdersProvider(CachedVariables.userId ?? 0),
     );
     final orders = ordersValue.value ?? [];
 
-    final maxBidsValue = ref.watch(userMaxBidsProvider);
-    final remoteMaxBids = maxBidsValue.value ?? [];
+    ref.listen(newBidEventProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event?.expiryDate != null) {
+        _timer?.cancel();
+        final expiryDateTime = event!.expiryDate!;
+        _updateRemainingTime(expiryDateTime);
+        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+          _updateRemainingTime(expiryDateTime);
+        });
+      }
+    });
+
+    // Check if the timer needs to be refreshed using the latest known global expiry date
+    // from the socket, if the bottom sheet was just opened and we missed the event.
+    if (latestExpiry != null && _remainingTime == Duration.zero) {
+      // Only run this once to pick up the missed expiry
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _timer?.cancel();
+          _updateRemainingTime(latestExpiry);
+          _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+            _updateRemainingTime(latestExpiry);
+          });
+        }
+      });
+    }
 
     // Find the current product ID to filter bids correctly
     // This prevents using bids from a previous item when joining a running auction
@@ -455,7 +485,7 @@ class _AuctionBiddingControlsWidgetState
           gapH16,
 
           // Timer pill with progress bar for last 30 seconds
-          if (!isAuctionEnded) ...[
+          if (!isAuctionEnded && !widget.auction.isPreAuction) ...[
             Builder(
               builder: (context) {
                 final num durationThreshold = widget.auction.itemDuration ?? 30;
@@ -764,242 +794,266 @@ class _AuctionBiddingControlsWidgetState
               ),
             ),
           ] else if (!isAuctionEnded) ...[
-            // if (!auctionNotStarted && !widget.showOnlyMaxBid) ...[
-            //   Row(
-            //     children: [
-            //       Expanded(
-            //         child: _buildBidMultiplierButton(
-            //           multiplier: 1.0,
-            //           bidIncrement: bidIncrement,
-            //           currentPrice: currentPrice,
-            //           isDisabled: isAuctionEnded,
-            //         ),
-            //       ),
-            //       gapW8,
-            //       Expanded(
-            //         child: _buildBidMultiplierButton(
-            //           multiplier: 1.5,
-            //           bidIncrement: bidIncrement,
-            //           currentPrice: currentPrice,
-            //           isDisabled: isAuctionEnded,
-            //         ),
-            //       ),
-            //       gapW8,
-            //       Expanded(
-            //         child: _buildBidMultiplierButton(
-            //           multiplier: 2.0,
-            //           bidIncrement: bidIncrement,
-            //           currentPrice: currentPrice,
-            //           isDisabled: isAuctionEnded,
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            //   gapH16,
-            // ],
-            if (!auctionNotStarted) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '${AppStrings.currency.tr()} ',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+            // ─────────────────────────────────────────────────
+            // PRE-AUCTION: two bidding options
+            // ─────────────────────────────────────────────────
+            if (widget.auction.isPreAuction) ...[
+              // Tab selector
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _preAuctionTab = 0),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _preAuctionTab == 0
+                              ? const Color(0xFF2D4739)
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _preAuctionTab == 0
+                                ? const Color(0xFF2D4739)
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            AppStrings.maxBid.tr(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: _preAuctionTab == 0
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    Expanded(
-                      child: TextField(
-                        controller: _customBidController,
-                        focusNode: _customBidFocus,
-                        enabled: !auctionNotStarted,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
+                  ),
+                  gapW8,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _preAuctionTab = 1),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _preAuctionTab == 1
+                              ? const Color(0xFF2D4739)
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _preAuctionTab == 1
+                                ? const Color(0xFF2D4739)
+                                : Colors.grey.shade300,
+                          ),
                         ),
-                        decoration: InputDecoration(
-                          hintText: 'customBidHint'.tr(),
-                          border: InputBorder.none,
-                          isDense: true,
-                          hintStyle: TextStyle(color: Colors.grey.shade500),
+                        child: Center(
+                          child: Text(
+                            AppStrings.oneStepBid.tr(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: _preAuctionTab == 1
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                          ),
                         ),
-                        onChanged: (value) {
-                          if (value.isNotEmpty) {
-                            // Unselect quick multipliers visually
-                            setState(() {
-                              _selectedMultiplier = 0.0;
-                            });
-                          } else {
-                            setState(() {
-                              _selectedMultiplier = 1.0;
-                            });
-                          }
-                        },
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               gapH16,
-            ],
-            // Main Bid Button - uses selected multiplier or custom proxy bid
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: auctionNotStarted
-                    ? null
-                    : () {
-                        double bidAmount = 0;
-                        if (!widget.showOnlyMaxBid && _selectedMultiplier > 0) {
-                          bidAmount =
-                              currentPrice +
-                              (bidIncrement * _selectedMultiplier);
-                        } else {
-                          final parsed = double.tryParse(
-                            _customBidController.text,
-                          );
-                          if (parsed != null && parsed > currentPrice) {
-                            bidAmount = parsed;
-                          } else {
-                            // Fallback or show error
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'يرجى إدخال مبلغ أكبر من المزايدة الحالية',
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-                        }
 
-                        _customBidFocus.unfocus();
-                        _customBidController.clear();
-                        setState(() {
-                          if (currentProductId != null &&
-                              _selectedMultiplier == 0.0) {
-                            _userMaxBids[currentProductId] = bidAmount;
-                          }
-                          _selectedMultiplier = 1.0;
-                        });
-                        widget.onPlaceBid(1, bidAmount, currentProductId);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D4739),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              // Option 1: Max Bid — compact CupertinoPicker
+              if (_preAuctionTab == 0) ...[
+                // Picker drum-roll
+                Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  auctionNotStarted
-                      ? AppStrings.willStartSoon.tr()
-                      : (!widget.showOnlyMaxBid && _selectedMultiplier > 0
-                            ? AppStrings.bidNow.tr()
-                            : 'setMaxBid'.tr()),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            Builder(
-              builder: (context) {
-                if (currentProductId == null) return const SizedBox.shrink();
-
-                // Check local first (most immediate), then remote server response
-                double? displayMaxBid;
-                if (_userMaxBids.containsKey(currentProductId)) {
-                  displayMaxBid = _userMaxBids[currentProductId];
-                } else if (remoteMaxBids.isNotEmpty) {
-                  // Find highest max bid for this product globally or by current user
-                  final productMaxBids = remoteMaxBids
-                      .where((b) => b.productId == currentProductId)
-                      .toList();
-                  if (productMaxBids.isNotEmpty) {
-                    productMaxBids.sort(
-                      (a, b) => (b.maxAmount ?? 0).compareTo(a.maxAmount ?? 0),
-                    );
-                    displayMaxBid = productMaxBids.first.maxAmount?.toDouble();
-                  }
-                }
-
-                if (displayMaxBid != null) {
-                  return Column(
-                    children: [
-                      gapH8,
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.orange.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.gavel,
-                                size: 14,
-                                color: Colors.orange.shade700,
-                              ),
-                              const SizedBox(width: 6),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '${'yourMaxBid'.tr()}: ',
-                                    style: TextStyle(
-                                      color: Colors.orange.shade800,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${displayMaxBid.toStringAsFixed(0)} ',
-                                    style: TextStyle(
-                                      color: Colors.orange.shade800,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SvgPicture.asset(
-                                    'assets/icons/RSA.svg',
-                                    height: 10,
-                                    colorFilter: ColorFilter.mode(
-                                      Colors.orange.shade800,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: _selectedMaxBidIndex,
+                    ),
+                    itemExtent: 44,
+                    onSelectedItemChanged: (i) {
+                      setState(() => _selectedMaxBidIndex = i);
+                    },
+                    selectionOverlay: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2D4739).withOpacity(0.08),
+                        border: const Border.symmetric(
+                          horizontal: BorderSide(
+                            color: Color(0xFF2D4739),
+                            width: 1.5,
                           ),
                         ),
                       ),
-                    ],
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
+                    ),
+                    children: List.generate(10, (i) {
+                      final stepBid = currentPrice + bidIncrement * (i + 1);
+                      return Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${AppStrings.bid.tr()} ${i + 1}  •  ${stepBid.toStringAsFixed(0)} ',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A2E22),
+                              ),
+                            ),
+                            SvgPicture.asset(
+                              'assets/icons/RSA.svg',
+                              height: 12,
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFF1A2E22),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                gapH12,
+                // Bid button for selected amount
+                Builder(
+                  builder: (context) {
+                    final selectedBid =
+                        currentPrice +
+                        bidIncrement * (_selectedMaxBidIndex + 1);
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: auctionNotStarted
+                            ? null
+                            : () {
+                                widget.onPlaceBid(
+                                  1,
+                                  selectedBid,
+                                  currentProductId,
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D4739),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${AppStrings.bidNow.tr()} — ${selectedBid.toStringAsFixed(0)} ',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SvgPicture.asset(
+                              'assets/icons/RSA.svg',
+                              height: 14,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+
+              // Option 2: One-step bid
+              if (_preAuctionTab == 1) ...[
+                _buildOneStepBidButton(
+                  auctionNotStarted: auctionNotStarted,
+                  currentPrice: currentPrice,
+                  bidIncrement: bidIncrement,
+                  currentProductId: currentProductId,
+                ),
+              ],
+            ] else ...[
+              // ─────────────────────────────────────────────
+              // LIVE AUCTION: one-step bid only
+              // ─────────────────────────────────────────────
+              _buildOneStepBidButton(
+                auctionNotStarted: auctionNotStarted,
+                currentPrice: currentPrice,
+                bidIncrement: bidIncrement,
+                currentProductId: currentProductId,
+              ),
+            ],
           ] else
             _buildResultContainer(currentPrice, orders),
         ],
+      ),
+    );
+  }
+
+  /// One-step bid button: places a bid of currentPrice + bidIncrement.
+  Widget _buildOneStepBidButton({
+    required bool auctionNotStarted,
+    required num currentPrice,
+    required num bidIncrement,
+    required int? currentProductId,
+  }) {
+    final num nextBid = currentPrice + bidIncrement;
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: auctionNotStarted
+            ? null
+            : () {
+                widget.onPlaceBid(1, nextBid, currentProductId);
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2D4739),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              auctionNotStarted
+                  ? AppStrings.willStartSoon.tr()
+                  : '${AppStrings.bidNow.tr()} — ${nextBid.toStringAsFixed(0)} ',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            if (!auctionNotStarted)
+              SvgPicture.asset(
+                'assets/icons/RSA.svg',
+                height: 14,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

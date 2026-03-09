@@ -82,6 +82,14 @@ final currentBidStateProvider = StateProvider.autoDispose<AuctionBid?>((ref) {
   return bidEvent.valueOrNull?.newBid;
 });
 
+/// State provider to track the latest expiry date from incoming bids
+final latestExpiryDateStateProvider = StateProvider.autoDispose<DateTime?>((
+  ref,
+) {
+  final bidEvent = ref.watch(newBidEventProvider);
+  return bidEvent.valueOrNull?.expiryDate;
+});
+
 /// New bid event stream - now updates the state provider
 final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
@@ -94,6 +102,7 @@ final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
 void resetNewBidStream(WidgetRef ref) {
   // Reset the state provider to null immediately
   ref.read(currentBidStateProvider.notifier).state = null;
+  ref.read(latestExpiryDateStateProvider.notifier).state = null;
 }
 
 /// Notifier that accumulates ALL incoming socket bids (newest first)

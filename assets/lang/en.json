@@ -385,5 +385,8 @@
   "notificationOrderStatus": "Order Status",
   "notificationOutbid": "You Got Outbid",
   "itemEndedSoldFor": "Item Ended - Sold for",
-  "comingSoon": "Coming Soon"
+  "comingSoon": "Coming Soon",
+  "maxBid": "Max Bid",
+  "oneStepBid": "One Step Bid",
+  "bid": "Bid"
 }

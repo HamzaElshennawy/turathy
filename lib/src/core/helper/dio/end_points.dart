@@ -2,7 +2,7 @@ abstract class EndPoints {
   // base url
   //static const String baseUrl = "https://backend.barakkh.sa/";
   static String get baseUrl {
-    return "https://144.91.124.224:4005/";
+    return "http://144.91.124.224/backend/";
   }
 
   // auth
