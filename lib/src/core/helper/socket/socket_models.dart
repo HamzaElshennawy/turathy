@@ -447,3 +447,41 @@ class AuctionItemEndedEvent {
   String toString() =>
       'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.displayName}, winner: ${winner?.name})';
 }
+
+/// Bid rejected event — emitted when the server rejects a bid due to a stale price.
+/// Contains the server's authoritative current price so the client can self-heal.
+class BidRejectedEvent {
+  final String message;
+  final num? currentPrice;
+  final num? minimumBid;
+  final int? productId;
+
+  const BidRejectedEvent({
+    required this.message,
+    this.currentPrice,
+    this.minimumBid,
+    this.productId,
+  });
+
+  factory BidRejectedEvent.fromJson(Map<String, dynamic> json) {
+    return BidRejectedEvent(
+      message: (json['message'] as String?) ?? '',
+      currentPrice: json['currentPrice'] as num?,
+      minimumBid: json['minimumBid'] as num?,
+      productId: json['productId'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'message': message,
+      if (currentPrice != null) 'currentPrice': currentPrice,
+      if (minimumBid != null) 'minimumBid': minimumBid,
+      if (productId != null) 'productId': productId,
+    };
+  }
+
+  @override
+  String toString() =>
+      'BidRejectedEvent(currentPrice: $currentPrice, minimumBid: $minimumBid)';
+}

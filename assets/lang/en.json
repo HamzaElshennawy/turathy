@@ -388,5 +388,6 @@
   "comingSoon": "Coming Soon",
   "maxBid": "Max Bid",
   "oneStepBid": "One Step Bid",
-  "bid": "Bid"
+  "bid": "Bid",
+  "priceUpdatedRetry": "Price has been updated — please try again"
 }

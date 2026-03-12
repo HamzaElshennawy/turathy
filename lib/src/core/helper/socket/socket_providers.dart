@@ -208,6 +208,29 @@ final socketErrorProvider = StreamProvider.autoDispose<SocketErrorEvent>((ref) {
   );
 });
 
+/// Bid rejected event stream — emitted when the server rejects a bid due to
+/// a stale price. The event includes the server's current price so the UI
+/// can self-correct instantly without an HTTP request.
+final bidRejectedProvider = StreamProvider.autoDispose<BidRejectedEvent>((
+  ref,
+) {
+  final service = ref.watch(socketServiceProvider);
+  return service.getEventStream<BidRejectedEvent>(
+    'bidRejected',
+    (data) => BidRejectedEvent.fromJson(data as Map<String, dynamic>),
+  );
+});
+
+/// Auction sync event stream — emitted by the server when a client (re-)joins
+/// a room. Used for reconnect self-healing.
+final auctionSyncProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
+  final service = ref.watch(socketServiceProvider);
+  return service.getEventStream<AuctionModel>(
+    'auctionSync',
+    (data) => AuctionModel.fromJson(data as Map<String, dynamic>),
+  );
+});
+
 // ========== Action Providers ==========
 
 /// Provider for socket actions (emit events)

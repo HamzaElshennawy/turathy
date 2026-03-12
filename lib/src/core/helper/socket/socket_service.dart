@@ -12,6 +12,10 @@ class SocketService {
   Timer? _heartbeatTimer;
   Timer? _reconnectionTimer;
 
+  // Track last joined auction so we can re-join on reconnect
+  int? _lastJoinedAuctionId;
+  int? _lastJoinedUserId;
+
   // Stream controllers for events
   final Map<String, StreamController<dynamic>> _eventControllers = {};
 
@@ -153,15 +157,6 @@ class SocketService {
       );
     });
 
-    _socket!.onReconnectError((error) {
-      log('Socket reconnection error: $error');
-      _updateConnectionStatus(
-        _currentStatus.copyWith(
-          errorMessage: error?.toString() ?? 'Reconnection error',
-        ),
-      );
-    });
-
     _socket!.onReconnectFailed((_) {
       log('Socket reconnection failed permanently');
       _updateConnectionStatus(
@@ -171,6 +166,26 @@ class SocketService {
         ),
       );
     });
+
+    // When the socket successfully reconnects, re-join the last auction room
+    // so the server sends a fresh auctionSync event — zero polling needed.
+    _socket!.onConnect((_) {
+      if (_lastJoinedAuctionId != null && _lastJoinedUserId != null) {
+        log('SocketService: Reconnected — re-joining auction $_lastJoinedAuctionId');
+        emitJoinAuction(_lastJoinedAuctionId!, _lastJoinedUserId!);
+      }
+    });
+
+    _socket!.onReconnectError((error) {
+      log('Socket reconnection error: $error');
+      _updateConnectionStatus(
+        _currentStatus.copyWith(
+          errorMessage: error?.toString() ?? 'Reconnection error',
+        ),
+      );
+    });
+
+
   }
 
   /// Initialize event controllers and listeners
@@ -331,6 +346,8 @@ class SocketService {
 
   /// Join auction
   void emitJoinAuction(int auctionId, int userId) {
+    _lastJoinedAuctionId = auctionId;
+    _lastJoinedUserId = userId;
     _safeEmit('joinAuction', {'auctionId': auctionId, 'userId': userId});
   }
 

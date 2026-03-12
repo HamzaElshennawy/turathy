@@ -35,6 +35,8 @@ abstract class SocketConfig {
     'auctionEnded',
     'auctionItemEnded',
     'auction_change_product',
+    'auctionSync',
+    'bidRejected',
     'error',
   ];
 

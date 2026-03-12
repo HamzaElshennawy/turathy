@@ -11,6 +11,7 @@ import 'package:turathy/src/core/common_widgets/async_value_widget.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
+import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 // import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
 
@@ -54,13 +55,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   int? _winnerId;
   String? _winnerName;
   num? _finalPrice; // To store the price when auction ends
-  bool _hasShownResultDialog = false;
+  //bool _hasShownResultDialog = false;
   // True only after a live event fires — prevents showing result dialog
   // when the user enters an already-finished auction.
   bool _wasLiveWhenJoined = false;
 
   // True only when the auction initially loads as already-ended via the API.
-  bool _apiLoadedAsEnded = false;
+  //bool _apiLoadedAsEnded = false;
 
   // Selected product for view-only mode
   AuctionProducts? _selectedProduct;
@@ -74,6 +75,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   bool _hasInitiallyScrolled = false;
 
   StreamSubscription? _socketErrorSubscription;
+  StreamSubscription? _bidRejectedSubscription;
 
   @override
   void initState() {
@@ -110,6 +112,30 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
               );
             }
           }
+        });
+
+    // Listen for bid rejections caused by stale price (out-of-sync).
+    // The server sends the real current price so we can self-correct instantly
+    // without triggering an HTTP request.
+    _bidRejectedSubscription = socketService
+        .getEventStream<dynamic>('bidRejected', (data) => data)
+        .listen((data) {
+          if (!mounted || data == null) return;
+          final serverPrice = (data['currentPrice'] as num?);
+          final minBid = (data['minimumBid'] as num?);
+          if (serverPrice != null) {
+            setState(() {
+              auction.actualPrice = serverPrice;
+            });
+          }
+          final hint = minBid != null ? ' (min: $minBid)' : '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${'priceUpdatedRetry'.tr()}$hint'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
         });
   }
 
@@ -182,7 +208,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   void dispose() {
     // _cleanupEngine();
     _socketErrorSubscription?.cancel();
-    _cancelFailSafeTimer();
+    _bidRejectedSubscription?.cancel();
     _cancelFailSafeTimer();
     _audioPlayer.dispose();
     _scrollController.dispose();
@@ -374,7 +400,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             _winnerId = null;
             _winnerName = null;
             _finalPrice = null;
-            _hasShownResultDialog = false;
+            //_hasShownResultDialog = false;
             // auto-select the incoming product so the UI highlights it
             if (event.nextItem!.id != null &&
                 auction.auctionProducts != null &&
@@ -543,7 +569,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             auction.isCanceled == true ||
             auction.winningUserId != null)) {
       _isAuctionEnded = true;
-      _apiLoadedAsEnded = true;
+      //_apiLoadedAsEnded = true;
       _winnerId = auction.winningUserId;
       _winnerName = auction.user?.name;
       _finalPrice = auction.actualPrice;
@@ -585,7 +611,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),

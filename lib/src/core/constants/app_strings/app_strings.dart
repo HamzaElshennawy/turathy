@@ -409,4 +409,5 @@ class AppStrings {
   static const String maxBid = 'maxBid';
   static const String oneStepBid = 'oneStepBid';
   static const String bid = 'bid';
+  static const String priceUpdatedRetry = 'priceUpdatedRetry';
 }

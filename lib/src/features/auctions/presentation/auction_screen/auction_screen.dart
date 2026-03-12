@@ -57,6 +57,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   StreamSubscription? _bidSubscription;
   StreamSubscription? _auctionStartedSubscription;
   StreamSubscription? _itemEndedSubscription;
+  StreamSubscription? _socketErrorSubscription;
+  StreamSubscription? _bidRejectedSubscription;
   SocketActions? _socketActions;
 
   /// Whether the user can open item bottom sheets (only GRANTED or owner)
@@ -151,6 +153,74 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
               _currentAuction.expiryDate = event.auction.expiryDate;
             });
           }
+        });
+
+    // Listen to socket errors (e.g., "Max bid limit exceeded" or out of sync)
+    _socketErrorSubscription = socketService
+        .getEventStream<dynamic>('error', (data) => data)
+        .listen((data) {
+          if (mounted && data != null) {
+            final message = data['message'] ?? data.toString();
+
+            if (message.toString().toLowerCase().contains(
+              'max bid limit exceeded',
+            )) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppStrings.bidLimitExceeded.tr()),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            } else {
+              // Other non-bid errors: show message and refresh
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(message.toString()),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              _fetchAuctionDetails();
+            }
+          }
+        });
+
+    // Listen for bid rejections caused by stale price (out-of-sync).
+    // The server sends the real current price so we can update _highestBids
+    // instantly, without an HTTP fetch.
+    _bidRejectedSubscription = socketService
+        .getEventStream<dynamic>('bidRejected', (data) => data)
+        .listen((data) {
+          if (!mounted || data == null) return;
+          final serverPrice = data['currentPrice'] as num?;
+          final minBid = data['minimumBid'] as num?;
+          final productId = data['productId'] as int?;
+
+          if (serverPrice != null && productId != null) {
+            setState(() {
+              // Build a synthetic AuctionBid to update the highest-bid map
+              final existing = _highestBids[productId];
+              if (existing != null) {
+                _highestBids[productId] = AuctionBid(
+                  id: existing.id,
+                  userId: existing.userId,
+                  bid: serverPrice,
+                  productId: productId,
+                  auctionId: existing.auctionId,
+                  isActive: existing.isActive,
+                  user: existing.user,
+                );
+              }
+            });
+          }
+
+          final hint = minBid != null ? ' (min: $minBid)' : '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${'priceUpdatedRetry'.tr()}$hint'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
         });
   }
 
@@ -306,6 +376,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     _bidSubscription?.cancel();
     _auctionStartedSubscription?.cancel();
     _itemEndedSubscription?.cancel();
+    _socketErrorSubscription?.cancel();
+    _bidRejectedSubscription?.cancel();
     // Leave the auction socket room
     final userId = CachedVariables.userId;
     final auctionId = _currentAuction.id;
@@ -1092,7 +1164,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                new MaterialPageRoute(
+                MaterialPageRoute(
                   builder: (context) => const NotificationsScreen(),
                 ),
               );
