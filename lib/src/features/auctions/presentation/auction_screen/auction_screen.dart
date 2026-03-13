@@ -1114,6 +1114,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     // Keep socket bids alive while the parent screen is open
     ref.watch(accumulatedBidsProvider);
     ref.watch(latestExpiryDateStateProvider);
+    // Activate rolling-sequence gap detection for this screen.
+    ref.watch(auctionGapDetectedProvider);
 
     // Re-evaluate access when the auction starts (e.g. admin approves access)
     ref.listen(auctionStartedProvider, (previous, next) {

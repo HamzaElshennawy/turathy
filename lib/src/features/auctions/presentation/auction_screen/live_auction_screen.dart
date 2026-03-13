@@ -310,6 +310,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     // Keep socket bids alive while the parent screen is open
     ref.watch(accumulatedBidsProvider);
     ref.watch(latestExpiryDateStateProvider);
+    // Activate rolling-sequence gap detection for this screen.
+    ref.watch(auctionGapDetectedProvider);
 
     ref.listen(userCountUpdateProvider, (previous, next) {});
 

@@ -222,16 +222,99 @@ final bidRejectedProvider = StreamProvider.autoDispose<BidRejectedEvent>((
 });
 
 /// Auction sync event stream — emitted by the server when a client (re-)joins
-/// a room. Used for reconnect self-healing.
+/// a room or requests a manual sync. Carries the authoritative `seq` counter
+/// so the client can bootstrap its rolling counter.
 final auctionSyncProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<AuctionModel>(
     'auctionSync',
-    (data) => AuctionModel.fromJson(data as Map<String, dynamic>),
+    (data) {
+      final json = data as Map<String, dynamic>;
+      // Seed the rolling counter whenever we receive a fresh snapshot.
+      final seqFromServer = json['seq'] as int?;
+      if (seqFromServer != null) {
+        // Schedule a microtask so we don't mutate state during a build.
+        Future.microtask(() {
+          try {
+            ref.read(auctionSeqProvider.notifier).state = seqFromServer;
+          } catch (_) {}
+        });
+      }
+      return AuctionModel.fromJson(json);
+    },
   );
 });
 
-// ========== Action Providers ==========
+// ── Rolling sequence counter ──────────────────────────────────────────────────
+
+/// Stores the last successfully processed `seq` value from the server.
+/// Initialised to -1 ("not yet bootstrapped").
+/// Reset to whatever `seq` arrives in `auctionSync` to survive server restarts.
+final auctionSeqProvider = StateProvider<int>((ref) => -1);
+
+/// Side-effect provider: watches all sequenced events, detects forward gaps,
+/// and calls `requestSync` when a gap is found — no UI state is changed here.
+/// Screens should call `ref.watch(auctionGapDetectedProvider)` to activate it.
+final auctionGapDetectedProvider = Provider<void>((ref) {
+  // We must watch inside a provider body so Riverpod re-evaluates when events
+  // arrive. We use a helper closure to avoid code duplication.
+  void checkSeq(int? incoming, int auctionId) {
+    if (incoming == null) return; // event has no seq yet (pre-deploy compat)
+    final last = ref.read(auctionSeqProvider);
+
+    if (last == -1) {
+      // First event: bootstrap counter silently.
+      ref.read(auctionSeqProvider.notifier).state = incoming;
+      return;
+    }
+
+    if (incoming <= last) {
+      // Duplicate or retransmit — ignore safely.
+      return;
+    }
+
+    if (incoming > last + 1) {
+      // Gap detected! Ask the server for a fresh snapshot.
+      // ignore: avoid_print
+      assert(() {
+        // ignore: avoid_print
+        print('[SeqGap] auction=$auctionId gap=${incoming - last - 1} '  
+              '(last=$last, received=$incoming) — requesting sync');
+        return true;
+      }());
+      try {
+        ref.read(socketActionsProvider).requestSync(auctionId);
+      } catch (_) {}
+    }
+
+    // Advance the counter regardless (fill in the gap optimistically).
+    ref.read(auctionSeqProvider.notifier).state = incoming;
+  }
+
+  // Listen to newBid events.
+  ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (_, next) {
+    final event = next.valueOrNull;
+    if (event == null) return;
+    // Derive auctionId from the bid itself (available on AuctionBid).
+    checkSeq(event.seq, event.newBid.auctionId ?? 0);
+  });
+
+  // Listen to auctionItemEnded events.
+  ref.listen<AsyncValue<AuctionItemEndedEvent>>(auctionItemEndedProvider, (_, next) {
+    final event = next.valueOrNull;
+    if (event == null) return;
+    checkSeq(event.seq, event.auction.id ?? 0);
+  });
+
+  // Listen to auctionEnded events.
+  ref.listen<AsyncValue<AuctionEndedEvent>>(auctionEndedProvider, (_, next) {
+    final event = next.valueOrNull;
+    if (event == null) return;
+    checkSeq(event.seq, event.auctionId);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Provider for socket actions (emit events)
 final socketActionsProvider = Provider.autoDispose<SocketActions>((ref) {
@@ -308,6 +391,12 @@ class SocketActions {
       bidPrice: bidPrice,
       actualPrice: actualPrice,
     );
+  }
+
+  /// Request a fresh auction state snapshot (gap recovery)
+  Future<void> requestSync(int auctionId) async {
+    await _ensureConnected();
+    _service.emitRequestSync(auctionId);
   }
 
   /// Ensure socket is connected before performing actions

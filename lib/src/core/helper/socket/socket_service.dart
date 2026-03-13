@@ -425,6 +425,11 @@ class SocketService {
     });
   }
 
+  /// Request a fresh auction state snapshot (used by gap-detection logic)
+  void emitRequestSync(int auctionId) {
+    _safeEmit('requestSync', {'auctionId': auctionId});
+  }
+
   /// Gracefully disconnect socket
   Future<void> disconnect() async {
     log('Disconnecting socket...');

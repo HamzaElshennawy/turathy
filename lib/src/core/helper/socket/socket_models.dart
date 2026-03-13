@@ -330,6 +330,7 @@ class AuctionEndedEvent {
   final int auctionId;
   final AuctionModel? auction;
   final num? finalBidAmount;
+  final int? seq;
 
   String get winnerName => winningUser?.displayTitle ?? 'Unknown';
   int? get winnerId => winningUser?.id;
@@ -339,6 +340,7 @@ class AuctionEndedEvent {
     required this.auctionId,
     this.auction,
     this.finalBidAmount,
+    this.seq,
   });
 
   factory AuctionEndedEvent.fromJson(Map<String, dynamic> json) {
@@ -351,6 +353,7 @@ class AuctionEndedEvent {
           ? AuctionModel.fromJson(json['auction'] as Map<String, dynamic>)
           : null,
       finalBidAmount: json['finalBidAmount'] as num?,
+      seq: json['seq'] as int?,
     );
   }
 
@@ -360,12 +363,13 @@ class AuctionEndedEvent {
       'auctionId': auctionId,
       'auction': auction?.toJson(),
       if (finalBidAmount != null) 'finalBidAmount': finalBidAmount,
+      if (seq != null) 'seq': seq,
     };
   }
 
   @override
   String toString() =>
-      'AuctionEndedEvent(winner: ${winningUser?.name}, auctionId: $auctionId)';
+      'AuctionEndedEvent(winner: ${winningUser?.name}, auctionId: $auctionId, seq: $seq)';
 }
 
 /// Bid placed event model
@@ -374,12 +378,14 @@ class BidPlacedEvent {
   final List<AuctionBid> auctionBids;
   final num? currentPrice;
   final DateTime? expiryDate;
+  final int? seq;
 
   const BidPlacedEvent({
     required this.newBid,
     required this.auctionBids,
     this.currentPrice,
     this.expiryDate,
+    this.seq,
   });
 
   factory BidPlacedEvent.fromJson(Map<String, dynamic> json) {
@@ -394,6 +400,7 @@ class BidPlacedEvent {
       expiryDate: json['expiryDate'] != null
           ? DateTime.parse(json['expiryDate'] as String)
           : null,
+      seq: json['seq'] as int?,
     );
   }
 
@@ -403,12 +410,13 @@ class BidPlacedEvent {
       'auctionBids': auctionBids.map((e) => e.toJson()).toList(),
       'currentPrice': currentPrice,
       'expiryDate': expiryDate?.toIso8601String(),
+      if (seq != null) 'seq': seq,
     };
   }
 
   @override
   String toString() =>
-      'BidPlacedEvent(newBid: ${newBid.bid}, expiryDate: $expiryDate)';
+      'BidPlacedEvent(newBid: ${newBid.bid}, expiryDate: $expiryDate, seq: $seq)';
 }
 
 /// Auction item ended event model (for multi-item auctions)
@@ -416,11 +424,13 @@ class AuctionItemEndedEvent {
   final AuctionModel auction;
   final AuctionProducts? nextItem;
   final SocketUser? winner;
+  final int? seq;
 
   const AuctionItemEndedEvent({
     required this.auction,
     this.nextItem,
     this.winner,
+    this.seq,
   });
 
   factory AuctionItemEndedEvent.fromJson(Map<String, dynamic> json) {
@@ -432,6 +442,7 @@ class AuctionItemEndedEvent {
       winner: json['winner'] != null
           ? SocketUser.fromJson(json['winner'] as Map<String, dynamic>)
           : null,
+      seq: json['seq'] as int?,
     );
   }
 
@@ -440,12 +451,13 @@ class AuctionItemEndedEvent {
       'auction': auction.toJson(),
       'nextItem': nextItem?.toJson(),
       'winner': winner?.toJson(),
+      if (seq != null) 'seq': seq,
     };
   }
 
   @override
   String toString() =>
-      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.displayName}, winner: ${winner?.name})';
+      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.displayName}, winner: ${winner?.name}, seq: $seq)';
 }
 
 /// Bid rejected event — emitted when the server rejects a bid due to a stale price.
