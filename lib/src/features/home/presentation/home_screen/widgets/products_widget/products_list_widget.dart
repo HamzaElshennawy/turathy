@@ -23,7 +23,11 @@ class ProductsListWidget extends StatelessWidget {
         ),
         gapH4,
         SizedBox(
-          height: MediaQuery.of(context).size.width * .8,
+          height: AppFunctions.isMobile(context: context)
+              ? MediaQuery.of(context).size.width * .8
+              : (MediaQuery.of(context).orientation == Orientation.landscape
+                    ? 320
+                    : 360),
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(productsListProvider);
@@ -34,7 +38,12 @@ class ProductsListWidget extends StatelessWidget {
                   }
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemExtent: MediaQuery.of(context).size.width * .7,
+                    itemExtent: AppFunctions.isMobile(context: context)
+                        ? MediaQuery.of(context).size.width * .7
+                        : (MediaQuery.of(context).orientation ==
+                                  Orientation.landscape
+                              ? 290
+                              : 320),
                     itemCount: data.length,
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];

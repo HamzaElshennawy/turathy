@@ -58,7 +58,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   //bool _hasShownResultDialog = false;
   // True only after a live event fires — prevents showing result dialog
   // when the user enters an already-finished auction.
-  bool _wasLiveWhenJoined = false;
+  //bool _wasLiveWhenJoined = false;
 
   // True only when the auction initially loads as already-ended via the API.
   //bool _apiLoadedAsEnded = false;
@@ -339,14 +339,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     ref.listen(auctionItemEndedProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event != null) {
-        // Cancel fail-safe timer as we got the event
+        // ── Side effects that must fire immediately (before any rebuild) ───────
         _cancelFailSafeTimer();
+        //_wasLiveWhenJoined = true;
 
-        // Mark that the user was live during this auction
-        _wasLiveWhenJoined = true;
-
-        // play sound/notification but do not show popup dialog
-        if (event.winner != null && _wasLiveWhenJoined) {
+        // Sound / notification — uses current auction state before it changes
+        if (event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
             _audioPlayer.play(
               AssetSource('sounds/win_bid_notification.wav'),
@@ -357,16 +355,16 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
               body: '${AppStrings.youWon.tr()} ${auction.currentProduct ?? ""}',
             );
           } else {
-            // Check if current user actually participated in this item
-            final currentItemBids =
-                auction.auctionBids
-                    ?.where((b) => b.productId == auction.currentProductId)
-                    .toList() ??
-                [];
-            final didIParticipate = currentItemBids.any(
-              (b) => b.userId == CachedVariables.userId,
-            );
-
+            // Bid-participation check runs here (before setState) so it
+            // uses the still-current productId, keeping it out of the
+            // setState callback.
+            final didIParticipate =
+                auction.auctionBids?.any(
+                  (b) =>
+                      b.productId == auction.currentProductId &&
+                      b.userId == CachedVariables.userId,
+                ) ??
+                false;
             if (didIParticipate) {
               _audioPlayer.play(
                 AssetSource('sounds/lose_notification.wav'),
@@ -377,60 +375,59 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         }
 
         if (event.nextItem != null) {
-          // Transition to the next item
+          // ── Compute phase: all lookups / parses happen before setState ───────
+          // Keeping CPU work out of setState ensures the callback itself is
+          // just plain field assignments — the cheapest possible rebuild.
+          final nextItem = event.nextItem!;
+          final newPrice = num.tryParse(nextItem.actualPrice ?? '0') ?? 0;
+          final newMinBid = num.tryParse(nextItem.minBidPrice ?? '0') ?? 0;
+          final newBidPrice = num.tryParse(nextItem.bidPrice ?? '0') ?? 0;
+          final newExpiry = event.auction.expiryDate;
+          final newImageUrl = nextItem.imageUrl;
+
+          // Resolve the product object once; O(n) list scan stays outside setState.
+          final AuctionProducts nextProduct =
+              (nextItem.id != null &&
+                  auction.auctionProducts != null &&
+                  auction.auctionProducts!.isNotEmpty)
+              ? auction.auctionProducts!.firstWhere(
+                  (p) => p.id == nextItem.id,
+                  orElse: () => nextItem,
+                )
+              : nextItem;
+
+          // ── Single commit: only plain field assignments inside setState ──────
           setState(() {
-            // Update auction details
-            auction.currentProduct = event.nextItem!.displayName;
-            auction.currentProductId = event.nextItem!.id;
-            auction.actualPrice =
-                num.tryParse(event.nextItem!.actualPrice ?? '0') ?? 0;
-            auction.minBidPrice =
-                num.tryParse(event.nextItem!.minBidPrice ?? '0') ?? 0;
-            auction.bidPrice =
-                num.tryParse(event.nextItem!.bidPrice ?? '0') ?? 0;
-            if (event.nextItem!.imageUrl != null) {
-              auction.imageUrl = event.nextItem!.imageUrl;
-            }
-
-            // Calculate new expiry based on duration (or specific field if available)
-            if (event.auction.expiryDate != null) {
-              auction.expiryDate = event.auction.expiryDate;
-            }
-
-            // Reset local state for new item
+            auction.currentProduct = nextItem.displayName;
+            auction.currentProductId = nextItem.id;
+            auction.actualPrice = newPrice;
+            auction.minBidPrice = newMinBid;
+            auction.bidPrice = newBidPrice;
+            if (newImageUrl != null) auction.imageUrl = newImageUrl;
+            if (newExpiry != null) auction.expiryDate = newExpiry;
             _isAuctionEnded = false;
             _winnerId = null;
             _winnerName = null;
             _finalPrice = null;
-            //_hasShownResultDialog = false;
-            // auto-select the incoming product so the UI highlights it
-            if (event.nextItem!.id != null &&
-                auction.auctionProducts != null &&
-                auction.auctionProducts!.isNotEmpty) {
-              _selectedProduct = auction.auctionProducts!.firstWhere(
-                (p) => p.id == event.nextItem!.id,
-                orElse: () => event.nextItem!,
-              );
-            } else {
-              _selectedProduct = event.nextItem;
-            }
-
-            // Auto-scroll to new item
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollToCurrentItem();
-            });
+            _selectedProduct = nextProduct;
           });
 
-          // Schedule next fail-safe for the new item
-          if (auction.expiryDate != null) {
-            _scheduleFailSafeTimer(auction.expiryDate!);
+          // ── Post-setState side effects (no extra rebuild triggered) ──────────
+          // addPostFrameCallback is intentionally placed OUTSIDE setState so it
+          // does not force a second layout pass within the same frame.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToCurrentItem();
+          });
+          if (newExpiry != null) {
+            _scheduleFailSafeTimer(newExpiry);
           }
         } else {
-          // no next item means the final product has ended; clear live marker
+          // No next item — final product has ended. Compute selection first.
+          // _selectNextProduct() reads from auction state synchronously;
+          // capture the result so the setState callback is just assignments.
+          _selectNextProduct(); // updates _selectedProduct in place
           setState(() {
             _isAuctionEnded = true;
-            // still advance selection based on positional logic
-            _selectNextProduct();
             auction.currentProduct = null;
             auction.currentProductId = null;
           });
@@ -458,12 +455,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           _winnerId = event.winnerId;
           _winnerName = event.winnerName;
           _finalPrice = event.finalBidAmount;
-          // advance selection using badge logic (pick next index)
-          _selectNextProduct();
           // clear currentProduct so the thumbnail badge is no longer marked LIVE
           auction.currentProduct = null;
           auction.currentProductId = null;
         });
+        // _selectNextProduct reads from auction state synchronously;
+        // kept outside setState so it doesn't trigger a second pass.
+        _selectNextProduct();
 
         if (event.winnerId == CachedVariables.userId) {
           _audioPlayer.play(
@@ -503,7 +501,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       final event = next.valueOrNull;
       if (event != null) {
         // Mark that the user was present during a live auction
-        _wasLiveWhenJoined = true;
+        //_wasLiveWhenJoined = true;
 
         // Play sound if bid is from another user
         if (event.newBid.userId != CachedVariables.userId) {

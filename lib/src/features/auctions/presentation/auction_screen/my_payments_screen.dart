@@ -1,6 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
+import 'package:turathy/src/core/constants/app_sizes.dart';
 
 import '../../../../core/common_widgets/custom_card.dart';
 import '../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
@@ -63,13 +66,27 @@ class MyPaymentsScreen extends ConsumerWidget {
               ref.invalidate(myPaymentsProvider);
               await ref.read(myPaymentsProvider.future);
             },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: payments.length,
-              itemBuilder: (context, index) {
-                return _PaymentCard(payment: payments[index]);
-              },
-            ),
+            child: AppFunctions.isMobile(context: context)
+                ? ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: payments.length,
+                    itemBuilder: (context, index) {
+                      return _PaymentCard(payment: payments[index]);
+                    },
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: payments.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 1.2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    itemBuilder: (context, index) {
+                      return _PaymentCard(payment: payments[index]);
+                    },
+                  ),
           );
         },
         loading: () => ListView.builder(
@@ -128,12 +145,18 @@ class _PaymentCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${payment.amount} SAR',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '${payment.amount}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    gapW8,
+                    SvgPicture.asset("assets/icons/RSA.svg", height: 20),
+                  ],
                 ),
                 Text(
                   DateFormat('dd/MM/yyyy').format(payment.createdAt),

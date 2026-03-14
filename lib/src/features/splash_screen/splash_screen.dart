@@ -29,7 +29,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(countryCodeProvider.notifier).autoDetectCountry();
@@ -139,7 +138,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       ),
                       TextSpan(
                         text:
-                            '\n${AppStrings.allRightsReserved.tr()} © ${DateTime.now().year}\n${AppStrings.version.tr()} 1.0.0',
+                            '\n${AppStrings.allRightsReserved.tr()} © ${DateTime.now().year}\n${AppStrings.version.tr()} 0.1.0',
                       ),
                     ],
                   ),

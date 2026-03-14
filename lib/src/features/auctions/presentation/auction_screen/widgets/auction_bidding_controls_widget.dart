@@ -254,15 +254,15 @@ class _AuctionBiddingControlsWidgetState
     }
 
     // Dynamic bid increment logic based on the current price
-    if (currentPrice <= 500) {
+    if (currentPrice < 500) {
       bidIncrement = 10;
-    } else if (currentPrice <= 1500) {
+    } else if (currentPrice < 1500) {
       bidIncrement = 20;
-    } else if (currentPrice <= 3000) {
+    } else if (currentPrice < 3000) {
       bidIncrement = 50;
-    } else if (currentPrice <= 5000) {
+    } else if (currentPrice < 5000) {
       bidIncrement = 100;
-    } else if (currentPrice <= 7500) {
+    } else if (currentPrice < 7500) {
       bidIncrement = 200;
     } else {
       bidIncrement = 500;
@@ -651,7 +651,8 @@ class _AuctionBiddingControlsWidgetState
                             height: 50,
                             child: ElevatedButton.icon(
                               onPressed: () {
-                                if (showCheckOrder && existingOrder != null) {
+                                if (showCheckOrder &&
+                                    existingOrder.items.isNotEmpty) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) => OrderDetailsScreen(
@@ -900,7 +901,7 @@ class _AuctionBiddingControlsWidgetState
                       ),
                     ),
                     children: List.generate(10, (i) {
-                      final stepBid = currentPrice + bidIncrement * (i + 1);
+                      final stepBid = (highestActiveBid?.bid ?? currentPrice) + bidIncrement * (i + 1);
                       return Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -932,7 +933,7 @@ class _AuctionBiddingControlsWidgetState
                 Builder(
                   builder: (context) {
                     final selectedBid =
-                        currentPrice +
+                        (highestActiveBid?.bid ?? currentPrice) +
                         bidIncrement * (_selectedMaxBidIndex + 1);
                     return SizedBox(
                       width: double.infinity,
@@ -981,11 +982,10 @@ class _AuctionBiddingControlsWidgetState
                 ),
               ],
 
-              // Option 2: One-step bid
               if (_preAuctionTab == 1) ...[
                 _buildOneStepBidButton(
                   auctionNotStarted: auctionNotStarted,
-                  currentPrice: currentPrice,
+                  currentPrice: (highestActiveBid?.bid ?? currentPrice),
                   bidIncrement: bidIncrement,
                   currentProductId: currentProductId,
                 ),
@@ -996,7 +996,7 @@ class _AuctionBiddingControlsWidgetState
               // ─────────────────────────────────────────────
               _buildOneStepBidButton(
                 auctionNotStarted: auctionNotStarted,
-                currentPrice: currentPrice,
+                currentPrice: (highestActiveBid?.bid ?? currentPrice),
                 bidIncrement: bidIncrement,
                 currentProductId: currentProductId,
               ),

@@ -49,7 +49,9 @@ class LiveAuctionsWidget extends StatelessWidget {
         ),
         gapH24,
         SizedBox(
-          height: MediaQuery.of(context).size.width * 0.9,
+          height: AppFunctions.isMobile(context: context)
+              ? MediaQuery.of(context).size.width * 0.9
+              : (MediaQuery.of(context).orientation == Orientation.landscape ? 360 : 400),
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(homeLiveAuctionsProvider);
@@ -60,7 +62,9 @@ class LiveAuctionsWidget extends StatelessWidget {
                   }
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemExtent: MediaQuery.of(context).size.width * .7,
+                    itemExtent: AppFunctions.isMobile(context: context)
+                        ? MediaQuery.of(context).size.width * .7
+                        : (MediaQuery.of(context).orientation == Orientation.landscape ? 290 : 300),
                     itemCount: data.length,
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];

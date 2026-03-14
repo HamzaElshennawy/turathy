@@ -23,6 +23,7 @@ class ProfileScreen extends ConsumerWidget {
     final theme = ref.watch(themeControllerProvider);
     final bool isSignedIn = user != null;
     final themeColor = Theme.of(context).primaryColor;
+    final isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -36,211 +37,271 @@ class ProfileScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header Section
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: themeColor.withOpacity(0.1),
-                    child: isSignedIn
-                        ? Text(
-                            user.name?.isNotEmpty == true
-                                ? user.name!.substring(0, 1).toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: themeColor,
-                            ),
-                          )
-                        : Icon(Icons.person, size: 50, color: themeColor),
-                  ),
-                  gapH16,
-                  if (isSignedIn) ...[
-                    Text(
-                      user.name ?? AppStrings.name.tr(),
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    gapH4,
-                    Text(
-                      user.phone_number ?? '',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ] else ...[
-                    Text(
-                      AppStrings.pleaseSignInOrCreateAccount.tr(),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    gapH16,
-                    PrimaryButton(
-                      onPressed: () {
-                        Navigator.push(
+      body: isTablet
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeaderSection(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => SignInScreen(),
-                          ),
-                        );
-                      },
-                      text: AppStrings.signIn.tr(),
-                      isLoading: false,
+                          user,
+                          isSignedIn,
+                          themeColor,
+                        ),
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
-
-            gapH24,
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // --- Account Section ---
-                  if (isSignedIn) ...[
-                    _buildSectionTitle(AppStrings.account.tr(), context),
-                    _buildSettingsGroup([
-                      _buildSettingsTile(
-                        icon: Icons.person_outline,
-                        title: AppStrings.userDetails.tr(),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const CompleteProfileScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildSettingsTile(
-                        icon: Icons.assignment_ind_outlined,
-                        title: AppStrings.myAuctionRequests.tr(),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const MyAuctionRequestsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ]),
-                    gapH24,
-                  ],
-
-                  // --- Preferences Section ---
-                  _buildSectionTitle(AppStrings.preferences.tr(), context),
-                  _buildSettingsGroup([
-                    //_buildSettingsTile(
-                    //  icon: Icons.dark_mode_outlined,
-                    //  title: AppStrings.darkMode.tr(),
-                    //  trailing: Switch.adaptive(
-                    //    value: theme.mode == ThemeMode.dark,
-                    //    activeColor: themeColor,
-                    //    onChanged: (value) {
-                    //      ref
-                    //          .read(themeControllerProvider.notifier)
-                    //          .setTheme(
-                    //            theme.copyWith(
-                    //              mode: value
-                    //                  ? ThemeMode.dark
-                    //                  : ThemeMode.light,
-                    //            ),
-                    //          );
-                    //    },
-                    //  ),
-                    //),
-                    _buildSettingsTile(
-                      icon: Icons.language_outlined,
-                      title: AppStrings.changeLanguage.tr(),
-                      trailing: const LanguageWidget(),
-                    ),
-                  ]),
-                  gapH24,
-
-                  // --- Support & Legal Section ---
-                  _buildSectionTitle(AppStrings.supportAndLegal.tr(), context),
-                  _buildSettingsGroup([
-                    _buildSettingsTile(
-                      icon: Icons.headset_mic_outlined,
-                      title: AppStrings.contactUs.tr(),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  ),
+                ),
+                VerticalDivider(width: 1, color: Colors.grey.shade300),
+                Expanded(
+                  flex: 6,
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          //_buildSocialIcon('assets/icons/facebook.png', () {}),
-                          //gapW8,
-                          //_buildSocialIcon('assets/icons/insta.png', () {}),
-                          //gapW8,
-                          //_buildSocialIcon('assets/icons/tiktok.png', () {}),
-                          gapW8,
-                          _buildSocialIcon('assets/icons/whats.png', () {}),
+                          gapH24,
+                          ..._buildRightSections(
+                            context,
+                            ref,
+                            isSignedIn,
+                            theme,
+                            themeColor,
+                          ),
                         ],
                       ),
                     ),
-                    _buildSettingsTile(
-                      icon: Icons.privacy_tip_outlined,
-                      title: AppStrings.privacyPolicy.tr(),
-                      onTap: () {},
-                    ),
-                    _buildSettingsTile(
-                      icon: Icons.description_outlined,
-                      title: AppStrings.termsAndConditions.tr(),
-                      onTap: () {},
-                    ),
-                  ]),
+                  ),
+                ),
+              ],
+            )
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeaderSection(context, user, isSignedIn, themeColor),
                   gapH24,
-
-                  // --- Danger Zone ---
-                  if (isSignedIn) ...[
-                    _buildSectionTitle(AppStrings.dangerZone.tr(), context),
-                    _buildSettingsGroup([
-                      _buildSettingsTile(
-                        icon: Icons.logout_outlined,
-                        title: AppStrings.signOut.tr(),
-                        textColor: Colors.red.shade600,
-                        iconColor: Colors.red.shade600,
-                        onTap: () => _handleSignOut(context, ref),
-                      ),
-                      //_buildSettingsTile(
-                      //  icon: Icons.person_remove_outlined,
-                      //  title: AppStrings.deleteAccount.tr(),
-                      //  textColor: Colors.red.shade600,
-                      //  iconColor: Colors.red.shade600,
-                      //  onTap: () => _handleDeleteAccount(context, ref),
-                      //),
-                    ]),
-                  ],
-
-                  gapH32,
-                  Center(
-                    child: Text(
-                      '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value ?? ""}',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 13,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _buildRightSections(
+                        context,
+                        ref,
+                        isSignedIn,
+                        theme,
+                        themeColor,
                       ),
                     ),
                   ),
-                  gapH32,
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildHeaderSection(
+    BuildContext context,
+    dynamic user,
+    bool isSignedIn,
+    Color themeColor,
+  ) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: themeColor.withOpacity(0.1),
+            child: isSignedIn
+                ? Text(
+                    user.name?.isNotEmpty == true
+                        ? user.name!.substring(0, 1).toUpperCase()
+                        : '?',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: themeColor,
+                    ),
+                  )
+                : Icon(Icons.person, size: 50, color: themeColor),
+          ),
+          gapH16,
+          if (isSignedIn) ...[
+            Text(
+              user.name ?? AppStrings.name.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            gapH4,
+            Text(
+              user.phone_number ?? '',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+            ),
+          ] else ...[
+            Text(
+              AppStrings.pleaseSignInOrCreateAccount.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.grey.shade700),
+            ),
+            gapH16,
+            PrimaryButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignInScreen()),
+                );
+              },
+              text: AppStrings.signIn.tr(),
+              isLoading: false,
+            ),
           ],
-        ),
+        ],
       ),
     );
+  }
+
+  List<Widget> _buildRightSections(
+    BuildContext context,
+    WidgetRef ref,
+    bool isSignedIn,
+    dynamic theme,
+    Color themeColor,
+  ) {
+    return [
+      // --- Account Section ---
+      if (isSignedIn) ...[
+        _buildSectionTitle(AppStrings.account.tr(), context),
+        _buildSettingsGroup([
+          _buildSettingsTile(
+            icon: Icons.person_outline,
+            title: AppStrings.userDetails.tr(),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CompleteProfileScreen(),
+                ),
+              );
+            },
+          ),
+          _buildSettingsTile(
+            icon: Icons.assignment_ind_outlined,
+            title: AppStrings.myAuctionRequests.tr(),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const MyAuctionRequestsScreen(),
+                ),
+              );
+            },
+          ),
+        ]),
+        gapH24,
+      ],
+
+      // --- Preferences Section ---
+      _buildSectionTitle(AppStrings.preferences.tr(), context),
+      _buildSettingsGroup([
+        //_buildSettingsTile(
+        //  icon: Icons.dark_mode_outlined,
+        //  title: AppStrings.darkMode.tr(),
+        //  trailing: Switch.adaptive(
+        //    value: theme.mode == ThemeMode.dark,
+        //    activeColor: themeColor,
+        //    onChanged: (value) {
+        //      ref
+        //          .read(themeControllerProvider.notifier)
+        //          .setTheme(
+        //            theme.copyWith(
+        //              mode: value
+        //                  ? ThemeMode.dark
+        //                  : ThemeMode.light,
+        //            ),
+        //          );
+        //    },
+        //  ),
+        //),
+        _buildSettingsTile(
+          icon: Icons.language_outlined,
+          title: AppStrings.changeLanguage.tr(),
+          trailing: const LanguageWidget(),
+        ),
+      ]),
+      gapH24,
+
+      // --- Support & Legal Section ---
+      _buildSectionTitle(AppStrings.supportAndLegal.tr(), context),
+      _buildSettingsGroup([
+        _buildSettingsTile(
+          icon: Icons.headset_mic_outlined,
+          title: AppStrings.contactUs.tr(),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              //_buildSocialIcon('assets/icons/facebook.png', () {}),
+              //gapW8,
+              //_buildSocialIcon('assets/icons/insta.png', () {}),
+              //gapW8,
+              //_buildSocialIcon('assets/icons/tiktok.png', () {}),
+              gapW8,
+              _buildSocialIcon('assets/icons/whats.png', () {}),
+            ],
+          ),
+        ),
+        _buildSettingsTile(
+          icon: Icons.privacy_tip_outlined,
+          title: AppStrings.privacyPolicy.tr(),
+          onTap: () {},
+        ),
+        _buildSettingsTile(
+          icon: Icons.description_outlined,
+          title: AppStrings.termsAndConditions.tr(),
+          onTap: () {},
+        ),
+      ]),
+      gapH24,
+
+      // --- Danger Zone ---
+      if (isSignedIn) ...[
+        _buildSectionTitle(AppStrings.dangerZone.tr(), context),
+        _buildSettingsGroup([
+          _buildSettingsTile(
+            icon: Icons.logout_outlined,
+            title: AppStrings.signOut.tr(),
+            textColor: Colors.red.shade600,
+            iconColor: Colors.red.shade600,
+            onTap: () => _handleSignOut(context, ref),
+          ),
+          //_buildSettingsTile(
+          //  icon: Icons.person_remove_outlined,
+          //  title: AppStrings.deleteAccount.tr(),
+          //  textColor: Colors.red.shade600,
+          //  iconColor: Colors.red.shade600,
+          //  onTap: () => _handleDeleteAccount(context, ref),
+          //),
+        ]),
+      ],
+
+      gapH32,
+      Center(
+        child: Text(
+          '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value ?? ""}',
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+        ),
+      ),
+      gapH32,
+    ];
   }
 
   Widget _buildSectionTitle(String title, BuildContext context) {
@@ -372,30 +433,30 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleDeleteAccount(BuildContext context, WidgetRef ref) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppStrings.deleteAccount.tr()),
-        content: Text(AppStrings.areYouSureToDeleteAccount.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(AppStrings.cancel.tr()),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(AppStrings.delete.tr()),
-          ),
-        ],
-      ),
-    );
+  //Future<void> _handleDeleteAccount(BuildContext context, WidgetRef ref) async {
+  //  final result = await showDialog<bool>(
+  //    context: context,
+  //    builder: (context) => AlertDialog(
+  //      title: Text(AppStrings.deleteAccount.tr()),
+  //      content: Text(AppStrings.areYouSureToDeleteAccount.tr()),
+  //      actions: [
+  //        TextButton(
+  //          onPressed: () => Navigator.of(context).pop(false),
+  //          child: Text(AppStrings.cancel.tr()),
+  //        ),
+  //        TextButton(
+  //          onPressed: () => Navigator.of(context).pop(true),
+  //          style: TextButton.styleFrom(foregroundColor: Colors.red),
+  //          child: Text(AppStrings.delete.tr()),
+  //        ),
+  //      ],
+  //    ),
+  //  );
 
-    if (result == true) {
-      // TODO: Handle delete account API call
-    }
-  }
+  //  if (result == true) {
+  //    // TODO: Handle delete account API call
+  //  }
+  //}
 }
 
 final versionProvider = FutureProvider<String>((ref) async {
