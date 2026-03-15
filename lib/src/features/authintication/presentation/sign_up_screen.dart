@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/features/main_screen.dart';
 
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
@@ -13,9 +12,12 @@ import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../utils/validators.dart';
 import 'auth_controller.dart';
+import 'complete_profile_screen.dart';
+import 'otp_screen.dart';
 import 'sign_in_screen.dart';
 import 'widgets/social_login_buttons.dart';
 import 'country_code_provider.dart';
+import '../../main_screen.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -50,10 +52,17 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
             .read(authControllerProvider.notifier)
             .isGoogleSignInProcessing;
         if (isGoogle) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const MainScreen()),
-            (route) => false,
-          );
+          if (next.value!.missingFields != null && next.value!.missingFields!.isNotEmpty) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+              (route) => false,
+            );
+          } else {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const MainScreen()),
+              (route) => false,
+            );
+          }
         }
       }
     });
@@ -194,23 +203,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 onPressed: () async {
                                   final fullphone_number =
                                       '$countryCode${controller.phoneController.text}';
-                                  await controller
-                                      .signUp(fullphone_number)
-                                      .then((value) async {
-                                        if (value) {
-                                          if (context.mounted) {
-                                            Navigator.of(
-                                              context,
-                                            ).pushAndRemoveUntil(
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const MainScreen(),
-                                              ),
-                                              (route) => false,
-                                            );
-                                          }
-                                        }
-                                      });
+                                  final result = await controller.signUp(fullphone_number);
+                                  if (result['status'] == 'success' && context.mounted) {
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder: (context) => OtpScreen(
+                                          phone_number: fullphone_number,
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 },
                               ),
                             ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/fcm/fcm_service.dart';
 import '../data/auth_repository.dart';
@@ -29,14 +28,20 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     state = AsyncValue.data(user);
   }
 
-  Future<void> signIn(String fullphone_number, String password) async {
+  Future<Map<String, dynamic>> signIn(
+    String fullphone_number,
+    String password,
+  ) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => AuthRepository.signIn(fullphone_number, password),
-    );
-
-    if (state.hasValue && !state.hasError) {
+    try {
+      final result = await AuthRepository.signIn(fullphone_number, password);
+      final user = result['user'] as UserModel;
+      state = AsyncValue.data(user);
       await FCMService().registerAfterLogin();
+      return result;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
@@ -49,7 +54,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   //   }
   // }
 
-  Future<bool> signUp(String fullphone_number) async {
+  Future<Map<String, dynamic>> signUp(String fullphone_number) async {
     state = const AsyncValue.loading();
     if (formKey.currentState!.validate()) {
       var user = UserModel(
@@ -57,25 +62,18 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
         name: nameController.text,
         phone_number: fullphone_number,
       );
-      final result = await AsyncValue.guard(
-        () => AuthRepository.createUser(user),
-      );
-      if (result.hasError) {
-        AppFunctions.logPrint(
-          message: '${result.error} error${result.stackTrace}',
-        );
-        state = AsyncValue.error(
-          result.error.toString(),
-          result.stackTrace ?? StackTrace.empty,
-        );
-        return false;
-      } else if (result.hasValue) {
+      try {
+        final result = await AuthRepository.createUser(user);
         state = const AsyncValue.data(null);
-        return result.value ?? false;
+        return result;
+      } catch (e, st) {
+        state = AsyncValue.error(e.toString(), st);
+        rethrow;
       }
     }
-    state = const AsyncValue.error('Please fill all fields', StackTrace.empty);
-    return false;
+    const error = 'Please fill all fields';
+    state = const AsyncValue.error(error, StackTrace.empty);
+    return {'status': 'error', 'message': error};
   }
 
   Future<bool> signOut() async {

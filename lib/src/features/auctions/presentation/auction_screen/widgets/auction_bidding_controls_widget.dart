@@ -55,7 +55,7 @@ class _AuctionBiddingControlsWidgetState
     extends ConsumerState<AuctionBiddingControlsWidget> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
-  double _selectedMultiplier = 1.0; // 1.0, 1.5, or 2.0
+  //double _selectedMultiplier = 1.0; // 1.0, 1.5, or 2.0
   final TextEditingController _customBidController = TextEditingController();
   final FocusNode _customBidFocus = FocusNode();
 
@@ -137,6 +137,31 @@ class _AuctionBiddingControlsWidgetState
     _customBidController.dispose();
     _customBidFocus.dispose();
     super.dispose();
+  }
+
+  /// Returns the correct bid increment for a given price, matching the
+  /// server-side thresholds so the bid list never proposes an invalid step.
+  static num _getIncrementForPrice(num price) {
+    if (price < 500) return 10;
+    if (price < 1500) return 20;
+    if (price < 3000) return 50;
+    if (price < 5000) return 100;
+    if (price < 7500) return 200;
+    return 500;
+  }
+
+  /// Builds a list of [count] bid amounts starting from [basePrice],
+  /// recalculating the increment at each step so threshold crossings are
+  /// respected (e.g. 1480 +20 = 1500, then 1500 +50 = 1550, not +20).
+  static List<num> _buildBidSteps(num basePrice, int count) {
+    final steps = <num>[];
+    num running = basePrice;
+    for (int i = 0; i < count; i++) {
+      final inc = _getIncrementForPrice(running);
+      running += inc;
+      steps.add(running);
+    }
+    return steps;
   }
 
   @override
@@ -234,11 +259,27 @@ class _AuctionBiddingControlsWidgetState
       return null;
     })();
 
+    // Check if there's a recent bid rejection that provides a newer server price
+    final lastRejectionEvent = ref.watch(bidRejectedProvider).valueOrNull;
+    num? rejectedServerPrice;
+    if (lastRejectionEvent != null &&
+        (currentProductId == null ||
+            lastRejectionEvent.productId == currentProductId)) {
+      rejectedServerPrice = lastRejectionEvent.currentPrice;
+    }
+
     // Current price logic:
-    // 1. Real-time update (lastBid for current product)
+    // 1. Real-time update (lastBid for current product) OR Server price from rejection
     // 2. Highest bid from history for current product
     // 3. Opening price
-    num currentPrice = latestBid?.bid ?? openingPrice;
+    num currentPrice = openingPrice;
+    if (latestBid != null) {
+      currentPrice = latestBid.bid ?? openingPrice;
+    }
+    // If a rejection informed us of a higher price, use it
+    if (rejectedServerPrice != null && rejectedServerPrice > currentPrice) {
+      currentPrice = rejectedServerPrice;
+    }
 
     if (auctionProduct != null && widget.selectedProduct == null) {
       bidIncrement = auctionProduct.bidPrice;
@@ -254,19 +295,7 @@ class _AuctionBiddingControlsWidgetState
     }
 
     // Dynamic bid increment logic based on the current price
-    if (currentPrice < 500) {
-      bidIncrement = 10;
-    } else if (currentPrice < 1500) {
-      bidIncrement = 20;
-    } else if (currentPrice < 3000) {
-      bidIncrement = 50;
-    } else if (currentPrice < 5000) {
-      bidIncrement = 100;
-    } else if (currentPrice < 7500) {
-      bidIncrement = 200;
-    } else {
-      bidIncrement = 500;
-    }
+    bidIncrement = _getIncrementForPrice(currentPrice);
 
     // Determine if the auction has truly ended based on the model or current time vs expiry
     final bool isTrulyEnded =
@@ -900,41 +929,50 @@ class _AuctionBiddingControlsWidgetState
                         ),
                       ),
                     ),
-                    children: List.generate(10, (i) {
-                      final stepBid = (highestActiveBid?.bid ?? currentPrice) + bidIncrement * (i + 1);
-                      return Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${AppStrings.bid.tr()} ${i + 1}  •  ${stepBid.toStringAsFixed(0)} ',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A2E22),
-                              ),
-                            ),
-                            SvgPicture.asset(
-                              'assets/icons/RSA.svg',
-                              height: 12,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFF1A2E22),
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ],
-                        ),
+                    children: (() {
+                      final steps = _buildBidSteps(
+                        (highestActiveBid?.bid ?? currentPrice),
+                        10,
                       );
-                    }),
+                      return List.generate(steps.length, (i) {
+                        final stepBid = steps[i];
+                        return Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${AppStrings.bid.tr()} ${i + 1}  •  ${stepBid.toStringAsFixed(0)} ',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A2E22),
+                                ),
+                              ),
+                              SvgPicture.asset(
+                                'assets/icons/RSA.svg',
+                                height: 12,
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0xFF1A2E22),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      });
+                    })(),
                   ),
                 ),
                 gapH12,
                 // Bid button for selected amount
                 Builder(
                   builder: (context) {
+                    final steps = _buildBidSteps(
+                      (highestActiveBid?.bid ?? currentPrice),
+                      10,
+                    );
                     final selectedBid =
-                        (highestActiveBid?.bid ?? currentPrice) +
-                        bidIncrement * (_selectedMaxBidIndex + 1);
+                        steps[_selectedMaxBidIndex.clamp(0, steps.length - 1)];
                     return SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -1358,51 +1396,51 @@ class _AuctionBiddingControlsWidgetState
     }
   }
 
-  Widget _buildBidMultiplierButton({
-    required double multiplier,
-    required num bidIncrement,
-    required num currentPrice,
-    required bool isDisabled,
-  }) {
-    final bool isSelected = _selectedMultiplier == multiplier;
-    // Calculate total bid price (current + increment * multiplier)
-    final num totalBidPrice = currentPrice + (bidIncrement * multiplier);
-    final String label = '\$${totalBidPrice.toStringAsFixed(0)}';
+  //Widget _buildBidMultiplierButton({
+  //  required double multiplier,
+  //  required num bidIncrement,
+  //  required num currentPrice,
+  //  required bool isDisabled,
+  //}) {
+  //  final bool isSelected = _selectedMultiplier == multiplier;
+  //  // Calculate total bid price (current + increment * multiplier)
+  //  final num totalBidPrice = currentPrice + (bidIncrement * multiplier);
+  //  final String label = '\$${totalBidPrice.toStringAsFixed(0)}';
 
-    return GestureDetector(
-      onTap: isDisabled
-          ? null
-          : () {
-              setState(() {
-                _selectedMultiplier = multiplier;
-              });
-            },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2D4739) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isDisabled
-                ? Colors.grey.shade300
-                : (isSelected ? const Color(0xFF2D4739) : Colors.grey.shade400),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: isDisabled
-                  ? Colors.grey
-                  : (isSelected ? Colors.white : Colors.black87),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  //  return GestureDetector(
+  //    onTap: isDisabled
+  //        ? null
+  //        : () {
+  //            setState(() {
+  //              _selectedMultiplier = multiplier;
+  //            });
+  //          },
+  //    child: AnimatedContainer(
+  //      duration: const Duration(milliseconds: 200),
+  //      padding: const EdgeInsets.symmetric(vertical: 12),
+  //      decoration: BoxDecoration(
+  //        color: isSelected ? const Color(0xFF2D4739) : Colors.white,
+  //        borderRadius: BorderRadius.circular(8),
+  //        border: Border.all(
+  //          color: isDisabled
+  //              ? Colors.grey.shade300
+  //              : (isSelected ? const Color(0xFF2D4739) : Colors.grey.shade400),
+  //          width: isSelected ? 2 : 1,
+  //        ),
+  //      ),
+  //      child: Center(
+  //        child: Text(
+  //          label,
+  //          style: TextStyle(
+  //            fontSize: 14,
+  //            fontWeight: FontWeight.bold,
+  //            color: isDisabled
+  //                ? Colors.grey
+  //                : (isSelected ? Colors.white : Colors.black87),
+  //          ),
+  //        ),
+  //      ),
+  //    ),
+  //  );
+  //}
 }

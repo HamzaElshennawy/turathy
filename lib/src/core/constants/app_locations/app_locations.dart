@@ -2,10 +2,7 @@ class CityOption {
   final String title;
   final String value;
 
-  const CityOption({
-    required this.title,
-    required this.value,
-  });
+  const CityOption({required this.title, required this.value});
 }
 
 class GovernateOption {
@@ -369,4 +366,35 @@ const List<GovernateOption> kGovernates = [
   ),
 ];
 
-
+const List<({String code, String nameEn, String nameAr})> countries = [
+  (code: 'SA', nameEn: 'Saudi Arabia', nameAr: 'السعودية'),
+  (code: 'AE', nameEn: 'United Arab Emirates', nameAr: 'الإمارات'),
+  (code: 'KW', nameEn: 'Kuwait', nameAr: 'الكويت'),
+  (code: 'QA', nameEn: 'Qatar', nameAr: 'قطر'),
+  (code: 'BH', nameEn: 'Bahrain', nameAr: 'البحرين'),
+  (code: 'OM', nameEn: 'Oman', nameAr: 'عُمان'),
+  (code: 'EG', nameEn: 'Egypt', nameAr: 'مصر'),
+  (code: 'JO', nameEn: 'Jordan', nameAr: 'الأردن'),
+  (code: 'IQ', nameEn: 'Iraq', nameAr: 'العراق'),
+  (code: 'SY', nameEn: 'Syria', nameAr: 'سوريا'),
+  (code: 'LB', nameEn: 'Lebanon', nameAr: 'لبنان'),
+  (code: 'PS', nameEn: 'Palestine', nameAr: 'فلسطين'),
+  (code: 'YE', nameEn: 'Yemen', nameAr: 'اليمن'),
+  (code: 'LY', nameEn: 'Libya', nameAr: 'ليبيا'),
+  (code: 'SD', nameEn: 'Sudan', nameAr: 'السودان'),
+  (code: 'TN', nameEn: 'Tunisia', nameAr: 'تونس'),
+  (code: 'DZ', nameEn: 'Algeria', nameAr: 'الجزائر'),
+  (code: 'MA', nameEn: 'Morocco', nameAr: 'المغرب'),
+  (code: 'TR', nameEn: 'Turkey', nameAr: 'تركيا'),
+  (code: 'US', nameEn: 'United States', nameAr: 'الولايات المتحدة'),
+  (code: 'GB', nameEn: 'United Kingdom', nameAr: 'بريطانيا'),
+  (code: 'FR', nameEn: 'France', nameAr: 'فرنسا'),
+  (code: 'DE', nameEn: 'Germany', nameAr: 'ألمانيا'),
+  (code: 'IN', nameEn: 'India', nameAr: 'الهند'),
+  (code: 'PK', nameEn: 'Pakistan', nameAr: 'باكستان'),
+  (code: 'BD', nameEn: 'Bangladesh', nameAr: 'بنغلاديش'),
+  (code: 'PH', nameEn: 'Philippines', nameAr: 'الفلبين'),
+  (code: 'ID', nameEn: 'Indonesia', nameAr: 'إندونيسيا'),
+  (code: 'MY', nameEn: 'Malaysia', nameAr: 'ماليزيا'),
+  (code: 'CN', nameEn: 'China', nameAr: 'الصين'),
+];

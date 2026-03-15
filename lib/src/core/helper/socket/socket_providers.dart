@@ -1,3 +1,4 @@
+/// Unified riverpod providers for socket connection, state, and events.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
@@ -321,6 +322,22 @@ final socketActionsProvider = Provider.autoDispose<SocketActions>((ref) {
   final service = ref.watch(socketServiceProvider);
   return SocketActions._(service);
 });
+
+// ── State Broadcast Provider ───────────────────────────────────────────────────
+
+/// Stream of `auctionStateUpdate` events blindly fired by the server every 2s.
+/// Contains the most up-to-date timer and the latest 3 bids for the active product.
+final auctionStateUpdateProvider =
+    StreamProvider.autoDispose<AuctionStateUpdateEvent>((ref) {
+      final service = ref.watch(socketServiceProvider);
+      return service.getEventStream<AuctionStateUpdateEvent>(
+        'auctionStateUpdate',
+        (data) =>
+            AuctionStateUpdateEvent.fromJson(data as Map<String, dynamic>),
+      );
+    });
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Socket actions class for emitting events
 class SocketActions {

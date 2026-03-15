@@ -7,7 +7,10 @@ import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
 import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import 'auth_controller.dart';
+import 'complete_profile_screen.dart';
 import 'otp_controller.dart';
+import '../../main_screen.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String phone_number;
@@ -199,8 +202,17 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           phone_number: widget.phone_number,
                         );
                         if (ok && context.mounted) {
-                          // Navigate safely
-                          Navigator.of(context).pop();
+                          final user = ref.read(authControllerProvider).valueOrNull;
+                          if (user != null && user.missingFields != null && user.missingFields!.isNotEmpty) {
+                             Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+                            );
+                          } else {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const MainScreen()),
+                              (route) => false,
+                            );
+                          }
                         }
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(

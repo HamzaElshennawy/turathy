@@ -63,9 +63,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         CachedVariables.userId != null) {
                       // Try to restore session using token and userId (Google Sign-In)
                       AuthRepository.getUser(CachedVariables.userId!)
-                          .then((_) {
+                          .then((user) {
                             if (!mounted) return;
-                            GoRouter.of(context).go(RouteConstants.home);
+                            if (user.missingFields != null && user.missingFields!.isNotEmpty) {
+                              GoRouter.of(context).go(RouteConstants.completeProfile);
+                            } else {
+                              GoRouter.of(context).go(RouteConstants.home);
+                            }
                           })
                           .catchError((error) {
                             if (!mounted) return;
@@ -78,15 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                                     CachedVariables.phone_number!,
                                     CachedVariables.password!,
                                   );
-                              //if (mounted) {
-                              //  GoRouter.of(context).go(RouteConstants.home);
-                              //}
                             }
-                            //else {
-                            //  if (mounted) {
-                            //    GoRouter.of(context).go(RouteConstants.signIn);
-                            //  }
-                            //}
                           });
                     } else if (CachedVariables.phone_number != null &&
                         CachedVariables.password != null) {
@@ -97,17 +93,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                             CachedVariables.phone_number!,
                             CachedVariables.password!,
                           );
-                      //if (mounted) {
-                      //  GoRouter.of(context).go(RouteConstants.home);
-                      //}
                     }
-                    //else {
-                    //  if (mounted) {
-                    //    GoRouter.of(context).go(RouteConstants.signIn);
-                    //  }
-                    //}
                     if (mounted) {
-                      GoRouter.of(context).go(RouteConstants.home);
+                      final authUser = ref.read(authControllerProvider).valueOrNull;
+                      if (authUser != null && authUser.missingFields != null && authUser.missingFields!.isNotEmpty) {
+                        GoRouter.of(context).go(RouteConstants.completeProfile);
+                      } else {
+                        GoRouter.of(context).go(RouteConstants.home);
+                      }
                     }
                   });
                 },

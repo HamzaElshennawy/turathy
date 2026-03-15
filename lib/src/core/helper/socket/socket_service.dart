@@ -430,6 +430,13 @@ class SocketService {
     _safeEmit('requestSync', {'auctionId': auctionId});
   }
 
+  /// Send the client's current time to the server for an on-demand time sync
+  void emitClientTimeSync() {
+    _safeEmit('clientTimeSync', {
+      'clientTime': DateTime.now().toIso8601String(),
+    });
+  }
+
   /// Gracefully disconnect socket
   Future<void> disconnect() async {
     log('Disconnecting socket...');

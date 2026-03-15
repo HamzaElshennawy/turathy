@@ -1,48 +1,27 @@
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as ui;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
+import 'package:turathy/src/features/home/presentation/home_screen/home_screen.dart';
+import 'package:turathy/src/features/main_screen.dart';
 
 import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/socket/socket_models.dart';
+import '../../addresses/presentation/add_edit_address_screen.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/address_model.dart';
+import '../../../routing/rout_constants.dart';
 import 'auth_controller.dart';
+import 'country_code_provider.dart';
 
 /// Country list with 2-letter ISO codes for the nationality picker.
-const List<({String code, String nameEn, String nameAr})> _countries = [
-  (code: 'SA', nameEn: 'Saudi Arabia', nameAr: 'السعودية'),
-  (code: 'AE', nameEn: 'United Arab Emirates', nameAr: 'الإمارات'),
-  (code: 'KW', nameEn: 'Kuwait', nameAr: 'الكويت'),
-  (code: 'QA', nameEn: 'Qatar', nameAr: 'قطر'),
-  (code: 'BH', nameEn: 'Bahrain', nameAr: 'البحرين'),
-  (code: 'OM', nameEn: 'Oman', nameAr: 'عُمان'),
-  (code: 'EG', nameEn: 'Egypt', nameAr: 'مصر'),
-  (code: 'JO', nameEn: 'Jordan', nameAr: 'الأردن'),
-  (code: 'IQ', nameEn: 'Iraq', nameAr: 'العراق'),
-  (code: 'SY', nameEn: 'Syria', nameAr: 'سوريا'),
-  (code: 'LB', nameEn: 'Lebanon', nameAr: 'لبنان'),
-  (code: 'PS', nameEn: 'Palestine', nameAr: 'فلسطين'),
-  (code: 'YE', nameEn: 'Yemen', nameAr: 'اليمن'),
-  (code: 'LY', nameEn: 'Libya', nameAr: 'ليبيا'),
-  (code: 'SD', nameEn: 'Sudan', nameAr: 'السودان'),
-  (code: 'TN', nameEn: 'Tunisia', nameAr: 'تونس'),
-  (code: 'DZ', nameEn: 'Algeria', nameAr: 'الجزائر'),
-  (code: 'MA', nameEn: 'Morocco', nameAr: 'المغرب'),
-  (code: 'TR', nameEn: 'Turkey', nameAr: 'تركيا'),
-  (code: 'US', nameEn: 'United States', nameAr: 'الولايات المتحدة'),
-  (code: 'GB', nameEn: 'United Kingdom', nameAr: 'بريطانيا'),
-  (code: 'FR', nameEn: 'France', nameAr: 'فرنسا'),
-  (code: 'DE', nameEn: 'Germany', nameAr: 'ألمانيا'),
-  (code: 'IN', nameEn: 'India', nameAr: 'الهند'),
-  (code: 'PK', nameEn: 'Pakistan', nameAr: 'باكستان'),
-  (code: 'BD', nameEn: 'Bangladesh', nameAr: 'بنغلاديش'),
-  (code: 'PH', nameEn: 'Philippines', nameAr: 'الفلبين'),
-  (code: 'ID', nameEn: 'Indonesia', nameAr: 'إندونيسيا'),
-  (code: 'MY', nameEn: 'Malaysia', nameAr: 'ماليزيا'),
-  (code: 'CN', nameEn: 'China', nameAr: 'الصين'),
-];
 
 class CompleteProfileScreen extends ConsumerStatefulWidget {
   const CompleteProfileScreen({super.key});
@@ -59,25 +38,32 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   late final TextEditingController _emailController;
   String? _selectedNationalityCode;
 
-  // Address form controllers
-  final _addressLabelController = TextEditingController();
-  final _addressNameController = TextEditingController();
-  final _addressMobileController = TextEditingController();
-  final _addressCountryController = TextEditingController();
-  final _addressCityController = TextEditingController();
-  final _addressAddressController = TextEditingController();
-
   bool _isSaving = false;
-  bool _isAddingAddress = false;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(authControllerProvider).valueOrNull;
+
+    String initialPhone =
+        user?.phone_number ?? CachedVariables.phone_number ?? '';
+    String initialCountryCode = '+966';
+
+    if (initialPhone.startsWith('+')) {
+      RegExp regex = RegExp(r'^\+(\d{1,3})');
+      Match? match = regex.firstMatch(initialPhone);
+      if (match != null) {
+        initialCountryCode = '+' + match.group(1)!;
+        initialPhone = initialPhone.substring(match.group(0)!.length);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(countryCodeProvider.notifier).setCountryCode(initialCountryCode);
+    });
+
     _nameController = TextEditingController(text: user?.name ?? '');
-    _phoneController = TextEditingController(
-      text: user?.phone_number ?? CachedVariables.phone_number ?? '',
-    );
+    _phoneController = TextEditingController(text: initialPhone);
     _emailController = TextEditingController(
       text: user?.email ?? CachedVariables.email ?? '',
     );
@@ -89,12 +75,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
-    _addressLabelController.dispose();
-    _addressNameController.dispose();
-    _addressMobileController.dispose();
-    _addressCountryController.dispose();
-    _addressCityController.dispose();
-    _addressAddressController.dispose();
     super.dispose();
   }
 
@@ -111,7 +91,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
           ? _nameController.text.trim()
           : null,
       number: _phoneController.text.trim().isNotEmpty
-          ? _phoneController.text.trim()
+          ? '${ref.read(countryCodeProvider)}${_phoneController.text.trim()}'
           : null,
       email: _emailController.text.trim().isNotEmpty
           ? _emailController.text.trim()
@@ -134,16 +114,19 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       if (currentUser != null) {
         final updatedUser = currentUser.copyWith(
           name: _nameController.text.trim(),
-          phone_number: _phoneController.text.trim(),
+          phone_number: _phoneController.text.trim().isNotEmpty
+              ? '${ref.read(countryCodeProvider)}${_phoneController.text.trim()}'
+              : '',
           email: _emailController.text.trim(),
           nationality: _selectedNationalityCode,
-          // Remove resolved fields from missingFields
           missingFields: (currentUser.missingFields ?? []).where((field) {
             if (field == 'phone_number' &&
-                _phoneController.text.trim().isNotEmpty)
+                _phoneController.text.trim().isNotEmpty) {
               return false;
-            if (field == 'email' && _emailController.text.trim().isNotEmpty)
+            }
+            if (field == 'email' && _emailController.text.trim().isNotEmpty) {
               return false;
+            }
             return true;
           }).toList(),
         );
@@ -156,6 +139,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
           backgroundColor: Colors.green,
         ),
       );
+
+      // Navigate to home page after successful update
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -166,203 +155,21 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     }
   }
 
-  void _showAddAddressDialog() {
-    _addressLabelController.clear();
-    _addressNameController.clear();
-    _addressMobileController.clear();
-    _addressCountryController.clear();
-    _addressCityController.clear();
-    _addressAddressController.clear();
-
-    final addressFormKey = GlobalKey<FormState>();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                left: 16,
-                right: 16,
-                top: 16,
-              ),
-              child: Form(
-                key: addressFormKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'addAddress'.tr(),
-                            style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(ctx),
-                          ),
-                        ],
-                      ),
-                      gapH16,
-                      _buildFieldLabel('addressLabel'.tr()),
-                      WhiteRoundedTextFormField(
-                        controller: _addressLabelController,
-                        keyboardType: TextInputType.text,
-                        hintText: 'addressLabel',
-                        validator: (v) => null,
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      gapH12,
-                      _buildFieldLabel('recipientName'.tr()),
-                      WhiteRoundedTextFormField(
-                        controller: _addressNameController,
-                        keyboardType: TextInputType.name,
-                        hintText: 'recipientName',
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'fieldRequired'.tr()
-                            : null,
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      gapH12,
-                      _buildFieldLabel('recipientMobile'.tr()),
-                      WhiteRoundedTextFormField(
-                        controller: _addressMobileController,
-                        keyboardType: TextInputType.phone,
-                        hintText: 'recipientMobile',
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'fieldRequired'.tr()
-                            : null,
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      gapH12,
-                      _buildFieldLabel('country'.tr()),
-                      WhiteRoundedTextFormField(
-                        controller: _addressCountryController,
-                        keyboardType: TextInputType.text,
-                        hintText: 'country',
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'fieldRequired'.tr()
-                            : null,
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      gapH12,
-                      _buildFieldLabel('city'.tr()),
-                      WhiteRoundedTextFormField(
-                        controller: _addressCityController,
-                        keyboardType: TextInputType.text,
-                        hintText: 'city',
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'fieldRequired'.tr()
-                            : null,
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      gapH12,
-                      _buildFieldLabel('address'.tr()),
-                      WhiteRoundedTextFormField(
-                        controller: _addressAddressController,
-                        keyboardType: TextInputType.streetAddress,
-                        hintText: 'address',
-                        validator: (v) => v == null || v.isEmpty
-                            ? 'fieldRequired'.tr()
-                            : null,
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      gapH24,
-                      SizedBox(
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isAddingAddress
-                              ? null
-                              : () async {
-                                  if (!addressFormKey.currentState!
-                                      .validate()) {
-                                    return;
-                                  }
-                                  setSheetState(() => _isAddingAddress = true);
-
-                                  final result =
-                                      await ProfileRepository.addAddress(
-                                        userId: CachedVariables.userId ?? 0,
-                                        name: _addressNameController.text
-                                            .trim(),
-                                        mobile: _addressMobileController.text
-                                            .trim(),
-                                        country: _addressCountryController.text
-                                            .trim(),
-                                        city: _addressCityController.text
-                                            .trim(),
-                                        address: _addressAddressController.text
-                                            .trim(),
-                                        label:
-                                            _addressLabelController.text
-                                                .trim()
-                                                .isNotEmpty
-                                            ? _addressLabelController.text
-                                                  .trim()
-                                            : null,
-                                      );
-
-                                  setSheetState(() => _isAddingAddress = false);
-
-                                  if (result != null && ctx.mounted) {
-                                    Navigator.pop(ctx);
-                                    ref.invalidate(userAddressesProvider);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'addressSavedSuccessfully'.tr(),
-                                        ),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2D4739),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: _isAddingAddress
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'saveAddress'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      gapH24,
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+  void _showAddAddressDialog() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (ctx) => const AddEditAddressScreen()),
     );
+
+    if (result != null && mounted) {
+      ref.invalidate(userAddressesProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('addressSavedSuccessfully'.tr()),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   Future<void> _deleteAddress(int addressId) async {
@@ -417,222 +224,262 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).valueOrNull;
     final addressesAsync = ref.watch(userAddressesProvider);
+    final countryCode = ref.watch(countryCodeProvider);
     final missingFields = user?.missingFields ?? [];
+    final themeColor = Theme.of(context).primaryColor;
 
     return Scaffold(
-      appBar: AppBar(title: Text('completeProfile'.tr()), centerTitle: true),
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: Text(
+          'completeProfile'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
+        child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'profileInfo'.tr(),
-                style: Theme.of(context).textTheme.headlineSmall,
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 32,
+                  horizontal: 16,
+                ),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: themeColor.withOpacity(0.1),
+                      child: Text(
+                        user?.name?.isNotEmpty == true
+                            ? user!.name!.substring(0, 1).toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: themeColor,
+                        ),
+                      ),
+                    ),
+                    gapH16,
+                    Text(
+                      user?.name ?? AppStrings.name.tr(),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    gapH4,
+                    Text(
+                      user?.phone_number ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              gapH8,
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(Sizes.p8),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Missing fields banner
-                          if (missingFields.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.orange.shade300,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: Colors.orange.shade700,
-                                  ),
-                                  gapW8,
-                                  Expanded(
-                                    child: Text(
-                                      'missingFieldsBanner'.tr(),
-                                      style: TextStyle(
-                                        color: Colors.orange.shade800,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            gapH16,
-                          ],
-
-                          // ─── Personal Info Section ───
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+              gapH24,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Missing fields banner
+                      if (missingFields.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange.shade300),
+                          ),
+                          child: Row(
                             children: [
-                              _buildSectionHeader(
-                                icon: Icons.person_outline,
-                                title: 'personalInfo'.tr(),
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.orange.shade700,
                               ),
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildFieldLabel('name'.tr()),
-                                      WhiteRoundedTextFormField(
-                                        controller: _nameController,
-                                        keyboardType: TextInputType.name,
-                                        hintText: 'name',
-                                        validator: (v) => null,
-                                        borderSide: BorderSide(
-                                          color: missingFields.contains('name')
-                                              ? Colors.orange
-                                              : Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      gapH12,
-
-                                      _buildFieldLabel('phoneNumber'.tr()),
-                                      WhiteRoundedTextFormField(
-                                        controller: _phoneController,
-                                        keyboardType: TextInputType.phone,
-                                        hintText: 'phoneNumber',
-                                        validator: (v) => null,
-                                        borderSide: BorderSide(
-                                          color:
-                                              missingFields.contains(
-                                                'phone_number',
-                                              )
-                                              ? Colors.orange
-                                              : Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      gapH12,
-
-                                      _buildFieldLabel('email'.tr()),
-                                      WhiteRoundedTextFormField(
-                                        controller: _emailController,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        hintText: 'email',
-                                        validator: (v) => null,
-                                        borderSide: BorderSide(
-                                          color: missingFields.contains('email')
-                                              ? Colors.orange
-                                              : Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      gapH12,
-
-                                      _buildFieldLabel('nationality'.tr()),
-                                      ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 400,
-                                        ),
-                                        child: DropdownButtonFormField<String>(
-                                          value: _selectedNationalityCode,
-                                          isExpanded: true,
-                                          decoration: InputDecoration(
-                                            filled: true,
-                                            fillColor: Theme.of(
-                                              context,
-                                            ).colorScheme.surface,
-                                            border: OutlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Colors.grey.shade300,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            enabledBorder: OutlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Colors.grey.shade300,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 14,
-                                                ),
-                                          ),
-                                          hint: Text('nationality'.tr()),
-                                          items: _countries.map((c) {
-                                            final flag =
-                                                SocketUser.getFlagEmoji(c.code);
-                                            final isAr =
-                                                context.locale.languageCode ==
-                                                'ar';
-                                            final name = isAr
-                                                ? c.nameAr
-                                                : c.nameEn;
-                                            return DropdownMenuItem<String>(
-                                              value: c.code,
-                                              child: Text('$flag  $name'),
-                                            );
-                                          }).toList(),
-                                          onChanged: (value) {
-                                            setState(
-                                              () => _selectedNationalityCode =
-                                                  value,
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                              gapW8,
+                              Expanded(
+                                child: Text(
+                                  'missingFieldsBanner'.tr(),
+                                  style: TextStyle(
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          gapH24,
+                        ),
+                        gapH16,
+                      ],
 
-                          // Save button
-                          SizedBox(
-                            height: 50,
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _isSaving ? null : _saveProfile,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                      // ─── Personal Info Section ───
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildSectionHeader(
+                            icon: Icons.person_outline,
+                            title: 'personalInfo'.tr(),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                              ),
-                              child: _isSaving
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildFieldLabel('name'.tr()),
+                                  WhiteRoundedTextFormField(
+                                    controller: _nameController,
+                                    keyboardType: TextInputType.name,
+                                    hintText: 'name',
+                                    validator: (v) => null,
+                                    borderSide: BorderSide(
+                                      color: missingFields.contains('name')
+                                          ? Colors.orange
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  gapH12,
+
+                                  _buildFieldLabel('phoneNumber'.tr()),
+                                  Directionality(
+                                    textDirection: ui.TextDirection.ltr,
+                                    child: WhiteRoundedTextFormField(
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      hintText: '5XXXXXXXXXX',
+                                      validator: (v) => null,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      prefixIcon: CountryCodePicker(
+                                        key: ValueKey(countryCode),
+                                        onChanged: (country) {
+                                          if (country.dialCode != null) {
+                                            ref
+                                                .read(
+                                                  countryCodeProvider.notifier,
+                                                )
+                                                .setCountryCode(
+                                                  country.dialCode!,
+                                                );
+                                          }
+                                        },
+                                        initialSelection: countryCode,
+                                        favorite: const ['+966', 'SA'],
+                                        showCountryOnly: false,
+                                        showOnlyCountryWhenClosed: false,
+                                        alignLeft: false,
+                                        padding: EdgeInsets.zero,
                                       ),
-                                    )
-                                  : Text(
-                                      'save'.tr(),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                      borderSide: BorderSide(
+                                        color:
+                                            missingFields.contains(
+                                              'phone_number',
+                                            )
+                                            ? Colors.orange
+                                            : Colors.grey.shade300,
                                       ),
                                     ),
+                                  ),
+                                  gapH12,
+
+                                  _buildFieldLabel('email'.tr()),
+                                  WhiteRoundedTextFormField(
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    hintText: 'email',
+                                    validator: (v) => null,
+                                    borderSide: BorderSide(
+                                      color: missingFields.contains('email')
+                                          ? Colors.orange
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  gapH12,
+
+                                  _buildFieldLabel('nationality'.tr()),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 400,
+                                    ),
+                                    child: DropdownButtonFormField<String>(
+                                      value: _selectedNationalityCode,
+                                      isExpanded: true,
+                                      decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor: Theme.of(
+                                          context,
+                                        ).colorScheme.surface,
+                                        border: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 14,
+                                            ),
+                                      ),
+                                      hint: Text('nationality'.tr()),
+                                      items: countries.map((c) {
+                                        final flag = SocketUser.getFlagEmoji(
+                                          c.code,
+                                        );
+                                        final isAr =
+                                            context.locale.languageCode == 'ar';
+                                        final name = isAr ? c.nameAr : c.nameEn;
+                                        return DropdownMenuItem<String>(
+                                          value: c.code,
+                                          child: Text('$flag  $name'),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        setState(
+                                          () =>
+                                              _selectedNationalityCode = value,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          gapH32,
+                          gapH24,
 
-                          // ─── Addresses Section ───
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -671,7 +518,20 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                 error: (e, _) => Text('Error: $e'),
                                 data: (addresses) {
                                   if (addresses.isEmpty) {
-                                    return Card(
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.02,
+                                            ),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
                                       child: Padding(
                                         padding: const EdgeInsets.all(24),
                                         child: Column(
@@ -693,7 +553,18 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                       ),
                                     );
                                   }
-                                  return Card(
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.02),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
                                     child: Padding(
                                       padding: const EdgeInsets.all(8.0),
                                       child: ListView.separated(
@@ -714,10 +585,43 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                               ),
                             ],
                           ),
-                          gapH24,
                         ],
                       ),
-                    ),
+                      gapH24,
+
+                      // Save button
+                      SizedBox(
+                        height: 50,
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _saveProfile,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'save'.tr(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      gapH32,
+                    ],
                   ),
                 ),
               ),

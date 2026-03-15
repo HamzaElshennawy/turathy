@@ -13,6 +13,7 @@ import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../utils/validators.dart';
 import 'auth_controller.dart';
+import 'complete_profile_screen.dart';
 import 'otp_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/social_login_buttons.dart';
@@ -54,11 +55,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             .read(authControllerProvider.notifier)
             .isGoogleSignInProcessing;
         if (isGoogle) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const MainScreen()),
-            (route) => false,
-          );
+          if (next.value!.missingFields != null && next.value!.missingFields!.isNotEmpty) {
+             Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+              (route) => false,
+            );
+          } else {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const MainScreen()),
+              (route) => false,
+            );
+          }
         } else {
+          // Normal sign-in: always check OTP as requested by user
           final phone = ref
               .read(authControllerProvider.notifier)
               .phoneController
@@ -233,19 +242,23 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               child: PrimaryButton(
                                 isLoading: state.isLoading,
                                 text: AppStrings.signIn.tr(),
-                                onPressed: () {
+                                onPressed: () async {
                                   if (_formKey.currentState!.validate()) {
                                     final local = controller
                                         .phoneController
                                         .text
                                         .trim();
 
-                                    ref
-                                        .read(authControllerProvider.notifier)
-                                        .signIn(
-                                          '$countryCode$local',
-                                          controller.passwordController.text,
-                                        );
+                                    try {
+                                      await ref
+                                          .read(authControllerProvider.notifier)
+                                          .signIn(
+                                            '$countryCode$local',
+                                            controller.passwordController.text,
+                                          );
+                                    } catch (_) {
+                                      // Error is already handled by the state listener
+                                    }
                                   }
                                 },
                               ),

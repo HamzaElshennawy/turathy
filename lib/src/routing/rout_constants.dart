@@ -4,6 +4,7 @@ class RouteConstants {
   static const String signUp = "/sign-up";
   static const String home = "/home";
   static const String profile = "/profile";
+  static const String completeProfile = "/complete-profile";
   static const String inputEmailForgotPassword = "/inputEmailForgotPassword";
   static const String liveAuction = "/live-auction/:id";
   static const String productDetails = "/product-details/:id";

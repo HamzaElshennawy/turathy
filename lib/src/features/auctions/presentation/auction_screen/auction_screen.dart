@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -55,6 +57,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   final Map<int, AuctionBid> _highestBids = {};
   // Set of productIds where the current user has placed at least one bid
   final Set<int> _userBidProductIds = {};
+  StreamSubscription? _stateUpdateSubscription;
   StreamSubscription? _bidSubscription;
   StreamSubscription? _auctionStartedSubscription;
   StreamSubscription? _itemEndedSubscription;
@@ -98,6 +101,49 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
     // Ensure socket is connected and join the auction room
     _socketActions?.joinAuction(auctionId, userId);
+
+    // ── STATE BROADCAST LISTENER ──
+    // Passively listen to the 2-second snapshot blasts from the server
+    _stateUpdateSubscription = socketService
+        .getEventStream<AuctionStateUpdateEvent>(
+          'auctionStateUpdate',
+          (data) =>
+              AuctionStateUpdateEvent.fromJson(data as Map<String, dynamic>),
+        )
+        .listen((event) {
+          if (!mounted || event.auctionId != auctionId) return;
+
+          if (kDebugMode) {
+            print(
+              '[AuctionStateUpdate] Received broadcast payload: ${event.toJson()}',
+            );
+          }
+
+          setState(() {
+            // 1. Instantly snap the timer/expiry to the server's truth
+            if (event.expiryDate != null) {
+              _currentAuction.expiryDate = event.expiryDate;
+            }
+
+            // 2. Snap the active product ID
+            if (event.currentProductId != null) {
+              _currentAuction.currentProductId = event.currentProductId;
+            }
+
+            // 3. Snap the highest bid local cache for UI rendering
+            for (final product in event.products) {
+              final productId = product.id;
+              if (productId == null) continue;
+
+              for (final bid in product.topBids) {
+                final existing = _highestBids[productId];
+                if (existing == null || (bid.bid ?? 0) >= (existing.bid ?? 0)) {
+                  _highestBids[productId] = bid;
+                }
+              }
+            }
+          });
+        });
 
     // Listen for new bids and track highest bid per product
     _bidSubscription = socketService
@@ -310,7 +356,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+                    border: Border.all(
+                      color: color.withOpacity(0.4),
+                      width: 1.5,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: color.withOpacity(0.18),
@@ -512,6 +561,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
   @override
   void dispose() {
+    _stateUpdateSubscription?.cancel();
     _timer?.cancel();
     _searchController.dispose();
     _bidSubscription?.cancel();
@@ -875,10 +925,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           builder: (sheetContext, ref, child) {
             // Watch new bids AND bid rejections so the sheet always
             // reflects the latest server-authoritative price.
-            // ignore: unused_local_variable
+
             final lastBid = ref.watch(currentBidStateProvider);
-            // ignore: unused_local_variable
+
             final lastRejection = ref.watch(bidRejectedProvider);
+            // Watch the 2-second state broadcast to force the modal to re-render
+            // with the latest timer/price that the parent widget just saved.
+
+            final stateUpdate = ref.watch(auctionStateUpdateProvider);
 
             // Merge real-time bids into a combined list for this product
             final initialBids =

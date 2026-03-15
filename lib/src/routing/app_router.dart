@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/authintication/presentation/sign_in_screen.dart';
 import '../features/authintication/presentation/sign_up_screen.dart';
+import '../features/authintication/presentation/complete_profile_screen.dart';
 import '../features/main_screen.dart';
 import '../features/auctions/presentation/auction_screen/live_auction_screen.dart';
 import '../features/auctions/presentation/auction_screen/auction_details_wrapper.dart';
@@ -107,6 +108,11 @@ final goRouter = GoRouter(
         final id = state.pathParameters['id'];
         return AuctionDetailsWrapper(auctionId: int.parse(id!));
       },
+    ),
+    GoRoute(
+      path: RouteConstants.completeProfile,
+      name: RouteConstants.completeProfile,
+      builder: (context, state) => const CompleteProfileScreen(),
     ),
   ],
 );

@@ -37,6 +37,7 @@ abstract class SocketConfig {
     'auction_change_product',
     'auctionSync',
     'bidRejected',
+    'auctionStateUpdate',
     'error',
   ];
 

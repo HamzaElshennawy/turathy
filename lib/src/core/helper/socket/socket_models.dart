@@ -497,3 +497,104 @@ class BidRejectedEvent {
   String toString() =>
       'BidRejectedEvent(currentPrice: $currentPrice, minimumBid: $minimumBid)';
 }
+
+/// Auction State Update event — emitted blindly by the server every 2 seconds.
+/// Contains the absolute source of truth for the auction timer and every product
+/// with its top 3 bids, requiring zero client-side logic to stay in sync.
+class AuctionStateUpdateEvent {
+  final int auctionId;
+  final DateTime? expiryDate;
+  final int? currentProductId;
+  final List<StateUpdateProduct> products;
+  final int? seq;
+
+  const AuctionStateUpdateEvent({
+    required this.auctionId,
+    this.expiryDate,
+    this.currentProductId,
+    required this.products,
+    this.seq,
+  });
+
+  factory AuctionStateUpdateEvent.fromJson(Map<String, dynamic> json) {
+    return AuctionStateUpdateEvent(
+      auctionId: json['auctionId'] as int,
+      expiryDate: json['expiryDate'] != null
+          ? DateTime.parse(json['expiryDate'] as String)
+          : null,
+      currentProductId: json['currentProductId'] as int?,
+      products: (json['products'] as List<dynamic>?)
+              ?.map((e) => StateUpdateProduct.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      seq: json['seq'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'auctionId': auctionId,
+      'expiryDate': expiryDate?.toIso8601String(),
+      'currentProductId': currentProductId,
+      'products': products.map((e) => e.toJson()).toList(),
+      if (seq != null) 'seq': seq,
+    };
+  }
+
+  @override
+  String toString() =>
+      'AuctionStateUpdateEvent(auctionId: $auctionId, expiryDate: $expiryDate, products: ${products.length})';
+}
+
+/// A lightweight product snapshot included in every state broadcast.
+/// Contains the full product fields plus the top 3 bids from the server cache.
+class StateUpdateProduct {
+  final int? id;
+  final String? productAr;
+  final String? productEn;
+  final String? bidPrice;
+  final String? minBidPrice;
+  final String? actualPrice;
+  final int? auctionId;
+  final List<AuctionBid> topBids;
+
+  const StateUpdateProduct({
+    this.id,
+    this.productAr,
+    this.productEn,
+    this.bidPrice,
+    this.minBidPrice,
+    this.actualPrice,
+    this.auctionId,
+    required this.topBids,
+  });
+
+  factory StateUpdateProduct.fromJson(Map<String, dynamic> json) {
+    return StateUpdateProduct(
+      id: json['id'] as int?,
+      productAr: json['product_ar'] as String? ?? json['product'] as String?,
+      productEn: json['product_en'] as String?,
+      bidPrice: json['bidPrice']?.toString(),
+      minBidPrice: json['minBidPrice']?.toString(),
+      actualPrice: json['actualPrice']?.toString(),
+      auctionId: json['auction_id'] as int?,
+      topBids: (json['topBids'] as List<dynamic>?)
+              ?.map((e) => AuctionBid.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'product_ar': productAr,
+      'product_en': productEn,
+      'bidPrice': bidPrice,
+      'minBidPrice': minBidPrice,
+      'actualPrice': actualPrice,
+      'auction_id': auctionId,
+      'topBids': topBids.map((e) => e.toJson()).toList(),
+    };
+  }
+}

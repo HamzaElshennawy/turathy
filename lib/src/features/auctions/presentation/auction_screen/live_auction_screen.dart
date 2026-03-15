@@ -229,6 +229,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     return p1.trim().toLowerCase() == p2.trim().toLowerCase();
   }
 
+  /// Safely plays a sound asset, stopping any in-progress playback first
+  /// to prevent IllegalStateException from overlapping prepareAsync calls.
+  Future<void> _safePlay(String assetPath, {double volume = 1.0}) async {
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(AssetSource(assetPath), volume: volume);
+    } catch (e) {
+      debugPrint('[AudioPlayer] Error playing $assetPath: $e');
+    }
+  }
+
   /// Picks the next product in the auctionProducts list relative to the
   /// current live product. If the current product isn't found or there is no
   /// next item, [_selectedProduct] is set to null.
@@ -346,10 +357,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         // Sound / notification — uses current auction state before it changes
         if (event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
-            _audioPlayer.play(
-              AssetSource('sounds/win_bid_notification.wav'),
-              volume: 1.0,
-            );
+            _safePlay('sounds/win_bid_notification.wav');
             FCMService().showLocalNotification(
               title: AppStrings.youWon.tr(),
               body: '${AppStrings.youWon.tr()} ${auction.currentProduct ?? ""}',
@@ -366,10 +374,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                 ) ??
                 false;
             if (didIParticipate) {
-              _audioPlayer.play(
-                AssetSource('sounds/lose_notification.wav'),
-                volume: 1.0,
-              );
+              _safePlay('sounds/lose_notification.wav');
             }
           }
         }
@@ -464,10 +469,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         _selectNextProduct();
 
         if (event.winnerId == CachedVariables.userId) {
-          _audioPlayer.play(
-            AssetSource('sounds/win_bid_notification.wav'),
-            volume: 1.0,
-          );
+          _safePlay('sounds/win_bid_notification.wav');
           FCMService().showLocalNotification(
             title: AppStrings.youWon.tr(),
             body: '${AppStrings.youWon.tr()} ${auction.displayTitle}',
@@ -485,10 +487,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           );
 
           if (didIParticipate) {
-            _audioPlayer.play(
-              AssetSource('sounds/lose_notification.wav'),
-              volume: 1.0,
-            );
+            _safePlay('sounds/lose_notification.wav');
           }
         }
         // We intentionally no longer pop up a result dialog on the live screen.
@@ -505,7 +504,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
         // Play sound if bid is from another user
         if (event.newBid.userId != CachedVariables.userId) {
-          _audioPlayer.play(AssetSource('sounds/higher_bid_notification.wav'));
+          _safePlay('sounds/higher_bid_notification.wav');
           HapticFeedback.lightImpact();
         }
 

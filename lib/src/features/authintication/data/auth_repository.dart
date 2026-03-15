@@ -7,29 +7,41 @@ import '../../../core/helper/dio/end_points.dart';
 import '../domain/user_model.dart';
 
 class AuthRepository {
-  static Future<UserModel> signIn(String phone, String password) async {
+  static Future<Map<String, dynamic>> signIn(
+    String phone,
+    String password,
+  ) async {
     final result = await DioHelper.postData(
       url: EndPoints.login,
       data: {'phone_number': phone, 'password': password},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final user = UserModel.fromJson(result.data['data']);
+      final data = result.data['data'];
+      final user = UserModel.fromJson(data);
 
       // Cache token
-      final token = result.data['token'] ?? result.data['data']['token'];
+      final token = result.data['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
         CachedVariables.token = token;
       }
 
       await cacheData(user.copyWith(password: password, phone_number: phone));
-      return user;
+      
+      return {
+        'user': user,
+        'status': result.data['status'] ?? 'success',
+        'isProfileComplete': data['isProfileComplete'] ?? true,
+        'missingFields': data['missingFields'] ?? [],
+      };
     } else {
       AppFunctions.logPrint(
         message: 'code signIn ${result.statusCode} $result ',
       );
       String message =
-          result.data['error'] ?? 'An error occurred while signing in';
+          result.data['message'] ??
+          result.data['error'] ??
+          'An error occurred while signing in';
       throw AuthException(message, result.statusCode);
     }
   }
@@ -81,21 +93,31 @@ class AuthRepository {
     }
   }
 
-  static Future<bool> createUser(UserModel user) async {
+  static Future<Map<String, dynamic>> createUser(UserModel user) async {
     final result = await DioHelper.postData(
       url: EndPoints.userSignup,
       data: user.toJson(),
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
-      return true;
+      final data = result.data['data'];
+      return {
+        'status': result.data['status'] ?? 'success',
+        'userId': data['userId'],
+        'isProfileComplete': data['isProfileComplete'] ?? false,
+        'missingFields': data['missingFields'] ?? [],
+        'message': data['message'],
+      };
     } else {
-      String message = result.data['message'].toString();
+      String message =
+          result.data['message']?.toString() ??
+          result.data['error']?.toString() ??
+          'Signup failed';
       AppFunctions.logPrint(message: 'code createUser ${result.statusCode} ');
       throw AuthException(message, result.statusCode);
     }
   }
 
-  static Future<bool> verifyOtp({
+  static Future<UserModel> verifyOtp({
     required String number,
     required String otp,
   }) async {
@@ -104,7 +126,18 @@ class AuthRepository {
       data: {'number': number, 'otp': otp},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
-      return true;
+      final data = result.data['data'];
+      final user = UserModel.fromJson(data);
+
+      // Cache token if present in verification response
+      final token = result.data['token'] ?? data['token'];
+      if (token != null) {
+        await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
+        CachedVariables.token = token;
+      }
+
+      await cacheData(user.copyWith(phone_number: number));
+      return user;
     } else {
       final message =
           result.data['message']?.toString() ?? 'OTP verification failed';
