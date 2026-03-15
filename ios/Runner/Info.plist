@@ -56,5 +56,37 @@
 		<string>This app needs access to location when open to auto-detect your country code.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
 		<string>This app needs access to location when in the background to auto-detect your country code.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>This app needs access to location when open and in the background to auto-detect your country code.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app requires access to the photo library to upload profile pictures and share images.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>This app requires access to the camera to take profile pictures.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>This app requires access to the microphone for audio features.</string>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>sms</string>
+			<string>tel</string>
+			<string>mailto</string>
+			<string>http</string>
+			<string>https</string>
+		</array>
+		<key>UIFileSharingEnabled</key>
+		<true/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<true/>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- TODO: Replace this value with the REVERSED_CLIENT_ID from your GoogleService-Info.plist once Authentication is enabled -->
+					<string>REPLACE_ME_REVERSED_CLIENT_ID</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

@@ -305,11 +305,17 @@ final filteredAuctionsProvider = FutureProvider<List<AuctionModel>>((
 
   final status = ref.watch(auctionsFilterProvider);
 
-  return ref
+  var auctions = await ref
       .watch(productsRepositoryProvider)
       .getAllAuctions(
         FilterState(isLiveAuctionsSelected: true, auctionStatus: status),
       );
+
+  if (status == 'ending_soon') {
+    auctions = auctions.reversed.toList();
+  }
+
+  return auctions;
 });
 
 final homeLiveAuctionsProvider = FutureProvider<List<AuctionModel>>((
@@ -373,7 +379,9 @@ final userAuctionsProvider = FutureProvider.autoDispose
 
 final userWinningAuctionsProvider =
     FutureProvider.autoDispose<List<WinningAuctionModel>>((ref) async {
-      return ref.watch(productsRepositoryProvider).getWinningAuctions();
+      final auctions = await ref.watch(productsRepositoryProvider).getWinningAuctions();
+      auctions.sort((a, b) => b.id.compareTo(a.id));
+      return auctions;
     });
 
 final userMaxBidsProvider = FutureProvider.autoDispose<List<MaxBidModel>>((
