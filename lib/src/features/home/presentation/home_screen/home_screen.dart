@@ -4,6 +4,9 @@ import 'package:turathy/src/features/home/presentation/home_screen/widgets/produ
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/search_widget.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/search_results_widget.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/controllers/search_provider.dart';
+import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
+import 'package:turathy/src/features/products/data/products_repository.dart';
+import 'package:turathy/src/features/home/data/category_repository.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/auth_controller.dart';
@@ -51,39 +54,50 @@ class HomeScreen extends ConsumerWidget {
             child: searchQuery.isNotEmpty
                 ? const SearchResultsWidget()
                 : Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const CategoriesWidget(),
-                          gapH12,
-                          Consumer(
-                            builder: (context, ref, child) {
-                              //final filterState = ref.watch(
-                              //  filterWidgetControllerProvider,
-                              //);
-                              //if ((filterState.selectedCategoryID != -1 &&
-                              //        filterState.selectedCategoryID != null) ||
-                              //    (filterState.selectedColor != null &&
-                              //        filterState.selectedColor!.isNotEmpty) ||
-                              //    (filterState.selectedSize != null &&
-                              //        filterState.selectedSize!.isNotEmpty) ||
-                              //    filterState.isAllOffersSelected) {
-                              //  return SizedBox(
-                              //    height:
-                              //        MediaQuery.of(context).size.height * 0.6,
-                              //    child: const SearchListWidget(),
-                              //  );
-                              //}
-                              return Column(
-                                children: [
-                                  LiveAuctionsWidget(),
-                                  ProductsListWidget(),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        ref.invalidate(homeLiveAuctionsProvider);
+                        ref.invalidate(openAuctionsProvider);
+                        ref.invalidate(productsListProvider);
+                        ref.invalidate(getAllCategoriesProvider);
+                        // Wait a short moment to allow UI to update loading states
+                        await Future.delayed(const Duration(milliseconds: 500));
+                      },
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const CategoriesWidget(),
+                            gapH12,
+                            Consumer(
+                              builder: (context, ref, child) {
+                                //final filterState = ref.watch(
+                                //  filterWidgetControllerProvider,
+                                //);
+                                //if ((filterState.selectedCategoryID != -1 &&
+                                //        filterState.selectedCategoryID != null) ||
+                                //    (filterState.selectedColor != null &&
+                                //        filterState.selectedColor!.isNotEmpty) ||
+                                //    (filterState.selectedSize != null &&
+                                //        filterState.selectedSize!.isNotEmpty) ||
+                                //    filterState.isAllOffersSelected) {
+                                //  return SizedBox(
+                                //    height:
+                                //        MediaQuery.of(context).size.height * 0.6,
+                                //    child: const SearchListWidget(),
+                                //  );
+                                //}
+                                return Column(
+                                  children: [
+                                    LiveAuctionsWidget(),
+                                    ProductsListWidget(),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

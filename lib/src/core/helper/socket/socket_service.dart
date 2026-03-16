@@ -93,7 +93,7 @@ class SocketService {
           errorMessage: error.toString(),
         ),
       );
-      rethrow;
+      //rethrow;
     }
   }
 
@@ -171,7 +171,9 @@ class SocketService {
     // so the server sends a fresh auctionSync event — zero polling needed.
     _socket!.onConnect((_) {
       if (_lastJoinedAuctionId != null && _lastJoinedUserId != null) {
-        log('SocketService: Reconnected — re-joining auction $_lastJoinedAuctionId');
+        log(
+          'SocketService: Reconnected — re-joining auction $_lastJoinedAuctionId',
+        );
         emitJoinAuction(_lastJoinedAuctionId!, _lastJoinedUserId!);
       }
     });
@@ -184,8 +186,6 @@ class SocketService {
         ),
       );
     });
-
-
   }
 
   /// Initialize event controllers and listeners

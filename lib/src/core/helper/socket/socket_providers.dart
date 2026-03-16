@@ -31,7 +31,12 @@ final socketEnsureConnectedProvider = FutureProvider.autoDispose<void>((
 ) async {
   final service = ref.watch(socketServiceProvider);
   if (!service.isConnected) {
-    await service.connect();
+    try {
+      await service.connect();
+    } catch (e) {
+      // ignore: avoid_print
+      print('Failed to establish socket connection: $e');
+    }
   }
 });
 
@@ -419,7 +424,12 @@ class SocketActions {
   /// Ensure socket is connected before performing actions
   Future<void> _ensureConnected() async {
     if (!_service.isConnected) {
-      await _service.connect();
+      try {
+        await _service.connect();
+      } catch (e) {
+        // ignore: avoid_print
+        print('Error ensuring socket connection: $e');
+      }
     }
   }
 }

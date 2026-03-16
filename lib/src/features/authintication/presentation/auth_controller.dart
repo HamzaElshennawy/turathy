@@ -41,7 +41,9 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      rethrow;
+      // Return an error map to prevent unhandled exceptions from crashing the app
+      // when the caller (like SplashScreen) doesn't use a try/catch block.
+      return {'status': 'error', 'message': e.toString()};
     }
   }
 

@@ -110,7 +110,8 @@ class CategoriesWidget extends ConsumerWidget {
           ],
         );
       },
-      error: (error, stackTrace) => Text('Error: $error'),
+      error: (error, stackTrace) =>
+          Center(child: Text(AppStrings.checkInternetConnection.tr())),
       loading: () => const Column(
         children: [
           ShimmerWidget(

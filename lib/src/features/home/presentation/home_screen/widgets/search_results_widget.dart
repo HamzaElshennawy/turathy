@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/common_widgets/auction_card.dart';
@@ -18,12 +19,12 @@ class SearchResultsWidget extends ConsumerWidget {
     return searchResults.when(
       data: (results) {
         if (results.isEmpty) {
-          return const Center(
+          return Center(
             child: Padding(
-              padding: EdgeInsets.all(Sizes.p16),
+              padding: const EdgeInsets.all(Sizes.p16),
               child: Text(
-                AppStrings.noResultsFound,
-                style: TextStyle(color: Colors.grey),
+                AppStrings.noResultsFound.tr(),
+                style: const TextStyle(color: Colors.grey),
               ),
             ),
           );
@@ -57,7 +58,8 @@ class SearchResultsWidget extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      error: (error, stack) =>
+          Center(child: Text(AppStrings.checkInternetConnection.tr())),
     );
   }
 }

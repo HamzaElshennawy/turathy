@@ -48,61 +48,104 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           children: [
             Center(
               child: AnimatedScale(
-                onEnd: () {
-                  AuthRepository.getLocalDetails().then((_) {
+                onEnd: () async {
+                  try {
+                    await AuthRepository.getLocalDetails();
                     if (!mounted) return;
+
                     log("[DEBUG] token: ${CachedVariables.token.toString()}");
                     log("[DEBUG] userId: ${CachedVariables.userId.toString()}");
-                    log(
-                      "[DEBUG] phone_number: ${CachedVariables.phone_number.toString()}",
-                    );
-                    log(
-                      "[DEBUG] password: ${CachedVariables.password.toString()}",
-                    );
+
                     if (CachedVariables.token != null &&
                         CachedVariables.userId != null) {
-                      // Try to restore session using token and userId (Google Sign-In)
-                      AuthRepository.getUser(CachedVariables.userId!)
-                          .then((user) {
-                            if (!mounted) return;
-                            if (user.missingFields != null && user.missingFields!.isNotEmpty) {
-                              GoRouter.of(context).go(RouteConstants.completeProfile);
-                            } else {
-                              GoRouter.of(context).go(RouteConstants.home);
+                      try {
+                        // Try to restore session
+                        final user = await AuthRepository.getUser(
+                          CachedVariables.userId!,
+                        );
+                        if (!mounted) return;
+
+                        // Update auth controller state safely
+                        ref
+                            .read(authControllerProvider.notifier)
+                            .updateUser(user);
+
+                        if (user.missingFields != null &&
+                            user.missingFields!.isNotEmpty) {
+                          GoRouter.of(
+                            context,
+                          ).go(RouteConstants.completeProfile);
+                          return;
+                        }
+                      } catch (error) {
+                        log(
+                          "Session restore failed, checking fallback: $error",
+                        );
+                        if (!mounted) return;
+                        // Fallback to phone/password if available
+                        if (CachedVariables.phone_number != null &&
+                            CachedVariables.password != null) {
+                          final result = await ref
+                              .read(authControllerProvider.notifier)
+                              .signIn(
+                                CachedVariables.phone_number!,
+                                CachedVariables.password!,
+                              );
+
+                          if (result['status'] != 'error') {
+                            final authUser = ref
+                                .read(authControllerProvider)
+                                .valueOrNull;
+                            if (authUser != null &&
+                                authUser.missingFields != null &&
+                                authUser.missingFields!.isNotEmpty) {
+                              if (mounted) {
+                                GoRouter.of(
+                                  context,
+                                ).go(RouteConstants.completeProfile);
+                              }
+                              return;
                             }
-                          })
-                          .catchError((error) {
-                            if (!mounted) return;
-                            // Fallback to phone/password if available, otherwise sign in
-                            if (CachedVariables.phone_number != null &&
-                                CachedVariables.password != null) {
-                              ref
-                                  .read(authControllerProvider.notifier)
-                                  .signIn(
-                                    CachedVariables.phone_number!,
-                                    CachedVariables.password!,
-                                  );
-                            }
-                          });
+                          }
+                        }
+                      }
                     } else if (CachedVariables.phone_number != null &&
                         CachedVariables.password != null) {
-                      // Fallback for old sessions or manual login without robust token support (if any)
-                      ref
+                      final result = await ref
                           .read(authControllerProvider.notifier)
                           .signIn(
                             CachedVariables.phone_number!,
                             CachedVariables.password!,
                           );
-                    }
-                    if (mounted) {
-                      final authUser = ref.read(authControllerProvider).valueOrNull;
-                      if (authUser != null && authUser.missingFields != null && authUser.missingFields!.isNotEmpty) {
-                        GoRouter.of(context).go(RouteConstants.completeProfile);
-                      } else {
-                        GoRouter.of(context).go(RouteConstants.home);
+
+                      if (result['status'] != 'error') {
+                        final authUser = ref
+                            .read(authControllerProvider)
+                            .valueOrNull;
+                        if (authUser != null &&
+                            authUser.missingFields != null &&
+                            authUser.missingFields!.isNotEmpty) {
+                          if (mounted) {
+                            GoRouter.of(
+                              context,
+                            ).go(RouteConstants.completeProfile);
+                          }
+                          return;
+                        }
                       }
                     }
-                  });
+
+                    if (mounted) {
+                      // Navigate to home regardless of auth state (will act as guest if not authenticated)
+                      GoRouter.of(context).go(RouteConstants.home);
+                    }
+                  } catch (e) {
+                    log("Fatal error in splash screen routing: $e");
+                    // On complete failure (e.g. no network), just go to home so app doesn't freeze
+                    if (mounted) {
+                      GoRouter.of(context).go(RouteConstants.home);
+                    }
+                  }
                 },
                 duration: const Duration(seconds: 2),
                 scale: logoScale,

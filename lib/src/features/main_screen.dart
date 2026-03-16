@@ -60,8 +60,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
   bool _isDialogOpen = false;
   @override
   Widget build(BuildContext context) {
-    ref.read(socketServiceProvider).connect();
-    // ref.read(connectionProvider);
+    try {
+      ref.read(socketServiceProvider).connect();
+    } catch (e) {
+      debugPrint('Failed to connect socket in MainScreen: $e');
+    }
     // signOut redirect to login screen;
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasValue &&

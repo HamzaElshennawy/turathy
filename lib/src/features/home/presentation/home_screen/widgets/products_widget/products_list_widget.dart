@@ -69,7 +69,7 @@ class ProductsListWidget extends StatelessWidget {
                       const ShimmerWidget(width: 400, height: 0),
                 ),
                 error: (error, stackTrace) =>
-                    Center(child: Text('Error: $error')),
+                    Center(child: Text(AppStrings.checkInternetConnection.tr())),
               );
             },
           ),
