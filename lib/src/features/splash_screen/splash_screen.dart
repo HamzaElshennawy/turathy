@@ -5,11 +5,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/common_widgets/responsive_center.dart';
 import '../../core/constants/app_images/app_images.dart';
 import '../../core/constants/app_strings/app_strings.dart';
 import '../../core/helper/cache/cached_variables.dart';
+import '../../core/helper/fcm/fcm_service.dart';
 import '../../routing/rout_constants.dart';
 import '../authintication/data/auth_repository.dart';
 import '../authintication/presentation/auth_controller.dart';
@@ -55,7 +57,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
                     log("[DEBUG] token: ${CachedVariables.token.toString()}");
                     log("[DEBUG] userId: ${CachedVariables.userId.toString()}");
-
+                    log(
+                      "[DEBUG] isGoogleSignIn: ${CachedVariables.isGoogleSignIn.toString()}",
+                    );
+                    log(
+                      "[DEBUG] phone_number: ${CachedVariables.phone_number.toString()}",
+                    );
+                    log(
+                      "[DEBUG] password: ${CachedVariables.password.toString()}",
+                    );
                     if (CachedVariables.token != null &&
                         CachedVariables.userId != null) {
                       try {
@@ -82,8 +92,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                           "Session restore failed, checking fallback: $error",
                         );
                         if (!mounted) return;
-                        // Fallback to phone/password if available
-                        if (CachedVariables.phone_number != null &&
+
+                        // Fallback 1: Google silent sign-in (for Google SSO users)
+                        if (CachedVariables.isGoogleSignIn) {
+                          try {
+                            log("Attempting Google silent sign-in...");
+                            final googleSignIn = GoogleSignIn();
+                            final googleUser = await googleSignIn
+                                .signInSilently();
+                            if (googleUser != null) {
+                              final googleAuth =
+                                  await googleUser.authentication;
+                              final idToken = googleAuth.idToken;
+                              if (idToken != null) {
+                                final user = await AuthRepository.googleSignIn(
+                                  idToken,
+                                );
+                                if (!mounted) return;
+                                ref
+                                    .read(authControllerProvider.notifier)
+                                    .updateUser(user);
+                                await FCMService().registerAfterLogin();
+                              }
+                            }
+                          } catch (googleError) {
+                            log("Google silent sign-in failed: $googleError");
+                          }
+                        }
+                        // Fallback 2: phone/password re-login
+                        else if (CachedVariables.phone_number != null &&
                             CachedVariables.password != null) {
                           final result = await ref
                               .read(authControllerProvider.notifier)
@@ -108,6 +145,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                             }
                           }
                         }
+                      }
+                    } else if (CachedVariables.isGoogleSignIn &&
+                        CachedVariables.userId != null) {
+                      // Token is null but user previously signed in with Google — attempt silent re-auth
+                      log(
+                        "Token null for Google user, attempting silent sign-in...",
+                      );
+                      try {
+                        final googleSignIn = GoogleSignIn();
+                        final googleUser = await googleSignIn.signInSilently();
+                        if (googleUser != null) {
+                          final googleAuth = await googleUser.authentication;
+                          final idToken = googleAuth.idToken;
+                          if (idToken != null) {
+                            final user = await AuthRepository.googleSignIn(
+                              idToken,
+                            );
+                            if (!mounted) return;
+                            ref
+                                .read(authControllerProvider.notifier)
+                                .updateUser(user);
+                            await FCMService().registerAfterLogin();
+                          }
+                        }
+                      } catch (googleError) {
+                        log("Google silent sign-in failed: $googleError");
                       }
                     } else if (CachedVariables.phone_number != null &&
                         CachedVariables.password != null) {

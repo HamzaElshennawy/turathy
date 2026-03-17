@@ -8,4 +8,5 @@ abstract class CachedVariables {
   static String? onBoard;
   static String? lang;
   static String? fcmToken;
+  static bool isGoogleSignIn = false;
 }

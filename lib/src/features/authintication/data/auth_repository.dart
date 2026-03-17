@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/cache/cache_helper.dart';
 import '../../../core/helper/cache/cached_keys.dart';
@@ -19,15 +21,16 @@ class AuthRepository {
       final data = result.data['data'];
       final user = UserModel.fromJson(data);
 
-      // Cache token
+      // Cache auth token
       final token = result.data['token'] ?? data['token'];
       if (token != null) {
-        await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
+        await CacheHelper.setData(key: CachedKeys.authToken, value: token);
+        log('Google token $token');
         CachedVariables.token = token;
       }
 
       await cacheData(user.copyWith(password: password, phone_number: phone));
-      
+
       return {
         'user': user,
         'status': result.data['status'] ?? 'success',
@@ -56,14 +59,17 @@ class AuthRepository {
     if (result.statusCode == 200 || result.statusCode == 201) {
       final user = UserModel.fromJson(result.data['data']);
 
-      // Cache token
+      // Cache auth token
       final token = result.data['token'] ?? result.data['data']['token'];
       if (token != null) {
-        await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
+        await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
       }
 
       await cacheData(user); // No password to cache
+      // Mark this user as a Google Sign-In user for silent re-auth on restart
+      await CacheHelper.setData(key: CachedKeys.isGoogleSignIn, value: 'true');
+      CachedVariables.isGoogleSignIn = true;
       return user;
     } else {
       AppFunctions.logPrint(
@@ -129,10 +135,10 @@ class AuthRepository {
       final data = result.data['data'];
       final user = UserModel.fromJson(data);
 
-      // Cache token if present in verification response
+      // Cache auth token if present in verification response
       final token = result.data['token'] ?? data['token'];
       if (token != null) {
-        await CacheHelper.setData(key: CachedKeys.fcmToken, value: token);
+        await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
       }
 
@@ -272,7 +278,24 @@ class AuthRepository {
     CachedVariables.onBoard = await CacheHelper.getData(
       key: CachedKeys.onBoard,
     );
-    CachedVariables.token = await CacheHelper.getData(key: CachedKeys.fcmToken);
+    CachedVariables.token = await CacheHelper.getData(
+      key: CachedKeys.authToken,
+    );
+    // Migration: if auth_token is not set, fall back to old fcm_token key
+    if (CachedVariables.token == null) {
+      final legacyToken = await CacheHelper.getData(key: CachedKeys.fcmToken);
+      if (legacyToken != null) {
+        log('Migrating auth token from legacy fcmToken key');
+        await CacheHelper.setData(
+          key: CachedKeys.authToken,
+          value: legacyToken,
+        );
+        await CacheHelper.deleteData(key: CachedKeys.fcmToken);
+        CachedVariables.token = legacyToken;
+      }
+    }
+    final isGoogle = await CacheHelper.getData(key: CachedKeys.isGoogleSignIn);
+    CachedVariables.isGoogleSignIn = isGoogle == 'true';
   }
 
   static Future<void> clearLocalDetails() async {
@@ -287,7 +310,9 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.phone_number);
     await CacheHelper.deleteData(key: CachedKeys.password);
     await CacheHelper.deleteData(key: CachedKeys.onBoard);
-    await CacheHelper.deleteData(key: CachedKeys.fcmToken);
+    await CacheHelper.deleteData(key: CachedKeys.authToken);
+    await CacheHelper.deleteData(key: CachedKeys.isGoogleSignIn);
+    CachedVariables.isGoogleSignIn = false;
   }
 }
 
