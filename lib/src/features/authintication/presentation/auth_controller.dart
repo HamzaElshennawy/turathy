@@ -4,10 +4,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/fcm/fcm_service.dart';
+import '../../notifications/presentation/notifications_controller.dart';
 import '../data/auth_repository.dart';
 import '../domain/user_model.dart';
 
 class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
+  final Ref ref;
   final TextEditingController passwordController = TextEditingController(
     text: CachedVariables.password,
   );
@@ -17,7 +19,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   );
   final formKey = GlobalKey<FormState>();
 
-  AuthController() : super(const AsyncValue.data(null));
+  AuthController(this.ref) : super(const AsyncValue.data(null));
 
   bool isGoogleSignInProcessing = false;
 
@@ -38,6 +40,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       final user = result['user'] as UserModel;
       state = AsyncValue.data(user);
       await FCMService().registerAfterLogin();
+      ref.invalidate(notificationsNotifierProvider);
       return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -88,6 +91,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     // }
     await AuthRepository.clearLocalDetails();
     state = const AsyncValue.data(null);
+    ref.invalidate(notificationsNotifierProvider);
     return true;
   }
 
@@ -138,6 +142,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 
       if (state.hasValue && !state.hasError) {
         await FCMService().registerAfterLogin();
+        ref.invalidate(notificationsNotifierProvider);
         // Navigation is handled by the UI listener based on the flag
       } else {
         isGoogleSignInProcessing = false; // Reset flag if error
@@ -152,5 +157,5 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 // provider
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<UserModel?>>((ref) {
-      return AuthController();
+      return AuthController(ref);
     });

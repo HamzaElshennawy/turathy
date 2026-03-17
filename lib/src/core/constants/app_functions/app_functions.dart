@@ -67,14 +67,46 @@ abstract class AppFunctions {
   static void showSnackBar({
     required BuildContext context,
     required String message,
-  }) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Padding(
-        padding: const EdgeInsets.only(bottom: 12.0),
-        child: Text(message),
+    bool isError = false,
+    IconData? icon,
+  }) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              icon ??
+                  (isError ? Icons.error_outline : Icons.check_circle_outline),
+              color: Colors.white,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError
+            ? Colors.red.shade800
+            : (isDarkMode ? Colors.grey.shade800 : Colors.black87),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        elevation: 6,
+        duration: const Duration(seconds: 3),
       ),
-    ),
-  );
+    );
+  }
 
   static Future<dynamic> showBottomSheet({
     required BuildContext context,

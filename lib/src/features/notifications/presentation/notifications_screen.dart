@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 
 import 'package:turathy/src/features/notifications/domain/notification_model.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_controller.dart';
@@ -25,50 +26,73 @@ class NotificationsScreen extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) async {
-              if (value == 'mark_all_read') {
-                try {
-                  await ref
-                      .read(notificationsNotifierProvider.notifier)
-                      .markAllAsRead();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          AppStrings.allNotificationsMarkedRead.tr(),
-                        ),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '${AppStrings.failedToMarkNotifications.tr()}: $e',
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+          Theme(
+            data: Theme.of(context).copyWith(
+              hoverColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+            ),
+            child: PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_horiz_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              elevation: 8,
+              offset: const Offset(0, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              color: Theme.of(context).cardColor,
+              onSelected: (value) async {
+                if (value == 'mark_all_read') {
+                  try {
+                    await ref
+                        .read(notificationsNotifierProvider.notifier)
+                        .markAllAsRead();
+                    if (context.mounted) {
+                      AppFunctions.showSnackBar(
+                        context: context,
+                        message: AppStrings.allNotificationsMarkedRead.tr(),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      AppFunctions.showSnackBar(
+                        context: context,
+                        message:
+                            '${AppStrings.failedToMarkNotifications.tr()}: $e',
+                        isError: true,
+                      );
+                    }
                   }
                 }
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'mark_all_read',
-                child: Row(
-                  children: [
-                    const Icon(Icons.done_all, size: 20),
-                    const SizedBox(width: 8),
-                    Text(AppStrings.markAllAsRead.tr()),
-                  ],
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'mark_all_read',
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.done_all_rounded,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        AppStrings.markAllAsRead.tr(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
         elevation: 0,
