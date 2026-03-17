@@ -137,6 +137,34 @@ class FCMService {
   /// Get FCM token and register with backend
   Future<void> _getToken() async {
     try {
+      if (Platform.isIOS) {
+        // Wait for APNs token before trying to get FCM token to avoid 'apns-token-not-set' error
+        int retries = 0;
+        String? apnsToken;
+        while (retries < 5) {
+          apnsToken = await _messaging.getAPNSToken();
+          if (apnsToken != null) {
+            log(
+              'APNs Token successfully retrieved.',
+              time: DateTime.now(),
+              level: 1,
+            );
+            break;
+          }
+          log('APNs Token is null, waiting...', time: DateTime.now(), level: 1);
+          await Future.delayed(const Duration(seconds: 2));
+          retries++;
+        }
+        if (apnsToken == null) {
+          log(
+            'APNs token not set after retries. Skipping FCM token generation (common on simulators without APNs capabilities).',
+            time: DateTime.now(),
+            level: 1,
+          );
+          return;
+        }
+      }
+
       _fcmToken = await _messaging.getToken();
       log('FCM Token: $_fcmToken', time: DateTime.now(), level: 1);
 
