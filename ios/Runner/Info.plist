@@ -83,8 +83,7 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<!-- TODO: Replace this value with the REVERSED_CLIENT_ID from your GoogleService-Info.plist once Authentication is enabled -->
-					<string>REPLACE_ME_REVERSED_CLIENT_ID</string>
+					<string>com.googleusercontent.apps.214584571316-hkfc0qgd3kd5spbici9gh8ji856h7rh5</string>
 				</array>
 			</dict>
 		</array>

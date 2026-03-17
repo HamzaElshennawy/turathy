@@ -1,30 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-	<dict>
-		<key>API_KEY</key>
-		<string>AIzaSyDj3MRzE5Kkiet0upwpJSxDcel1wVxRG6E</string>
-		<key>GCM_SENDER_ID</key>
-		<string>214584571316</string>
-		<key>PLIST_VERSION</key>
-		<string>1</string>
-		<key>BUNDLE_ID</key>
-		<string>com.deepblue.turathi</string>
-		<key>PROJECT_ID</key>
-		<string>turathy-9e6f6</string>
-		<key>STORAGE_BUCKET</key>
-		<string>turathy-9e6f6.firebasestorage.app</string>
-		<key>IS_ADS_ENABLED</key>
-		<false></false>
-		<key>IS_ANALYTICS_ENABLED</key>
-		<false></false>
-		<key>IS_APPINVITE_ENABLED</key>
-		<true></true>
-		<key>IS_GCM_ENABLED</key>
-		<true></true>
-		<key>IS_SIGNIN_ENABLED</key>
-		<true></true>
-		<key>GOOGLE_APP_ID</key>
-		<string>1:214584571316:ios:1098fe54bd09d87c42eee1</string>
-	</dict>
+<dict>
+	<key>CLIENT_ID</key>
+	<string>214584571316-hkfc0qgd3kd5spbici9gh8ji856h7rh5.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.214584571316-hkfc0qgd3kd5spbici9gh8ji856h7rh5</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>214584571316-osfuf00kle9jr64m2jgrtm5tchfir7c8.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDj3MRzE5Kkiet0upwpJSxDcel1wVxRG6E</string>
+	<key>GCM_SENDER_ID</key>
+	<string>214584571316</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.deepblue.turathi</string>
+	<key>PROJECT_ID</key>
+	<string>turathi-9e6f6</string>
+	<key>STORAGE_BUCKET</key>
+	<string>turathi-9e6f6.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:214584571316:ios:1098fe54bd09d87c42eee1</string>
+</dict>
 </plist>
