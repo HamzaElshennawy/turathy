@@ -1,7 +1,5 @@
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,9 +7,10 @@ import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/home_screen.dart';
 import 'package:turathy/src/features/main_screen.dart';
 
-import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/common_widgets/phone_number_field.dart';
+import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/socket/socket_models.dart';
 import '../../addresses/presentation/add_edit_address_screen.dart';
@@ -362,44 +361,29 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   gapH12,
 
                                   _buildFieldLabel('phoneNumber'.tr()),
-                                  Directionality(
-                                    textDirection: ui.TextDirection.ltr,
-                                    child: WhiteRoundedTextFormField(
-                                      controller: _phoneController,
-                                      keyboardType: TextInputType.phone,
-                                      hintText: '5XXXXXXXXXX',
-                                      validator: (v) => null,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      prefixIcon: CountryCodePicker(
-                                        key: ValueKey(countryCode),
-                                        onChanged: (country) {
-                                          if (country.dialCode != null) {
-                                            ref
-                                                .read(
-                                                  countryCodeProvider.notifier,
-                                                )
-                                                .setCountryCode(
-                                                  country.dialCode!,
-                                                );
-                                          }
-                                        },
-                                        initialSelection: countryCode,
-                                        favorite: const ['+966', 'SA'],
-                                        showCountryOnly: false,
-                                        showOnlyCountryWhenClosed: false,
-                                        alignLeft: false,
-                                        padding: EdgeInsets.zero,
-                                      ),
-                                      borderSide: BorderSide(
-                                        color:
-                                            missingFields.contains(
-                                              'phone_number',
+                                  PhoneNumberField(
+                                    controller: _phoneController,
+                                    initialCountryCode: countryCode,
+                                    onCountryChanged: (country) {
+                                      if (country.dialCode != null) {
+                                        ref
+                                            .read(
+                                              countryCodeProvider.notifier,
                                             )
-                                            ? Colors.orange
-                                            : Colors.grey.shade300,
-                                      ),
+                                            .setCountryCode(
+                                              country.dialCode!,
+                                            );
+                                      }
+                                    },
+                                    validator: (v) => null,
+                                    hintText: '5XXXXXXXXXX',
+                                    borderSide: BorderSide(
+                                      color:
+                                          missingFields.contains(
+                                            'phone_number',
+                                          )
+                                          ? Colors.orange
+                                          : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,

@@ -1,4 +1,3 @@
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
@@ -8,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/constants/app_locations/app_locations.dart';
 import '../../../core/helper/cache/cached_variables.dart';
+import '../../../core/common_widgets/phone_number_field.dart';
 import '../../../utils/saudi_address_decoder.dart';
 import '../data/address_repository.dart';
 import '../domain/user_address_model.dart';
@@ -31,6 +31,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   late TextEditingController _shortAddressController;
   String? _selectedCountryCode;
   String? _selectedCityValue;
+  String _mobileCountryCode = '+966';
   bool _isDefault = false;
   bool _isSaving = false;
   String? _errorMessage;
@@ -228,35 +229,26 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
               const SizedBox(height: 16),
 
               // Mobile
-              Directionality(
-                textDirection: ui.TextDirection.ltr,
-                child: TextFormField(
-                  controller: _mobileController,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration:
-                      _inputDecoration(
-                        AppStrings.recipientMobile.tr(),
-                        Icons.phone_outlined,
-                      ).copyWith(
-                        prefixIcon: CountryCodePicker(
-                          onChanged: (country) {},
-                          initialSelection: '+966',
-                          favorite: const ['+966', 'SA'],
-                          showCountryOnly: false,
-                          showOnlyCountryWhenClosed: false,
-                          alignLeft: false,
-                          padding: EdgeInsets.zero,
-                        ),
-                        hintText: '5XXXXXXXXX',
-                      ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) {
-                      return AppStrings.mobileNumberRequired.tr();
-                    }
-                    return null;
-                  },
+              PhoneNumberField(
+                controller: _mobileController,
+                initialCountryCode: _mobileCountryCode,
+                onCountryChanged: (country) {
+                  if (country.dialCode != null) {
+                    setState(() {
+                      _mobileCountryCode = country.dialCode!;
+                    });
+                  }
+                },
+                decoration: _inputDecoration(
+                  AppStrings.recipientMobile.tr(),
+                  Icons.phone_outlined,
                 ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) {
+                    return AppStrings.mobileNumberRequired.tr();
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
 

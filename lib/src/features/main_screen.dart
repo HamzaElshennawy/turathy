@@ -39,16 +39,21 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   @override
   void initState() {
-    pageController = ref.read(pageControllerProvider);
     super.initState();
+    final initialPage = ref.read(mainScreenTabIndexProvider);
+    _selectedIndex = initialPage;
+    pageController = PageController(initialPage: initialPage);
     pageController.addListener(_handlePageChange);
   }
 
   void _handlePageChange() {
     if (!mounted) return;
-    setState(() {
-      _selectedIndex = pageController.page!.toInt();
-    });
+    final page = pageController.page?.round() ?? 0;
+    if (_selectedIndex != page) {
+      setState(() {
+        _selectedIndex = page;
+      });
+    }
   }
 
   @override
@@ -123,6 +128,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
       }
     });
 
+    ref.listen(mainScreenTabIndexProvider, (previous, next) {
+      if (next != _selectedIndex) {
+        setState(() {
+          _selectedIndex = next;
+        });
+        if (pageController.hasClients) {
+          pageController.jumpToPage(next);
+        }
+      }
+    });
+
     final authController = ref.watch(authControllerProvider);
 
     //final bool isSignedIn = authController.valueOrNull != null;
@@ -138,10 +154,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             return;
           }
           if (_selectedIndex != 0) {
-            setState(() {
-              _selectedIndex = 0;
-              pageController.jumpToPage(0);
-            });
+            ref.read(mainScreenTabIndexProvider.notifier).state = 0;
           }
         },
         child: Scaffold(
@@ -289,10 +302,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
                     animationDuration: const Duration(milliseconds: 500),
                     selectedIndex: _selectedIndex,
                     onDestinationSelected: (index) {
-                      setState(() {
-                        _selectedIndex = index;
-                        pageController.jumpToPage(index);
-                      });
+                      ref.read(mainScreenTabIndexProvider.notifier).state =
+                          index;
                     },
                     destinations: [
                       NavigationDestination(
@@ -365,9 +376,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 }
 
-// page controller provider
-final pageControllerProvider = Provider<PageController>((ref) {
-  return PageController(initialPage: 0);
+// global index provider for main screen tab
+final mainScreenTabIndexProvider = StateProvider<int>((ref) {
+  return 0;
 });
 
 // stream provider for connection available

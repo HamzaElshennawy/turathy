@@ -1,7 +1,5 @@
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +8,7 @@ import '../../../core/common_widgets/responsive_center.dart';
 import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/common_widgets/phone_number_field.dart';
 import '../../../utils/validators.dart';
 import 'auth_controller.dart';
 import 'complete_profile_screen.dart';
@@ -140,35 +139,20 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
-                            Directionality(
-                              textDirection: ui.TextDirection.ltr,
-                              child: WhiteRoundedTextFormField(
-                                controller: controller.phoneController,
-                                keyboardType: TextInputType.phone,
-                                validator: Validators.required,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                hintText: '5XXXXXXXX',
-                                prefixIcon: CountryCodePicker(
-                                  key: ValueKey(countryCode),
-                                  onChanged: (country) {
-                                    if (country.dialCode != null) {
-                                      ref
-                                          .read(countryCodeProvider.notifier)
-                                          .setCountryCode(country.dialCode!);
-                                    }
-                                  },
-                                  initialSelection: countryCode,
-                                  favorite: const ['+966', 'SA'],
-                                  showCountryOnly: false,
-                                  showOnlyCountryWhenClosed: false,
-                                  alignLeft: false,
-                                  padding: EdgeInsets.zero,
-                                ),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                ),
+                            PhoneNumberField(
+                              controller: controller.phoneController,
+                              initialCountryCode: countryCode,
+                              onCountryChanged: (country) {
+                                if (country.dialCode != null) {
+                                  ref
+                                      .read(countryCodeProvider.notifier)
+                                      .setCountryCode(country.dialCode!);
+                                }
+                              },
+                              validator: Validators.required,
+                              hintText: '5XXXXXXXX',
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
                               ),
                             ),
                             const SizedBox(height: 16),

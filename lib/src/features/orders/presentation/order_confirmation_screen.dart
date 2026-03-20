@@ -172,7 +172,7 @@ class _OrderConfirmationScreenState
             ),
           );
           Navigator.popUntil(context, (route) => route.isFirst);
-          ref.read(pageControllerProvider).jumpToPage(3);
+          ref.read(mainScreenTabIndexProvider.notifier).state = 3;
           ref.invalidate(userWinningAuctionsProvider);
           ref.invalidate(getUserOrdersProvider);
           if (CachedVariables.userId != null) {
@@ -227,7 +227,7 @@ class _OrderConfirmationScreenState
             ),
           );
           Navigator.popUntil(context, (route) => route.isFirst);
-          ref.read(pageControllerProvider).jumpToPage(3);
+          ref.read(mainScreenTabIndexProvider.notifier).state = 3;
           ref.invalidate(userWinningAuctionsProvider);
           ref.invalidate(getUserOrdersProvider);
           if (CachedVariables.userId != null) {
