@@ -7,6 +7,7 @@ class UserAddressModel {
   final String country;
   final String city;
   final String address;
+  final String? shortAddress;
   final bool isDefault;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -20,6 +21,7 @@ class UserAddressModel {
     required this.country,
     required this.city,
     required this.address,
+    this.shortAddress,
     this.isDefault = false,
     this.createdAt,
     this.updatedAt,
@@ -35,6 +37,7 @@ class UserAddressModel {
       country: json['country'] as String,
       city: json['city'] as String,
       address: json['address'] as String,
+      shortAddress: json['shortAddress'] as String?,
       isDefault: json['isDefault'] as bool? ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
@@ -54,6 +57,7 @@ class UserAddressModel {
       'country': country,
       'city': city,
       'address': address,
+      if (shortAddress != null) 'shortAddress': shortAddress,
       'isDefault': isDefault,
     };
   }
@@ -67,6 +71,7 @@ class UserAddressModel {
     String? country,
     String? city,
     String? address,
+    String? shortAddress,
     bool? isDefault,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -80,6 +85,7 @@ class UserAddressModel {
       country: country ?? this.country,
       city: city ?? this.city,
       address: address ?? this.address,
+      shortAddress: shortAddress ?? this.shortAddress,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

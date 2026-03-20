@@ -23,6 +23,7 @@ class NotificationsNotifier
       print('FCM Message received in controller. Triggering refresh...');
       // Small delay to ensure DB is updated
       await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
       // Refresh notifications list when a new message arrives
       refresh();
     });
@@ -43,6 +44,7 @@ class NotificationsNotifier
     try {
       final userId = CachedVariables.userId;
       if (userId == null) {
+        if (!mounted) return;
         state = AsyncValue.error(
           NotificationsException('User not logged in', 401),
           StackTrace.current,
@@ -52,10 +54,12 @@ class NotificationsNotifier
       final response = await NotificationsRepository.getNotifications(
         userId: userId,
       );
+      if (!mounted) return;
       // Update unread count
       ref.read(unreadCountProvider.notifier).state = response.unreadCount;
       state = AsyncValue.data(response.notifications);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

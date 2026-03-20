@@ -389,5 +389,9 @@
   "maxBid": "الحد الأقصى",
   "oneStepBid": "مزايدة واحدة",
   "bid": "مزايدة",
-  "priceUpdatedRetry": "تم تحديث السعر — يرجى المحاولة مرة أخرى"
+  "priceUpdatedRetry": "تم تحديث السعر — يرجى المحاولة مرة أخرى",
+  "shortAddressCode": "العنوان المختصر",
+  "shortAddressHint": "مثال: RAGI2929",
+  "invalidShortAddress": "رمز العنوان المختصر غير صالح",
+  "cityArea": "المدينة / المنطقة"
 }

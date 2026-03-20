@@ -389,5 +389,9 @@
   "maxBid": "Max Bid",
   "oneStepBid": "One Step Bid",
   "bid": "Bid",
-  "priceUpdatedRetry": "Price has been updated — please try again"
+  "priceUpdatedRetry": "Price has been updated — please try again",
+  "shortAddressCode": "Short Address Code",
+  "shortAddressHint": "e.g. RAGI2929",
+  "invalidShortAddress": "Invalid short address code",
+  "cityArea": "City / Region"
 }

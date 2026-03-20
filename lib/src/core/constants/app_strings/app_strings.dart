@@ -410,4 +410,10 @@ class AppStrings {
   static const String oneStepBid = 'oneStepBid';
   static const String bid = 'bid';
   static const String priceUpdatedRetry = 'priceUpdatedRetry';
+
+  // Saudi Short Address
+  static const String shortAddressCode = 'shortAddressCode';
+  static const String shortAddressHint = 'shortAddressHint';
+  static const String invalidShortAddress = 'invalidShortAddress';
+  static const String cityArea = 'cityArea';
 }
