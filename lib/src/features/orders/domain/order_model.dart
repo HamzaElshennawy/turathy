@@ -30,6 +30,8 @@ class OrderModel {
   final String? paymentId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? deliveryCompany;
+  final String? trackingNumber;
 
   final Map<String, dynamic>? product;
   final Map<String, dynamic>? auction;
@@ -90,6 +92,8 @@ class OrderModel {
     this.orderStatus,
     this.createdAt,
     this.updatedAt,
+    this.deliveryCompany,
+    this.trackingNumber,
     this.product,
     this.auction,
     this.items = const [],
@@ -138,6 +142,8 @@ class OrderModel {
     String? orderStatus,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? deliveryCompany,
+    String? trackingNumber,
     Map<String, dynamic>? product,
     Map<String, dynamic>? auction,
     List<OrderItemModel>? items,
@@ -168,6 +174,8 @@ class OrderModel {
       orderStatus: orderStatus ?? this.orderStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deliveryCompany: deliveryCompany ?? this.deliveryCompany,
+      trackingNumber: trackingNumber ?? this.trackingNumber,
       product: product ?? this.product,
       auction: auction ?? this.auction,
       items: items ?? this.items,
@@ -188,6 +196,8 @@ class OrderModel {
       'items': items.map((e) => e.toJson()).toList(),
       if (paymentStatus != null) 'payment_status': paymentStatus,
       if (paymentId != null) 'payment_id': paymentId,
+      if (deliveryCompany != null) 'deliveryCompany': deliveryCompany,
+      if (trackingNumber != null) 'trackingNumber': trackingNumber,
     };
   }
 
@@ -223,6 +233,8 @@ class OrderModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
+      deliveryCompany: json['deliveryCompany'] as String?,
+      trackingNumber: json['trackingNumber'] as String?,
       product: json['product'],
       auction: json['auction'],
       items:

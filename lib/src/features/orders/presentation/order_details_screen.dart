@@ -452,6 +452,14 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           ),
           const SizedBox(height: 4),
           Text(order.cAddress, style: const TextStyle(fontSize: 14)),
+          if (order.deliveryCompany != null && order.deliveryCompany!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 8),
+            _buildInfoRow('Delivery Company'.tr(), order.deliveryCompany!),
+            if (order.trackingNumber != null && order.trackingNumber!.isNotEmpty)
+              _buildInfoRow('Tracking Number'.tr(), order.trackingNumber!),
+          ],
           if (canEdit) ...[
             const SizedBox(height: 12),
             SizedBox(
