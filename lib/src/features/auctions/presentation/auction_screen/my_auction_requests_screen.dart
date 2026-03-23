@@ -7,7 +7,6 @@ import '../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../data/auctions_repository.dart';
 import '../../domain/auction_access_model.dart';
-import 'live_auction_screen.dart';
 
 final myAuctionRequestsProvider =
     StreamProvider.autoDispose<List<AuctionAccessModel>>((ref) async* {

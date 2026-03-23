@@ -218,9 +218,9 @@ class FCMService {
     );
 
     try {
-      final platform = Platform.isAndroid
-          ? 'android'
-          : 'ios'; // Lowercase might be expected by backend, strict check?
+      //final platform = Platform.isAndroid
+      //    ? 'android'
+      //    : 'ios'; // Lowercase might be expected by backend, strict check?
       // Keeping original 'ANDROID'/'IOS' based on existing code, but logging it.
       final platformToSend = Platform.isAndroid ? 'ANDROID' : 'IOS';
 

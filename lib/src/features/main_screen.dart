@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element_parameter
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';

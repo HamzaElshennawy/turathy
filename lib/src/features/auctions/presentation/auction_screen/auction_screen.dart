@@ -9,7 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
-import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_details_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
@@ -32,6 +36,45 @@ class AuctionScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<AuctionScreen> createState() => _AuctionScreenState();
+}
+
+class _BottomSheetContentWrapper extends StatefulWidget {
+  final Widget Function(
+    BuildContext context,
+    PageController controller,
+    int currentIndex,
+    ValueChanged<int> onPageChanged,
+  ) builder;
+
+  const _BottomSheetContentWrapper({required this.builder});
+
+  @override
+  State<_BottomSheetContentWrapper> createState() =>
+      _BottomSheetContentWrapperState();
+}
+
+class _BottomSheetContentWrapperState extends State<_BottomSheetContentWrapper> {
+  late PageController _controller;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context, _controller, _currentIndex, (idx) {
+      if (mounted) setState(() => _currentIndex = idx);
+    });
+  }
 }
 
 enum ProductSortOption { none, priceLowToHigh, priceHighToLow }
@@ -921,8 +964,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
-        return Consumer(
-          builder: (sheetContext, ref, child) {
+        return _BottomSheetContentWrapper(
+          builder: (wrapperContext, pageController, currentIndex, onPageChanged) {
+            return Consumer(
+              builder: (sheetContext, ref, child) {
             // Watch new bids AND bid rejections so the sheet always
             // reflects the latest server-authoritative price.
 
@@ -1148,10 +1193,44 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                   // Left: item image + info table
                                   Expanded(
                                     child: SingleChildScrollView(
-                                      child: AuctionItemDetailsWidget(
-                                        auction: _currentAuction,
-                                        activeProduct: product,
-                                        isAuctionEnded: false,
+                                      child: Builder(
+                                        builder: (context) {
+                                          final imagesToShow = AuctionDetailsHelper.getImagesToShow(_currentAuction, product);
+                                          final badge = AuctionDetailsHelper.getStatusBadge(
+                                            auction: _currentAuction,
+                                            activeProduct: product,
+                                            isAuctionEnded: false, // from original code
+                                          );
+                                          return Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              AuctionMainImageWidget(
+                                                images: imagesToShow,
+                                                pageController: pageController,
+                                                onPageChanged: onPageChanged,
+                                                statusLabel: badge.label,
+                                                statusColor: badge.color,
+                                              ),
+                                              AuctionItemTitleWidget(
+                                                auction: _currentAuction,
+                                                activeProduct: product,
+                                              ),
+                                              AuctionThumbnailsWidget(
+                                                images: imagesToShow,
+                                                currentIndex: currentIndex,
+                                                onTap: (idx) => pageController.animateToPage(
+                                                  idx,
+                                                  duration: const Duration(milliseconds: 300),
+                                                  curve: Curves.easeInOut,
+                                                ),
+                                              ),
+                                              AuctionItemDescriptionWidget(
+                                                auction: _currentAuction,
+                                                activeProduct: product,
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       ),
                                     ),
                                   ),
@@ -1183,25 +1262,52 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               )
                             // ── Phone: original stacked layout ──────────────
                             : SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    AuctionItemDetailsWidget(
+                                child: Builder(
+                                  builder: (context) {
+                                    final imagesToShow = AuctionDetailsHelper.getImagesToShow(_currentAuction, product);
+                                    final badge = AuctionDetailsHelper.getStatusBadge(
                                       auction: _currentAuction,
                                       activeProduct: product,
                                       isAuctionEnded: false,
-                                    ),
-                                    gapH16,
-                                    AuctionBidsHistoryWidget(
-                                      initialBids: initialBids,
-                                      productId: product.id,
-                                    ),
-                                    if (_hasPreAuctionStarted) ...[
-                                      gapH16,
-                                      Builder(builder: buildBiddingControls),
-                                    ],
-                                  ],
+                                    );
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        AuctionMainImageWidget(
+                                          images: imagesToShow,
+                                          pageController: pageController,
+                                          onPageChanged: onPageChanged,
+                                          statusLabel: badge.label,
+                                          statusColor: badge.color,
+                                        ),
+                                        AuctionItemTitleWidget(
+                                          auction: _currentAuction,
+                                          activeProduct: product,
+                                        ),
+                                        AuctionBidsHistoryWidget(
+                                          initialBids: initialBids,
+                                          productId: product.id,
+                                        ),
+                                        AuctionThumbnailsWidget(
+                                          images: imagesToShow,
+                                          currentIndex: currentIndex,
+                                          onTap: (idx) => pageController.animateToPage(
+                                            idx,
+                                            duration: const Duration(milliseconds: 300),
+                                            curve: Curves.easeInOut,
+                                          ),
+                                        ),
+                                        AuctionItemDescriptionWidget(
+                                          auction: _currentAuction,
+                                          activeProduct: product,
+                                        ),
+                                        if (_hasPreAuctionStarted) ...[
+                                          gapH16,
+                                          Builder(builder: buildBiddingControls),
+                                        ],
+                                      ],
+                                    );
+                                  },
                                 ),
                               ),
                       ),
@@ -1214,7 +1320,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         );
       },
     );
-  }
+  },
+);
+}
 
   void _showFilterBottomSheet() {
     showModalBottomSheet(

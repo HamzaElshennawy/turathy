@@ -1,10 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
-import 'package:turathy/src/features/home/presentation/home_screen/home_screen.dart';
 import 'package:turathy/src/features/main_screen.dart';
 
 import '../../../core/constants/app_sizes.dart';
@@ -16,7 +13,6 @@ import '../../../core/helper/socket/socket_models.dart';
 import '../../addresses/presentation/add_edit_address_screen.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/address_model.dart';
-import '../../../routing/rout_constants.dart';
 import 'auth_controller.dart';
 import 'country_code_provider.dart';
 
@@ -367,21 +363,15 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     onCountryChanged: (country) {
                                       if (country.dialCode != null) {
                                         ref
-                                            .read(
-                                              countryCodeProvider.notifier,
-                                            )
-                                            .setCountryCode(
-                                              country.dialCode!,
-                                            );
+                                            .read(countryCodeProvider.notifier)
+                                            .setCountryCode(country.dialCode!);
                                       }
                                     },
                                     validator: (v) => null,
                                     hintText: '5XXXXXXXXXX',
                                     borderSide: BorderSide(
                                       color:
-                                          missingFields.contains(
-                                            'phone_number',
-                                          )
+                                          missingFields.contains('phone_number')
                                           ? Colors.orange
                                           : Colors.grey.shade300,
                                     ),

@@ -18,7 +18,11 @@ import 'package:turathy/src/features/orders/data/order_repository.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
-import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_details_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
 import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
 import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bids_history_widget.dart';
@@ -49,6 +53,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   // video flag removed - not used anymore
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
+  final PageController _mainImagePageController = PageController();
+  int _currentMainImageIndex = 0;
 
   // Local state for immediate updates
   bool _isAuctionEnded = false;
@@ -212,6 +218,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     _cancelFailSafeTimer();
     _audioPlayer.dispose();
     _scrollController.dispose();
+    _mainImagePageController.dispose();
     super.dispose();
   }
 
@@ -602,8 +609,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          auction.currentProduct ??
-              (auction.titleAr ?? auction.titleEn ?? 'auctionDetails'.tr()),
+          auction.titleAr ?? auction.titleEn ?? 'auctionDetails'.tr(),
         ),
         centerTitle: true,
         leading: const BackButton(),
@@ -691,31 +697,31 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                         ),
                       ),
 
-                    // Current Product Indicator (New)
-                    if (auction.currentProduct != null && !_isAuctionEnded)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        color: Colors.amber.withValues(alpha: 0.1),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.label_outline,
-                              color: Colors.amber,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${AppStrings.currentItem.tr()}: ${auction.currentProduct}',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    //// Current Product Indicator (New)
+                    //if (auction.currentProduct != null && !_isAuctionEnded)
+                    //  Container(
+                    //    padding: const EdgeInsets.all(12),
+                    //    color: Colors.amber.withValues(alpha: 0.1),
+                    //    child: Row(
+                    //      children: [
+                    //        const Icon(
+                    //          Icons.label_outline,
+                    //          color: Colors.amber,
+                    //        ),
+                    //        const SizedBox(width: 8),
+                    //        Expanded(
+                    //          child: Text(
+                    //            '${AppStrings.currentItem.tr()}: ${auction.currentProduct}',
+                    //            style: Theme.of(context).textTheme.titleMedium
+                    //                ?.copyWith(
+                    //                  fontWeight: FontWeight.bold,
+                    //                  color: Colors.black87,
+                    //                ),
+                    //          ),
+                    //        ),
+                    //      ],
+                    //    ),
+                    //  ),
 
                     // Items List (Horizontal scrollable)
                     if (auction.auctionProducts != null &&
@@ -935,19 +941,56 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                         ),
                       ),
 
-                    // Image Gallery and Info Table
-                    AuctionItemDetailsWidget(
-                      auction: auction,
-                      activeProduct: activeProduct,
-                      isAuctionEnded: _isAuctionEnded,
-                    ),
+                    // Main Image -> Title -> Bids -> Thumbnails -> Description
+                    Builder(
+                      builder: (context) {
+                        final imagesToShow = AuctionDetailsHelper.getImagesToShow(auction, activeProduct);
+                        final badge = AuctionDetailsHelper.getStatusBadge(
+                          auction: auction,
+                          activeProduct: activeProduct,
+                          isAuctionEnded: _isAuctionEnded,
+                        );
 
-                    gapH16,
-
-                    // Bid History
-                    AuctionBidsHistoryWidget(
-                      initialBids: auction.auctionBids ?? [],
-                      productId: activeProduct?.id,
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AuctionMainImageWidget(
+                              images: imagesToShow,
+                              pageController: _mainImagePageController,
+                              onPageChanged: (idx) {
+                                setState(() {
+                                  _currentMainImageIndex = idx;
+                                });
+                              },
+                              statusLabel: badge.label,
+                              statusColor: badge.color,
+                            ),
+                            AuctionItemTitleWidget(
+                              auction: auction,
+                              activeProduct: activeProduct,
+                            ),
+                            AuctionBidsHistoryWidget(
+                              initialBids: auction.auctionBids ?? [],
+                              productId: activeProduct?.id,
+                            ),
+                            AuctionThumbnailsWidget(
+                              images: imagesToShow,
+                              currentIndex: _currentMainImageIndex,
+                              onTap: (idx) {
+                                _mainImagePageController.animateToPage(
+                                  idx,
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              },
+                            ),
+                            AuctionItemDescriptionWidget(
+                              auction: auction,
+                              activeProduct: activeProduct,
+                            ),
+                          ],
+                        );
+                      },
                     ),
 
                     gapH24,

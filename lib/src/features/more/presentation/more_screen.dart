@@ -5,7 +5,6 @@ import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
-import 'package:turathy/src/features/host/presentation/my_items_screen.dart';
 import 'package:turathy/src/features/profile/presentation/profile_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 
@@ -92,10 +91,7 @@ class MoreScreen extends ConsumerWidget {
       ];
     } else {
       return [
-        const CircleAvatar(
-          radius: 40,
-          child: Icon(Icons.person, size: 40),
-        ),
+        const CircleAvatar(radius: 40, child: Icon(Icons.person, size: 40)),
         const SizedBox(height: 10),
         Text(
           AppStrings.pleaseSignInOrCreateAccount.tr(),
@@ -105,9 +101,9 @@ class MoreScreen extends ConsumerWidget {
         const SizedBox(height: 10),
         ElevatedButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => SignInScreen()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => SignInScreen()));
           },
           child: Text(AppStrings.signIn.tr()),
         ),
@@ -115,7 +111,11 @@ class MoreScreen extends ConsumerWidget {
     }
   }
 
-  List<Widget> _buildMenuItems(BuildContext context, WidgetRef ref, dynamic user) {
+  List<Widget> _buildMenuItems(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic user,
+  ) {
     return [
       if (user != null) ...[
         ListTile(
@@ -124,9 +124,7 @@ class MoreScreen extends ConsumerWidget {
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const ProfileScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
             );
           },
         ),
@@ -164,9 +162,9 @@ class MoreScreen extends ConsumerWidget {
         title: Text(AppStrings.likes.tr()),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const LikesScreen()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (context) => const LikesScreen()));
         },
       ),
       const Divider(),
@@ -177,9 +175,7 @@ class MoreScreen extends ConsumerWidget {
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const MyPaymentsScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const MyPaymentsScreen()),
             );
           },
         ),
@@ -243,39 +239,39 @@ class MoreScreen extends ConsumerWidget {
     ];
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(AppStrings.changeLanguage.tr()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('English'),
-                trailing: context.locale.languageCode == 'en'
-                    ? const Icon(Icons.check, color: Colors.green)
-                    : null,
-                onTap: () {
-                  context.setLocale(const Locale('en'));
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                title: const Text('العربية'),
-                trailing: context.locale.languageCode == 'ar'
-                    ? const Icon(Icons.check, color: Colors.green)
-                    : null,
-                onTap: () {
-                  context.setLocale(const Locale('ar'));
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  //void _showLanguageDialog(BuildContext context) {
+  //  showDialog(
+  //    context: context,
+  //    builder: (context) {
+  //      return AlertDialog(
+  //        title: Text(AppStrings.changeLanguage.tr()),
+  //        content: Column(
+  //          mainAxisSize: MainAxisSize.min,
+  //          children: [
+  //            ListTile(
+  //              title: const Text('English'),
+  //              trailing: context.locale.languageCode == 'en'
+  //                  ? const Icon(Icons.check, color: Colors.green)
+  //                  : null,
+  //              onTap: () {
+  //                context.setLocale(const Locale('en'));
+  //                Navigator.of(context).pop();
+  //              },
+  //            ),
+  //            ListTile(
+  //              title: const Text('العربية'),
+  //              trailing: context.locale.languageCode == 'ar'
+  //                  ? const Icon(Icons.check, color: Colors.green)
+  //                  : null,
+  //              onTap: () {
+  //                context.setLocale(const Locale('ar'));
+  //                Navigator.of(context).pop();
+  //              },
+  //            ),
+  //          ],
+  //        ),
+  //      );
+  //    },
+  //  );
+  //}
 }
