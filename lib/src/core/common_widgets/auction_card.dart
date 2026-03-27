@@ -10,9 +10,12 @@ import 'package:turathy/src/features/favorites/presentation/controllers/favorite
 
 import '../../features/auctions/domain/auction_model.dart';
 import '../../features/auctions/presentation/auction_screen/auction_screen.dart';
+import '../../features/auctions/presentation/auction_screen/live_auction_screen.dart';
+import '../../features/auctions/data/auction_access_service.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
+import '../helper/cache/cached_variables.dart';
 
 class AuctionCard extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -28,6 +31,8 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
   Timer? _timer;
   Duration _remainingTimeForLive = Duration.zero;
   Duration _remainingTimeForPreAuction = Duration.zero;
+  String? _accessStatus;
+  bool _isAccessLoading = true;
 
   @override
   void initState() {
@@ -36,6 +41,49 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _calculateRemainingTime();
     });
+    _loadAccess();
+  }
+
+  Future<void> _loadAccess() async {
+    final service = ref.read(auctionAccessServiceProvider);
+    final status = await service.checkAccess(
+      auctionId: widget.auction.id ?? 0,
+      auctionOwnerId: widget.auction.userId,
+    );
+    if (mounted) {
+      setState(() {
+        _accessStatus = status;
+        _isAccessLoading = false;
+      });
+    }
+  }
+
+  Future<void> _requestAccess() async {
+    if (CachedVariables.userId == null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => SignInScreen()),
+      );
+      return;
+    }
+    setState(() => _isAccessLoading = true);
+    final service = ref.read(auctionAccessServiceProvider);
+    final status = await service.requestAccess(
+      auctionId: widget.auction.id ?? 0,
+    );
+    if (mounted) {
+      setState(() {
+        _accessStatus = status;
+        _isAccessLoading = false;
+      });
+      if (status == 'PENDING') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.accessPending.tr()),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -402,38 +450,99 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                       ],
                     ),
                     gapH8,
-                    // Bid Now Button
+                    // Access-aware button
                     if (!isEnded)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    AuctionScreen(widget.auction),
+                      Builder(
+                        builder: (context) {
+                          if (_isAccessLoading) {
+                            return const SizedBox(
+                              height: 40,
+                              child: Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
                               ),
                             );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(
-                              0xFF1B5E20,
-                            ), // Dark green
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                          }
+
+                          final bool isLiveStarted =
+                              _remainingTimeForLive == Duration.zero &&
+                              _remainingTimeForPreAuction == Duration.zero &&
+                              widget.auction.startDate != null &&
+                              widget.auction.startDate!.isBefore(DateTime.now());
+
+                          final bool isGranted = _accessStatus == 'GRANTED';
+                          final bool isPending = _accessStatus == 'PENDING';
+                          final bool isDenied = _accessStatus == 'DENIED';
+
+                          String buttonText;
+                          Color buttonColor;
+                          VoidCallback? onPressed;
+
+                          if (isGranted && isLiveStarted) {
+                            buttonText = AppStrings.joinNow.tr();
+                            buttonColor = Colors.green;
+                            onPressed = () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => LiveAuctionScreen(
+                                    auctionId: widget.auction.id ?? 0,
+                                    isAdmin: widget.auction.userId == CachedVariables.userId,
+                                  ),
+                                ),
+                              );
+                            };
+                          } else if (isGranted) {
+                            buttonText = AppStrings.bidNow.tr();
+                            buttonColor = const Color(0xFF1B5E20);
+                            onPressed = () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AuctionScreen(widget.auction),
+                                ),
+                              );
+                            };
+                          } else if (isPending) {
+                            buttonText = AppStrings.accessPending.tr();
+                            buttonColor = Colors.orange;
+                            onPressed = null;
+                          } else if (isDenied) {
+                            buttonText = AppStrings.accessDenied.tr();
+                            buttonColor = Colors.red;
+                            onPressed = null;
+                          } else {
+                            // REQUIRED or ERROR → Request Access
+                            buttonText = AppStrings.requestAccess.tr();
+                            buttonColor = const Color(0xFF1B5E20);
+                            onPressed = _requestAccess;
+                          }
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: onPressed,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: buttonColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: Text(
-                            AppStrings.bidNow.tr(),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                   ],
                 ),

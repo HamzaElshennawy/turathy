@@ -1,36 +1,17 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../home/data/category_repository.dart';
 import '../../../../home/domain/category_model.dart';
 import '../../../domain/filter_state.dart';
 
 class FilterWidgetController extends StateNotifier<FilterState> {
-  final List<String> ages = [
-    AppStrings.lessThan10Years.tr(),
-    AppStrings.tenToFiftyYears.tr(),
-    AppStrings.plus50Years.tr(),
-  ];
-  final List<String> conditions = [
-    AppStrings.newCondition.tr(),
-    AppStrings.usedCondition.tr(),
-    AppStrings.antiqueCondition.tr(),
-  ];
+  final List<String> gradingCompanies = ['PMG', 'NGC', 'PCGS'];
   final List<CategoryModel> categories;
 
   final TextEditingController searchController = TextEditingController();
 
   FilterWidgetController(this.categories) : super(FilterState());
-
-  int get selectedAgeIndex {
-    return ages.indexOf(state.selectedAge ?? '');
-  }
-
-  int get selectedConditionIndex {
-    return conditions.indexOf(state.selectedCondition ?? '');
-  }
 
   int get selectedCategoryIndex {
     return categories.indexWhere(
@@ -38,20 +19,8 @@ class FilterWidgetController extends StateNotifier<FilterState> {
     );
   }
 
-  void selectAge(int index) {
-    if (ages[index] == state.selectedAge) {
-      state = state.copyWith(selectedAge: '');
-    } else {
-      state = state.copyWith(selectedAge: ages[index]);
-    }
-  }
-
-  void selectCondition(int index) {
-    if (state.selectedCondition == conditions[index]) {
-      state = state.copyWith(selectedCondition: '');
-    } else {
-      state = state.copyWith(selectedCondition: conditions[index]);
-    }
+  int get selectedGradingCompanyIndex {
+    return gradingCompanies.indexOf(state.gradingCompany ?? '');
   }
 
   void setMinPrice(double? price) {
@@ -70,10 +39,6 @@ class FilterWidgetController extends StateNotifier<FilterState> {
     }
   }
 
-  void selectAllOffers() {
-    state = state.copyWith(isAllOffersSelected: !state.isAllOffersSelected);
-  }
-
   void setSearchText(String text) {
     if (state.searchText == text) return;
     state = state.copyWith(searchText: text);
@@ -81,6 +46,66 @@ class FilterWidgetController extends StateNotifier<FilterState> {
 
   void setIsLiveAuctionsSelected(bool value) {
     state = state.copyWith(isLiveAuctionsSelected: value);
+  }
+
+  void setCountry(String text) {
+    state = state.copyWith(country: text.isEmpty ? '' : text);
+  }
+
+  void setDateFrom(int? year) {
+    state = state.copyWith(dateFrom: year ?? -1);
+  }
+
+  void setDateTo(int? year) {
+    state = state.copyWith(dateTo: year ?? -1);
+  }
+
+  void setDenomination(String text) {
+    state = state.copyWith(denomination: text.isEmpty ? '' : text);
+  }
+
+  void setIsGraded(bool? value) {
+    if (value == false) {
+      state = state.copyWith(
+        isGraded: value,
+        gradingCompany: '',
+        gradeFrom: -1,
+        gradeTo: -1,
+      );
+    } else if (value == null) {
+      state = state.copyWith(
+        isGraded: null,
+        gradingCompany: '',
+        gradeFrom: -1,
+        gradeTo: -1,
+      );
+    } else {
+      state = state.copyWith(isGraded: value);
+    }
+  }
+
+  void selectGradingCompany(int index) {
+    if (gradingCompanies[index] == state.gradingCompany) {
+      state = state.copyWith(gradingCompany: '');
+    } else {
+      state = state.copyWith(gradingCompany: gradingCompanies[index]);
+    }
+  }
+
+  void setGradeFrom(int? grade) {
+    state = state.copyWith(gradeFrom: grade ?? -1);
+  }
+
+  void setGradeTo(int? grade) {
+    state = state.copyWith(gradeTo: grade ?? -1);
+  }
+
+  void setMetalType(String text) {
+    state = state.copyWith(metalType: text.isEmpty ? '' : text);
+  }
+
+  void setMetalFineness(String text) {
+    state = state.copyWith(metalFineness: text.isEmpty ? '' : text);
   }
 
   void clearFilters() {

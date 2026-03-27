@@ -393,5 +393,18 @@
   "shortAddressCode": "العنوان المختصر",
   "shortAddressHint": "مثال: RAGI2929",
   "invalidShortAddress": "رمز العنوان المختصر غير صالح",
-  "cityArea": "المدينة / المنطقة"
+  "cityArea": "المدينة / المنطقة",
+  "dateRange": "تاريخ الصنع (سنة)",
+  "yearFrom": "من سنة",
+  "yearTo": "إلى سنة",
+  "denomination": "الفئة",
+  "gradedStatus": "حالة التقييم",
+  "graded": "مقيم",
+  "notGraded": "غير مقيم",
+  "gradingCompany": "شركة التقييم",
+  "gradeRange": "نطاق التقييم",
+  "gradeFrom": "من درجة",
+  "gradeTo": "إلى درجة",
+  "metalType_": "نوع المعدن",
+  "metalFineness": "عيار المعدن"
 }

@@ -8,21 +8,59 @@ import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_widget.dart';
 
-class AllAuctionsScreen extends ConsumerWidget {
-  const AllAuctionsScreen({super.key});
+class AllAuctionsScreen extends ConsumerStatefulWidget {
+  final ScrollController? scrollController;
+  const AllAuctionsScreen({super.key, this.scrollController});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AllAuctionsScreen> createState() => _AllAuctionsScreenState();
+}
+
+class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
+  double _scrollProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.scrollController?.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted) return;
+    final offset = widget.scrollController?.offset ?? 0.0;
+    final progress = (offset / 50).clamp(0.0, 1.0);
+    if (_scrollProgress != progress) {
+      setState(() {
+        _scrollProgress = progress;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final searchBarHeight = 48 - (8 * _scrollProgress);
+    final searchBarPadding = 16 - (8 * _scrollProgress);
+    final filterButtonOpacity = (1.0 - _scrollProgress).clamp(0.0, 1.0);
+
     return Column(
       children: [
         // Search Bar and Filter Icon
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: searchBarPadding,
+          ),
           child: Row(
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 48,
+                  height: searchBarHeight,
                   child: TextField(
                     decoration: InputDecoration(
                       hintText: AppStrings.search.tr(),
@@ -48,31 +86,40 @@ class AllAuctionsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-
-              gapW8,
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
+              if (filterButtonOpacity > 0) ...[
+                gapW8,
+                Opacity(
+                  opacity: filterButtonOpacity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: IconButton(
+                      onPressed: () {
+                        // Filter action
+                      },
+                      icon: const Icon(Icons.tune, color: Colors.grey),
+                    ),
+                  ),
                 ),
-                child: IconButton(
-                  onPressed: () {
-                    // Filter action
-                  },
-                  icon: const Icon(Icons.tune, color: Colors.grey),
-                ),
-              ),
+              ],
             ],
           ),
         ),
 
-        // Filter Tabs
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: AuctionsFilterWidget(),
-        ),
-        gapH16,
+        // Filter Tabs (only show when not scrolling much)
+        if (_scrollProgress < 0.8)
+          Opacity(
+            opacity: (1.0 - (_scrollProgress / 0.8)).clamp(0.0, 1.0),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: AuctionsFilterWidget(),
+            ),
+          ),
+
+        if (_scrollProgress < 0.8) gapH16,
 
         // Grid Content
         Expanded(
@@ -91,6 +138,7 @@ class AllAuctionsScreen extends ConsumerWidget {
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           return SingleChildScrollView(
+                            controller: widget.scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             child: SizedBox(
                               height: constraints.maxHeight,
@@ -107,6 +155,7 @@ class AllAuctionsScreen extends ConsumerWidget {
                     onRefresh: () =>
                         ref.refresh(filteredAuctionsProvider.future),
                     child: GridView.builder(
+                      controller: widget.scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -133,8 +182,9 @@ class AllAuctionsScreen extends ConsumerWidget {
                   );
                 },
                 loading: () => GridView.builder(
+                  controller: widget.scrollController,
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
@@ -154,6 +204,7 @@ class AllAuctionsScreen extends ConsumerWidget {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       return SingleChildScrollView(
+                        controller: widget.scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: SizedBox(
                           height: constraints.maxHeight,

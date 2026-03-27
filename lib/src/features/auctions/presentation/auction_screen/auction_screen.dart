@@ -17,11 +17,11 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
+import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/sign_in_screen.dart';
 import '../../domain/auction_model.dart';
-import '../../domain/auction_access_model.dart';
 import '../../data/auctions_repository.dart';
 import 'widgets/auction_images_slider_widget.dart';
 import 'widgets/auction_bids_history_widget.dart';
@@ -515,38 +515,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   }
 
   Future<void> _checkAccess() async {
-    final isAdmin = _currentAuction.userId == CachedVariables.userId;
-    if (isAdmin) {
+    final service = ref.read(auctionAccessServiceProvider);
+    final status = await service.checkAccess(
+      auctionId: _currentAuction.id ?? 0,
+      auctionOwnerId: _currentAuction.userId,
+    );
+    if (mounted) {
       setState(() {
-        _accessStatus = 'GRANTED';
-        _isAccessLoading = false;
-      });
-      return;
-    }
-
-    if (CachedVariables.userId == null) {
-      setState(() {
-        _accessStatus = 'REQUIRED';
-        _isAccessLoading = false;
-      });
-      return;
-    }
-
-    try {
-      final repository = ref.read(productsRepositoryProvider);
-      final response = await repository.checkUserAccess(
-        CachedVariables.userId ?? 0,
-        _currentAuction.id ?? 0,
-      );
-
-      setState(() {
-        _accessStatus = response.status.toUpperCase();
-        _isAccessLoading = false;
-      });
-    } catch (e) {
-      debugPrint("Error checking auction access: $e");
-      setState(() {
-        _accessStatus = 'ERROR';
+        _accessStatus = status;
         _isAccessLoading = false;
       });
     }
@@ -563,32 +539,23 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     setState(() {
       _isAccessLoading = true;
     });
-    try {
-      final repository = ref.read(productsRepositoryProvider);
-      final response = await repository.requestAccess(
-        RequestAuctionAccessDto(
-          userId: CachedVariables.userId ?? 0,
-          auctionId: _currentAuction.id ?? 0,
-        ),
-      );
+    final service = ref.read(auctionAccessServiceProvider);
+    final status = await service.requestAccess(
+      auctionId: _currentAuction.id ?? 0,
+    );
+    if (mounted) {
       setState(() {
-        _accessStatus = response.status.toUpperCase();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppStrings.accessPending.tr()),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      debugPrint("Error requesting auction access: $e");
-      setState(() {
-        _accessStatus = 'ERROR';
-      });
-    } finally {
-      setState(() {
+        _accessStatus = status;
         _isAccessLoading = false;
       });
+      if (status == 'PENDING') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.accessPending.tr()),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
     }
   }
 

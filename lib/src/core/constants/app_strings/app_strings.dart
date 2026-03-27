@@ -321,6 +321,19 @@ class AppStrings {
   static const String newCondition = 'newCondition';
   static const String usedCondition = 'usedCondition';
   static const String antiqueCondition = 'antiqueCondition';
+  static const String dateRange = 'dateRange';
+  static const String yearFrom = 'yearFrom';
+  static const String yearTo = 'yearTo';
+  static const String denomination = 'denomination';
+  static const String gradedStatus = 'gradedStatus';
+  static const String graded = 'graded';
+  static const String notGraded = 'notGraded';
+  static const String gradingCompany = 'gradingCompany';
+  static const String gradeRange = 'gradeRange';
+  static const String gradeFrom = 'gradeFrom';
+  static const String gradeTo = 'gradeTo';
+  static const String metalType_ = 'metalType_';
+  static const String metalFineness = 'metalFineness';
 
   // Auction Payments
   static const String uploadReceipt = 'uploadReceipt';

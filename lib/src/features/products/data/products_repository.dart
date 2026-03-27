@@ -10,8 +10,11 @@ class ProductsRepository {
 
   Future<List<ProductModel>> getProducts() async {
     final response = await _dio.get(EndPoints.getProducts);
-    final data = response.data['data'] as List<dynamic>;
-    return data.map((json) => ProductModel.fromJson(json)).toList();
+    final rawData = response.data['data'];
+    if (rawData == null || rawData is! List) {
+      return [];
+    }
+    return rawData.map((json) => ProductModel.fromJson(json)).toList();
   }
 
   Future<ProductModel> getProduct(int productId) async {

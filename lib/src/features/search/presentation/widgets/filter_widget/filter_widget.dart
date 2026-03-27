@@ -2,8 +2,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/constants/app_locations/app_locations.dart';
 import '../../../../../core/constants/app_sizes.dart';
 import '../../../../../core/constants/app_strings/app_strings.dart';
+import '../../../../../core/helper/socket/socket_models.dart';
 import '../../../../auctions/data/auctions_repository.dart';
 import '../filter_chip_widget.dart';
 import 'filter_widget_controller.dart';
@@ -13,20 +15,8 @@ class FilterWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedConditionIndex = ref
-        .watch(filterWidgetControllerProvider.notifier)
-        .selectedConditionIndex;
-    final selectedAgeIndex = ref
-        .watch(filterWidgetControllerProvider.notifier)
-        .selectedAgeIndex;
-    final selectedCategoryIndex = ref
-        .watch(filterWidgetControllerProvider.notifier)
-        .selectedCategoryIndex;
     final minPrice = ref.watch(filterWidgetControllerProvider).minPrice;
     final maxPrice = ref.watch(filterWidgetControllerProvider).maxPrice;
-    final isAllOffersSelected = ref
-        .watch(filterWidgetControllerProvider)
-        .isAllOffersSelected;
 
     return Expanded(
       child: Padding(
@@ -38,80 +28,259 @@ class FilterWidget extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      AppStrings.offers.tr(),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    gapH8,
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        FilterChipWidget(
-                          text: AppStrings.allOffers.tr(),
-                          isSelected: isAllOffersSelected,
-                          onTap: () {
-                            ref
-                                .read(filterWidgetControllerProvider.notifier)
-                                .selectAllOffers();
-                          },
-                        ),
-                      ],
-                    ),
-                    gapH16,
-                    // Price Range
-                    // Using controllers to manage text field state
-                    _PriceRangeWidget(minPrice: minPrice, maxPrice: maxPrice),
-                    gapH16,
-                    _displayFilters(
-                      AppStrings.condition.tr(),
-                      ref
-                          .read(filterWidgetControllerProvider.notifier)
-                          .conditions,
-                      [selectedConditionIndex],
-                      context,
-                      (index) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .selectCondition(index);
-                      },
-                    ),
-                    gapH16,
-                    _displayFilters(
-                      AppStrings.age.tr(),
-                      ref.read(filterWidgetControllerProvider.notifier).ages,
-                      [selectedAgeIndex],
-                      context,
-                      (index) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .selectAge(index);
-                      },
-                    ),
-                    gapH16,
+                    // 0. Categories
                     _displayFilters(
                       AppStrings.categories.tr(),
                       ref
                           .read(filterWidgetControllerProvider.notifier)
                           .categories
-                          .map((e) {
-                            if (context.locale.languageCode == "en") {
-                              return e.name ?? '';
-                            } else {
-                              return e.name ?? '';
-                            }
-                          })
+                          .map((e) => e.name ?? '')
                           .toList(),
-                      [selectedCategoryIndex],
+                      [
+                        ref
+                            .watch(filterWidgetControllerProvider.notifier)
+                            .selectedCategoryIndex,
+                      ],
                       context,
                       (index) {
                         ref
                             .read(filterWidgetControllerProvider.notifier)
                             .selectCategory(index);
+                      },
+                    ),
+                    gapH16,
+
+                    // Price Range
+                    _RangeSliderWidget(
+                      title: AppStrings.priceRange.tr(),
+                      min: 0,
+                      max: 10000,
+                      divisions: 1000, // 10000 / 1000   = steps of 10
+                      initialMinValue: minPrice,
+                      initialMaxValue: maxPrice,
+                      labelFormatter: (val) => val.toInt().toString(),
+                      onChanged: (min, max) {
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setMinPrice(min);
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setMaxPrice(max);
+                      },
+                    ),
+                    gapH16,
+
+                    gapH16,
+                    // 1. Country
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppStrings.country.tr(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        gapH8,
+                        DropdownButtonFormField<String>(
+                          value:
+                              ref
+                                      .watch(filterWidgetControllerProvider)
+                                      .country
+                                      ?.isEmpty ==
+                                  true
+                              ? null
+                              : ref
+                                    .watch(filterWidgetControllerProvider)
+                                    .country,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          hint: Text(AppStrings.country.tr()),
+                          items: [
+                            DropdownMenuItem<String>(
+                              value: '',
+                              child: Text('all'.tr()),
+                            ),
+                            ...countries.map((c) {
+                              final flag = SocketUser.getFlagEmoji(c.code);
+                              final isAr = context.locale.languageCode == 'ar';
+                              final name = isAr ? c.nameAr : c.nameEn;
+                              return DropdownMenuItem<String>(
+                                value:
+                                    name, // Using name as the filter value, not code
+                                child: Text('$flag  $name'),
+                              );
+                            }),
+                          ],
+                          onChanged: (value) {
+                            ref
+                                .read(filterWidgetControllerProvider.notifier)
+                                .setCountry(value ?? '');
+                          },
+                        ),
+                      ],
+                    ),
+                    gapH16,
+                    // 2. Date Range
+                    _RangeSliderWidget(
+                      title: AppStrings.dateRange.tr(),
+                      min: 1700,
+                      max: DateTime.now().year.toDouble(),
+                      divisions: DateTime.now().year - 1700,
+                      initialMinValue:
+                          ref.watch(filterWidgetControllerProvider).dateFrom ==
+                              -1
+                          ? null
+                          : ref
+                                .watch(filterWidgetControllerProvider)
+                                .dateFrom
+                                ?.toDouble(),
+                      initialMaxValue:
+                          ref.watch(filterWidgetControllerProvider).dateTo == -1
+                          ? null
+                          : ref
+                                .watch(filterWidgetControllerProvider)
+                                .dateTo
+                                ?.toDouble(),
+                      labelFormatter: (val) => val.toInt().toString(),
+                      onChanged: (min, max) {
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setDateFrom(min.toInt());
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setDateTo(max.toInt());
+                      },
+                    ),
+                    gapH16,
+                    // 3. Denomination
+                    _FilterTextFieldWidget(
+                      label: AppStrings.denomination.tr(),
+                      initialValue: ref
+                          .watch(filterWidgetControllerProvider)
+                          .denomination,
+                      onChanged: (val) {
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setDenomination(val);
+                      },
+                    ),
+                    gapH16,
+                    // 4. Graded Status
+                    _displayFilters(
+                      AppStrings.gradedStatus.tr(),
+                      [AppStrings.graded.tr(), AppStrings.notGraded.tr()],
+                      ref.watch(filterWidgetControllerProvider).isGraded == true
+                          ? [0]
+                          : (ref
+                                        .watch(filterWidgetControllerProvider)
+                                        .isGraded ==
+                                    false
+                                ? [1]
+                                : []),
+                      context,
+                      (index) {
+                        bool? currentValue = ref
+                            .watch(filterWidgetControllerProvider)
+                            .isGraded;
+                        bool newValue = index == 0 ? true : false;
+                        if (currentValue == newValue) {
+                          ref
+                              .read(filterWidgetControllerProvider.notifier)
+                              .setIsGraded(null);
+                        } else {
+                          ref
+                              .read(filterWidgetControllerProvider.notifier)
+                              .setIsGraded(newValue);
+                        }
+                      },
+                    ),
+                    // 5 & 6. Grading Company & Grade Range (Conditional)
+                    if (ref.watch(filterWidgetControllerProvider).isGraded ==
+                        true) ...[
+                      gapH16,
+                      _displayFilters(
+                        AppStrings.gradingCompany.tr(),
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .gradingCompanies,
+                        [
+                          ref
+                              .watch(filterWidgetControllerProvider.notifier)
+                              .selectedGradingCompanyIndex,
+                        ],
+                        context,
+                        (index) {
+                          ref
+                              .read(filterWidgetControllerProvider.notifier)
+                              .selectGradingCompany(index);
+                        },
+                      ),
+                      gapH16,
+                      _RangeTextFieldWidget(
+                        title: AppStrings.gradeRange.tr(),
+                        label1: AppStrings.gradeFrom.tr(),
+                        label2: AppStrings.gradeTo.tr(),
+                        initialValue1:
+                            ref
+                                    .watch(filterWidgetControllerProvider)
+                                    .gradeFrom ==
+                                -1
+                            ? ''
+                            : ref
+                                  .watch(filterWidgetControllerProvider)
+                                  .gradeFrom
+                                  ?.toString(),
+                        initialValue2:
+                            ref.watch(filterWidgetControllerProvider).gradeTo ==
+                                -1
+                            ? ''
+                            : ref
+                                  .watch(filterWidgetControllerProvider)
+                                  .gradeTo
+                                  ?.toString(),
+                        keyboardType: TextInputType.number,
+                        onChanged1: (val) {
+                          ref
+                              .read(filterWidgetControllerProvider.notifier)
+                              .setGradeFrom(int.tryParse(val));
+                        },
+                        onChanged2: (val) {
+                          ref
+                              .read(filterWidgetControllerProvider.notifier)
+                              .setGradeTo(int.tryParse(val));
+                        },
+                      ),
+                    ],
+                    gapH16,
+                    // 7. Metal Type
+                    _FilterTextFieldWidget(
+                      label: AppStrings.metalType_.tr(),
+                      initialValue: ref
+                          .watch(filterWidgetControllerProvider)
+                          .metalType,
+                      onChanged: (val) {
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setMetalType(val);
+                      },
+                    ),
+                    gapH16,
+                    // 8. Metal Fineness
+                    _FilterTextFieldWidget(
+                      label: AppStrings.metalFineness.tr(),
+                      initialValue: ref
+                          .watch(filterWidgetControllerProvider)
+                          .metalFineness,
+                      onChanged: (val) {
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .setMetalFineness(val);
                       },
                     ),
                   ],
@@ -207,35 +376,124 @@ Widget _displayFilters(
   );
 }
 
-class _PriceRangeWidget extends ConsumerStatefulWidget {
-  final double? minPrice;
-  final double? maxPrice;
+class _RangeSliderWidget extends ConsumerStatefulWidget {
+  final String title;
+  final double min;
+  final double max;
+  final int divisions;
+  final String? Function(double) labelFormatter;
+  final double? initialMinValue;
+  final double? initialMaxValue;
+  final void Function(double, double) onChanged;
 
-  const _PriceRangeWidget({this.minPrice, this.maxPrice});
+  const _RangeSliderWidget({
+    required this.title,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.labelFormatter,
+    required this.initialMinValue,
+    required this.initialMaxValue,
+    required this.onChanged,
+  });
 
   @override
-  ConsumerState<_PriceRangeWidget> createState() => _PriceRangeWidgetState();
+  ConsumerState<_RangeSliderWidget> createState() => _RangeSliderWidgetState();
 }
 
-class _PriceRangeWidgetState extends ConsumerState<_PriceRangeWidget> {
-  late final TextEditingController _minPriceController;
-  late final TextEditingController _maxPriceController;
+class _RangeSliderWidgetState extends ConsumerState<_RangeSliderWidget> {
+  late RangeValues _currentRangeValues;
 
   @override
   void initState() {
     super.initState();
-    _minPriceController = TextEditingController(
-      text: widget.minPrice?.toStringAsFixed(0) ?? '',
-    );
-    _maxPriceController = TextEditingController(
-      text: widget.maxPrice?.toStringAsFixed(0) ?? '',
+    _currentRangeValues = RangeValues(
+      widget.initialMinValue ?? widget.min,
+      widget.initialMaxValue ?? widget.max,
     );
   }
 
   @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              widget.title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            Text(
+              '${widget.labelFormatter(_currentRangeValues.start)} - ${widget.labelFormatter(_currentRangeValues.end)}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        gapH8,
+        RangeSlider(
+          values: _currentRangeValues,
+          min: widget.min,
+          max: widget.max,
+          divisions: widget.divisions,
+          labels: RangeLabels(
+            widget.labelFormatter(_currentRangeValues.start) ?? '',
+            widget.labelFormatter(_currentRangeValues.end) ?? '',
+          ),
+          onChanged: (RangeValues values) {
+            setState(() {
+              _currentRangeValues = values;
+            });
+          },
+          onChangeEnd: (RangeValues values) {
+            widget.onChanged(values.start, values.end);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterTextFieldWidget extends ConsumerStatefulWidget {
+  final String label;
+  final String? initialValue;
+  final void Function(String) onChanged;
+  final TextInputType keyboardType;
+
+  const _FilterTextFieldWidget({
+    required this.label,
+    required this.initialValue,
+    required this.onChanged,
+    this.keyboardType = TextInputType.text,
+  });
+
+  @override
+  ConsumerState<_FilterTextFieldWidget> createState() =>
+      _FilterTextFieldWidgetState();
+}
+
+class _FilterTextFieldWidgetState
+    extends ConsumerState<_FilterTextFieldWidget> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue ?? '');
+  }
+
+  @override
   void dispose() {
-    _minPriceController.dispose();
-    _maxPriceController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -245,7 +503,79 @@ class _PriceRangeWidgetState extends ConsumerState<_PriceRangeWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          AppStrings.priceRange.tr(),
+          widget.label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        gapH8,
+        TextField(
+          controller: _controller,
+          keyboardType: widget.keyboardType,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          onChanged: widget.onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _RangeTextFieldWidget extends ConsumerStatefulWidget {
+  final String title;
+  final String label1;
+  final String label2;
+  final String? initialValue1;
+  final String? initialValue2;
+  final void Function(String) onChanged1;
+  final void Function(String) onChanged2;
+  final TextInputType keyboardType;
+
+  const _RangeTextFieldWidget({
+    required this.title,
+    required this.label1,
+    required this.label2,
+    required this.initialValue1,
+    required this.initialValue2,
+    required this.onChanged1,
+    required this.onChanged2,
+    this.keyboardType = TextInputType.text,
+  });
+
+  @override
+  ConsumerState<_RangeTextFieldWidget> createState() =>
+      _RangeTextFieldWidgetState();
+}
+
+class _RangeTextFieldWidgetState extends ConsumerState<_RangeTextFieldWidget> {
+  late final TextEditingController _controller1;
+  late final TextEditingController _controller2;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller1 = TextEditingController(text: widget.initialValue1 ?? '');
+    _controller2 = TextEditingController(text: widget.initialValue2 ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller1.dispose();
+    _controller2.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.title,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -257,35 +587,27 @@ class _PriceRangeWidgetState extends ConsumerState<_PriceRangeWidget> {
           children: [
             Expanded(
               child: TextField(
-                controller: _minPriceController,
-                keyboardType: TextInputType.number,
+                controller: _controller1,
+                keyboardType: widget.keyboardType,
                 decoration: InputDecoration(
-                  labelText: AppStrings.minPriceLabel.tr(),
+                  labelText: widget.label1,
                   border: const OutlineInputBorder(),
                   isDense: true,
                 ),
-                onChanged: (value) {
-                  ref
-                      .read(filterWidgetControllerProvider.notifier)
-                      .setMinPrice(double.tryParse(value));
-                },
+                onChanged: widget.onChanged1,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: TextField(
-                controller: _maxPriceController,
-                keyboardType: TextInputType.number,
+                controller: _controller2,
+                keyboardType: widget.keyboardType,
                 decoration: InputDecoration(
-                  labelText: AppStrings.maxPriceLabel.tr(),
+                  labelText: widget.label2,
                   border: const OutlineInputBorder(),
                   isDense: true,
                 ),
-                onChanged: (value) {
-                  ref
-                      .read(filterWidgetControllerProvider.notifier)
-                      .setMaxPrice(double.tryParse(value));
-                },
+                onChanged: widget.onChanged2,
               ),
             ),
           ],

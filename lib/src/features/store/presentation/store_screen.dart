@@ -33,199 +33,263 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     final filterState = ref.watch(filterWidgetControllerProvider);
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Search Bar
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(productsListProvider);
+          ref.invalidate(getAllCategoriesProvider);
+          await ref.read(productsListProvider.future);
+          await ref.read(getAllCategoriesProvider.future);
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // Search Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.filter_list),
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => const FractionallySizedBox(
+                              heightFactor: 0.85,
+                              child: FilterWidget(),
+                            ),
+                          );
+                        },
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: AppStrings.search.tr(),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            ref
+                                .read(filterWidgetControllerProvider.notifier)
+                                .setSearchText(value);
+                          },
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Icon(Icons.search),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.filter_list),
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (context) => const FractionallySizedBox(
-                            heightFactor: 0.85,
-                            child: FilterWidget(),
+              ),
+            ),
+
+            // Categories Filter
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 50,
+                child: categoriesAsyncValue.when(
+                  data: (categories) {
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: categories.length,
+                      itemBuilder: (context, index) {
+                        final category = categories[index];
+                        final isSelected =
+                            filterState.selectedCategoryID == category.id;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(
+                              category.name ?? '',
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              ref
+                                  .read(filterWidgetControllerProvider.notifier)
+                                  .selectCategory(index);
+                            },
+                            backgroundColor: Colors.grey.shade200,
+                            selectedColor: const Color(
+                              0xFF1B5E20,
+                            ), // TODO: Use theme color
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide.none,
+                            ),
+                            showCheckmark: false,
                           ),
                         );
                       },
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: AppStrings.search.tr(),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                          ),
-                        ),
-                        onChanged: (value) {
-                          ref
-                              .read(filterWidgetControllerProvider.notifier)
-                              .setSearchText(value);
-                        },
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Icon(Icons.search),
-                    ),
-                  ],
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => Center(child: Text('Error: $error')),
                 ),
               ),
             ),
-          ),
 
-          // Categories Filter
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 50,
-              child: categoriesAsyncValue.when(
-                data: (categories) {
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final category = categories[index];
-                      final isSelected =
-                          filterState.selectedCategoryID == category.id;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(
-                            category.name ?? '',
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            ref
-                                .read(filterWidgetControllerProvider.notifier)
-                                .selectCategory(index);
-                          },
-                          backgroundColor: Colors.grey.shade200,
-                          selectedColor: const Color(
-                            0xFF1B5E20,
-                          ), // TODO: Use theme color
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide.none,
-                          ),
-                          showCheckmark: false,
-                        ),
-                      );
-                    },
+            const SliverToBoxAdapter(child: gapH16),
+
+            // Product Grid
+            productsAsyncValue.when(
+              data: (products) {
+                // Filter products
+                final filteredProducts = products.where((product) {
+                  // 1. Search Text
+                  final searchText = filterState.searchText ?? '';
+                  final matchesSearch = product.title
+                          ?.toLowerCase()
+                          .contains(searchText.toLowerCase()) ??
+                      false;
+
+                  // 2. Category
+                  final matchesCategory =
+                      filterState.selectedCategoryID == null ||
+                          filterState.selectedCategoryID == -1 ||
+                          product.category ==
+                              categoriesAsyncValue.value
+                                  ?.firstWhere(
+                                    (c) =>
+                                        c.id == filterState.selectedCategoryID,
+                                    orElse: () => CategoryModel(id: -1),
+                                  )
+                                  .name;
+
+                  // 3. Price Range
+                  final matchesMinPrice = filterState.minPrice == null ||
+                      (product.price != null &&
+                          product.price! >= filterState.minPrice!);
+                  final matchesMaxPrice = filterState.maxPrice == null ||
+                      (product.price != null &&
+                          product.price! <= filterState.maxPrice!);
+
+                  // 4. Country
+                  final matchesCountry = filterState.country == null ||
+                      filterState.country!.isEmpty ||
+                      product.country == filterState.country;
+
+                  // 5. Date Range
+                  final matchesDateFrom = filterState.dateFrom == null ||
+                      filterState.dateFrom == -1 ||
+                      (product.date != null &&
+                          product.date! >= filterState.dateFrom!);
+                  final matchesDateTo = filterState.dateTo == null ||
+                      filterState.dateTo == -1 ||
+                      (product.date != null &&
+                          product.date! <= filterState.dateTo!);
+
+                  // 6. Denomination
+                  final matchesDenom = filterState.denomination == null ||
+                      filterState.denomination!.isEmpty ||
+                      product.denomination
+                              ?.toLowerCase()
+                              .contains(filterState.denomination!.toLowerCase()) ==
+                          true;
+
+                  // 7. Is Graded
+                  final matchesGraded = filterState.isGraded == null ||
+                      product.isGraded == filterState.isGraded;
+
+                  // 8. Grading Company
+                  final matchesGradingCompany =
+                      filterState.gradingCompany == null ||
+                          filterState.gradingCompany!.isEmpty ||
+                          product.gradingCompany == filterState.gradingCompany;
+
+                  // 9. Grade Range
+                  final matchesGradeFrom = filterState.gradeFrom == null ||
+                      filterState.gradeFrom == -1 ||
+                      (product.grade != null &&
+                          product.grade! >= filterState.gradeFrom!);
+                  final matchesGradeTo = filterState.gradeTo == null ||
+                      filterState.gradeTo == -1 ||
+                      (product.grade != null &&
+                          product.grade! <= filterState.gradeTo!);
+
+                  // 10. Metal Type
+                  final matchesMetalType = filterState.metalType == null ||
+                      filterState.metalType!.isEmpty ||
+                      product.metalType
+                              ?.toLowerCase()
+                              .contains(filterState.metalType!.toLowerCase()) ==
+                          true;
+
+                  // 11. Metal Fineness
+                  final matchesMetalFineness =
+                      filterState.metalFineness == null ||
+                          filterState.metalFineness!.isEmpty ||
+                          product.metalFineness?.toLowerCase().contains(
+                                  filterState.metalFineness!.toLowerCase()) ==
+                              true;
+
+                  return matchesSearch &&
+                      matchesCategory &&
+                      matchesMinPrice &&
+                      matchesMaxPrice &&
+                      matchesCountry &&
+                      matchesDateFrom &&
+                      matchesDateTo &&
+                      matchesDenom &&
+                      matchesGraded &&
+                      matchesGradingCompany &&
+                      matchesGradeFrom &&
+                      matchesGradeTo &&
+                      matchesMetalType &&
+                      matchesMetalFineness;
+                }).toList();
+
+                if (filteredProducts.isEmpty) {
+                  return const SliverToBoxAdapter(
+                    child: Center(child: Text('No products found')),
                   );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => Center(child: Text('Error: $error')),
+                }
+
+                return SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 0.55,
+                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      return ProductCard(product: filteredProducts[index]);
+                    }, childCount: filteredProducts.length),
+                  ),
+                );
+              },
+              loading: () => const SliverToBoxAdapter(
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (error, stack) => SliverToBoxAdapter(
+                child: Center(child: Text('Error: $error')),
               ),
             ),
-          ),
 
-          const SliverToBoxAdapter(child: gapH16),
-
-          // Product Grid
-          productsAsyncValue.when(
-            data: (products) {
-              // Filter products
-              final filteredProducts = products.where((product) {
-                // 1. Search Text
-                final searchText = filterState.searchText ?? '';
-                final matchesSearch =
-                    product.title?.toLowerCase().contains(
-                      searchText.toLowerCase(),
-                    ) ??
-                    false;
-
-                // 2. Category
-                // Check if a category is selected (id != null and != -1)
-                final matchesCategory =
-                    filterState.selectedCategoryID == null ||
-                    filterState.selectedCategoryID == -1 ||
-                    product.category ==
-                        categoriesAsyncValue.value
-                            ?.firstWhere(
-                              (c) => c.id == filterState.selectedCategoryID,
-                              orElse: () => CategoryModel(id: -1),
-                            )
-                            .name;
-
-                // 3. Price Range
-                final matchesMinPrice =
-                    filterState.minPrice == null ||
-                    (product.price != null &&
-                        product.price! >= filterState.minPrice!);
-                final matchesMaxPrice =
-                    filterState.maxPrice == null ||
-                    (product.price != null &&
-                        product.price! <= filterState.maxPrice!);
-
-                // 4. Condition
-                final matchesCondition =
-                    filterState.selectedCondition == null ||
-                    filterState.selectedCondition!.isEmpty ||
-                    product.condition == filterState.selectedCondition;
-
-                // 5. Age
-                final matchesAge =
-                    filterState.selectedAge == null ||
-                    filterState.selectedAge!.isEmpty ||
-                    product.approximateAge == filterState.selectedAge;
-
-                return matchesSearch &&
-                    matchesCategory &&
-                    matchesMinPrice &&
-                    matchesMaxPrice &&
-                    matchesCondition &&
-                    matchesAge;
-              }).toList();
-
-              if (filteredProducts.isEmpty) {
-                return const SliverToBoxAdapter(
-                  child: Center(child: Text('No products found')),
-                );
-              }
-
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 0.55,
-                  ),
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    return ProductCard(product: filteredProducts[index]);
-                  }, childCount: filteredProducts.length),
-                ),
-              );
-            },
-            loading: () => const SliverToBoxAdapter(
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, stack) =>
-                SliverToBoxAdapter(child: Center(child: Text('Error: $error'))),
-          ),
-
-          // Bottom padding for navigation bar
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
+            // Bottom padding for navigation bar
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
       ),
     );
   }

@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';
+import 'package:turathy/src/features/main_screen.dart';
 
 import '../../../../../../core/common_widgets/auction_card.dart';
 import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
@@ -25,25 +25,24 @@ class LiveAuctionsWidget extends StatelessWidget {
               AppStrings.liveAuctions.tr(),
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AllAuctionsScreen(),
+            Consumer(
+              builder: (context, ref, child) {
+                return TextButton(
+                  onPressed: () {
+                    ref.read(mainScreenTabIndexProvider.notifier).state = 1;
+                  },
+                  child: Text(
+                    AppStrings.more.tr(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      decoration: TextDecoration.underline,
+                      color: Theme.of(context).primaryColor,
+                      letterSpacing: 1.2,
+                      height: 1.2,
+                    ),
                   ),
                 );
               },
-              child: Text(
-                AppStrings.more.tr(),
-                style: TextStyle(
-                  fontSize: 16,
-                  decoration: TextDecoration.underline,
-                  color: Theme.of(context).primaryColor,
-                  letterSpacing: 1.2,
-                  height: 1.2,
-                ),
-              ),
             ),
           ],
         ),
@@ -51,7 +50,9 @@ class LiveAuctionsWidget extends StatelessWidget {
         SizedBox(
           height: AppFunctions.isMobile(context: context)
               ? MediaQuery.of(context).size.width * 0.9
-              : (MediaQuery.of(context).orientation == Orientation.landscape ? 360 : 400),
+              : (MediaQuery.of(context).orientation == Orientation.landscape
+                    ? 360
+                    : 400),
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(homeLiveAuctionsProvider);
@@ -64,7 +65,10 @@ class LiveAuctionsWidget extends StatelessWidget {
                     scrollDirection: Axis.horizontal,
                     itemExtent: AppFunctions.isMobile(context: context)
                         ? MediaQuery.of(context).size.width * .7
-                        : (MediaQuery.of(context).orientation == Orientation.landscape ? 290 : 300),
+                        : (MediaQuery.of(context).orientation ==
+                                  Orientation.landscape
+                              ? 290
+                              : 300),
                     itemCount: data.length,
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
@@ -89,8 +93,9 @@ class LiveAuctionsWidget extends StatelessWidget {
                   itemBuilder: (context, index) =>
                       const ShimmerWidget(width: 400, height: 0),
                 ),
-                error: (error, stackTrace) =>
-                    Center(child: Text(AppStrings.checkInternetConnection.tr())),
+                error: (error, stackTrace) => Center(
+                  child: Text(AppStrings.checkInternetConnection.tr()),
+                ),
               );
             },
           ),

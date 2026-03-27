@@ -17,6 +17,17 @@ class ProductModel {
   final String? approximateAge;
   final String? condition;
   final String? origin;
+  final String? country;
+  final int? date;
+  final String? denomination;
+  final bool? isGraded;
+  final String? gradingCompany;
+  final int? grade;
+  final double? metalWeight;
+  final String? metalType;
+  final double? metalDiameter;
+  final double? metalThickness;
+  final String? metalFineness;
   final List<String>? images;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -51,6 +62,17 @@ class ProductModel {
     this.approximateAge,
     this.condition,
     this.origin,
+    this.country,
+    this.date,
+    this.denomination,
+    this.isGraded,
+    this.gradingCompany,
+    this.grade,
+    this.metalWeight,
+    this.metalType,
+    this.metalDiameter,
+    this.metalThickness,
+    this.metalFineness,
     this.images,
     required this.createdAt,
     required this.updatedAt,
@@ -77,6 +99,17 @@ class ProductModel {
           approximateAge == other.approximateAge &&
           condition == other.condition &&
           origin == other.origin &&
+          country == other.country &&
+          date == other.date &&
+          denomination == other.denomination &&
+          isGraded == other.isGraded &&
+          gradingCompany == other.gradingCompany &&
+          grade == other.grade &&
+          metalWeight == other.metalWeight &&
+          metalType == other.metalType &&
+          metalDiameter == other.metalDiameter &&
+          metalThickness == other.metalThickness &&
+          metalFineness == other.metalFineness &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt);
 
@@ -98,6 +131,17 @@ class ProductModel {
       approximateAge.hashCode ^
       condition.hashCode ^
       origin.hashCode ^
+      country.hashCode ^
+      date.hashCode ^
+      denomination.hashCode ^
+      isGraded.hashCode ^
+      gradingCompany.hashCode ^
+      grade.hashCode ^
+      metalWeight.hashCode ^
+      metalType.hashCode ^
+      metalDiameter.hashCode ^
+      metalThickness.hashCode ^
+      metalFineness.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;
 
@@ -118,6 +162,17 @@ class ProductModel {
     String? approximateAge,
     String? condition,
     String? origin,
+    String? country,
+    int? date,
+    String? denomination,
+    bool? isGraded,
+    String? gradingCompany,
+    int? grade,
+    double? metalWeight,
+    String? metalType,
+    double? metalDiameter,
+    double? metalThickness,
+    String? metalFineness,
     List<String>? images,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -139,6 +194,17 @@ class ProductModel {
       approximateAge: approximateAge ?? this.approximateAge,
       condition: condition ?? this.condition,
       origin: origin ?? this.origin,
+      country: country ?? this.country,
+      date: date ?? this.date,
+      denomination: denomination ?? this.denomination,
+      isGraded: isGraded ?? this.isGraded,
+      gradingCompany: gradingCompany ?? this.gradingCompany,
+      grade: grade ?? this.grade,
+      metalWeight: metalWeight ?? this.metalWeight,
+      metalType: metalType ?? this.metalType,
+      metalDiameter: metalDiameter ?? this.metalDiameter,
+      metalThickness: metalThickness ?? this.metalThickness,
+      metalFineness: metalFineness ?? this.metalFineness,
       images: images ?? this.images,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -163,6 +229,17 @@ class ProductModel {
       'approximateAge': approximateAge,
       'condition': condition,
       'origin': origin,
+      'country': country,
+      'date': date,
+      'denomination': denomination,
+      'is_graded': isGraded,
+      'grading_company': gradingCompany,
+      'grade': grade,
+      'metal_weight': metalWeight,
+      'metal_type': metalType,
+      'metal_diameter': metalDiameter,
+      'metal_thickness': metalThickness,
+      'metal_fineness': metalFineness,
       'images': images,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -177,7 +254,7 @@ class ProductModel {
       name: json['name'] as String?,
       description: json['description'] as String?,
       price: json['price'] != null ? (json['price'] as num).toDouble() : null,
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: (json['imageUrl'] ?? json['image']) as String?,
       category: json['category'] as String?,
       brand: json['brand'] as String?,
       stock: json['stock'] as int? ?? 0,
@@ -187,11 +264,22 @@ class ProductModel {
       approximateAge: json['approximateAge'] as String?,
       condition: json['condition'] as String?,
       origin: json['origin'] as String?,
+      country: json['country'] as String?,
+      date: json['date'] as int?,
+      denomination: json['denomination'] as String?,
+      isGraded: (json['is_graded'] ?? json['isGraded']) as bool?,
+      gradingCompany: (json['grading_company'] ?? json['gradingCompany']) as String?,
+      grade: json['grade'] as int?,
+      metalWeight: json['metal_weight'] != null ? (json['metal_weight'] as num).toDouble() : null,
+      metalType: json['metal_type'] as String?,
+      metalDiameter: json['metal_diameter'] != null ? (json['metal_diameter'] as num).toDouble() : null,
+      metalThickness: json['metal_thickness'] != null ? (json['metal_thickness'] as num).toDouble() : null,
+      metalFineness: json['metal_fineness'] as String?,
       images: json['images'] != null
-          ? List<String>.from(json['images'] as List)
+          ? List<String>.from(json['images'] as Iterable)
           : null,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : DateTime.now(),
     );
   }
 }

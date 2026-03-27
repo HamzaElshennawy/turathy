@@ -393,5 +393,18 @@
   "shortAddressCode": "Short Address Code",
   "shortAddressHint": "e.g. RAGI2929",
   "invalidShortAddress": "Invalid short address code",
-  "cityArea": "City / Region"
+  "cityArea": "City / Region",
+  "dateRange": "Date Range",
+  "yearFrom": "From Year",
+  "yearTo": "To Year",
+  "denomination": "Denomination",
+  "gradedStatus": "Graded Status",
+  "graded": "Graded",
+  "notGraded": "Not Graded",
+  "gradingCompany": "Grading Company",
+  "gradeRange": "Grade Range",
+  "gradeFrom": "Grade From",
+  "gradeTo": "Grade To",
+  "metalType_": "Metal Type",
+  "metalFineness": "Metal Fineness"
 }

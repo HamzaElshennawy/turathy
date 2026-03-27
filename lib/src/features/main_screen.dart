@@ -38,6 +38,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
     with TickerProviderStateMixin {
   int _selectedIndex = 0;
   late final PageController pageController;
+  late final ScrollController _homeScrollController;
+  late final ScrollController _auctionsScrollController;
+  double _scrollOffset = 0.0;
+  double _auctionsScrollOffset = 0.0;
 
   @override
   void initState() {
@@ -46,6 +50,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _selectedIndex = initialPage;
     pageController = PageController(initialPage: initialPage);
     pageController.addListener(_handlePageChange);
+
+    _homeScrollController = ScrollController();
+    _homeScrollController.addListener(_handleScroll);
+
+    _auctionsScrollController = ScrollController();
+    _auctionsScrollController.addListener(_handleAuctionsScroll);
   }
 
   void _handlePageChange() {
@@ -58,9 +68,35 @@ class _MainScreenState extends ConsumerState<MainScreen>
     }
   }
 
+  void _handleScroll() {
+    if (!mounted) return;
+    if (_selectedIndex == 0) {
+      if (_homeScrollController.hasClients) {
+        setState(() {
+          _scrollOffset = _homeScrollController.offset;
+        });
+      }
+    }
+  }
+
+  void _handleAuctionsScroll() {
+    if (!mounted) return;
+    if (_selectedIndex == 1) {
+      if (_auctionsScrollController.hasClients) {
+        setState(() {
+          _auctionsScrollOffset = _auctionsScrollController.offset;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     pageController.removeListener(_handlePageChange);
+    _homeScrollController.removeListener(_handleScroll);
+    _homeScrollController.dispose();
+    _auctionsScrollController.removeListener(_handleAuctionsScroll);
+    _auctionsScrollController.dispose();
     super.dispose();
   }
 
@@ -143,7 +179,20 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
     final authController = ref.watch(authControllerProvider);
 
-    //final bool isSignedIn = authController.valueOrNull != null;
+    // Dynamic AppBar values based on scroll
+    final double shrinkProgress = (_scrollOffset / 100).clamp(0.0, 1.0);
+    final double appBarHeight = _selectedIndex == 0
+        ? (120 - (45 * shrinkProgress))
+        : 75;
+    final double avatarRadius = _selectedIndex == 0
+        ? (30 - (8 * shrinkProgress))
+        : 22;
+    final double welcomeFontSize = _selectedIndex == 0
+        ? (24 - (6 * shrinkProgress))
+        : 18;
+    final double notificationIconSize = _selectedIndex == 0
+        ? (32 - (8 * shrinkProgress))
+        : 24;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -160,11 +209,18 @@ class _MainScreenState extends ConsumerState<MainScreen>
           }
         },
         child: Scaffold(
-          // floatingActionButton: FloatingActionButton.extended(
-          //     onPressed: () {}, label: Text('إضافة عرض')),
+          floatingActionButton: _selectedIndex == 1 && _auctionsScrollOffset > 50
+              ? FloatingActionButton(
+                  onPressed: () {
+                    // TODO: Trigger filter from AllAuctionsScreen
+                  },
+                  backgroundColor: Theme.of(context).primaryColor,
+                  child: const Icon(Icons.tune, color: Colors.white),
+                )
+              : null,
           appBar: AppBar(
             leadingWidth: _selectedIndex >= 1 ? 80 : 0,
-            toolbarHeight: 75,
+            toolbarHeight: appBarHeight,
             leading: _selectedIndex >= 1
                 ? Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -179,6 +235,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
                 ? Row(
                     children: [
                       _UserAvatar(
+                        radius: avatarRadius,
                         // image: authController.valueOrNull?.image,
                         name: authController.valueOrNull?.name,
                       ),
@@ -189,7 +246,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
                           Text(
                             '👋 ${AppStrings.hi.tr()}, ${authController.valueOrNull?.name ?? 'User'}',
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: Colors.grey, fontSize: 18),
+                                ?.copyWith(
+                                  color: Colors.grey,
+                                  fontSize: welcomeFontSize,
+                                ),
                           ),
                           //Text(
                           //  authController.valueOrNull?.name ?? 'User',
@@ -205,15 +265,21 @@ class _MainScreenState extends ConsumerState<MainScreen>
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined, size: 32),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationsScreen(),
-                        ),
-                      );
-                    },
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        size: notificationIconSize,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   Consumer(
                     builder: (context, ref, child) {
@@ -363,9 +429,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
             child: PageView(
               physics: const NeverScrollableScrollPhysics(),
               controller: pageController,
-              children: const [
-                HomeScreen(),
-                AllAuctionsScreen(),
+              children: [
+                HomeScreen(scrollController: _homeScrollController),
+                AllAuctionsScreen(scrollController: _auctionsScrollController),
                 StoreScreen(),
                 OrdersListScreen(),
                 MoreScreen(),
@@ -392,13 +458,14 @@ final connectionProvider = StreamProvider<List<ConnectivityResult>>((ref) {
 class _UserAvatar extends StatelessWidget {
   final String? image;
   final String? name;
+  final double radius;
 
-  const _UserAvatar({this.image, this.name});
+  const _UserAvatar({this.image, this.name, this.radius = 30});
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
-      radius: 30,
+      radius: radius,
       backgroundColor: Colors.grey.shade200,
       backgroundImage: image != null ? NetworkImage(image!) : null,
       child: image == null

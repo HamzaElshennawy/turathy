@@ -9,8 +9,18 @@ class FilterState {
   // New filters
   final double? minPrice;
   final double? maxPrice;
-  final String? selectedCondition;
-  final String? selectedAge;
+  
+  // 10 new filters
+  final String? country;
+  final int? dateFrom;
+  final int? dateTo;
+  final String? denomination;
+  final bool? isGraded;
+  final String? gradingCompany;
+  final int? gradeFrom;
+  final int? gradeTo;
+  final String? metalType;
+  final String? metalFineness;
 
   //<editor-fold desc="Data Methods">
   FilterState({
@@ -21,8 +31,16 @@ class FilterState {
     this.auctionStatus,
     this.minPrice,
     this.maxPrice,
-    this.selectedCondition,
-    this.selectedAge,
+    this.country,
+    this.dateFrom,
+    this.dateTo,
+    this.denomination,
+    this.isGraded,
+    this.gradingCompany,
+    this.gradeFrom,
+    this.gradeTo,
+    this.metalType,
+    this.metalFineness,
   });
 
   @override
@@ -37,8 +55,16 @@ class FilterState {
           auctionStatus == other.auctionStatus &&
           minPrice == other.minPrice &&
           maxPrice == other.maxPrice &&
-          selectedCondition == other.selectedCondition &&
-          selectedAge == other.selectedAge);
+          country == other.country &&
+          dateFrom == other.dateFrom &&
+          dateTo == other.dateTo &&
+          denomination == other.denomination &&
+          isGraded == other.isGraded &&
+          gradingCompany == other.gradingCompany &&
+          gradeFrom == other.gradeFrom &&
+          gradeTo == other.gradeTo &&
+          metalType == other.metalType &&
+          metalFineness == other.metalFineness);
 
   @override
   int get hashCode =>
@@ -49,12 +75,20 @@ class FilterState {
       auctionStatus.hashCode ^
       minPrice.hashCode ^
       maxPrice.hashCode ^
-      selectedCondition.hashCode ^
-      selectedAge.hashCode;
+      country.hashCode ^
+      dateFrom.hashCode ^
+      dateTo.hashCode ^
+      denomination.hashCode ^
+      isGraded.hashCode ^
+      gradingCompany.hashCode ^
+      gradeFrom.hashCode ^
+      gradeTo.hashCode ^
+      metalType.hashCode ^
+      metalFineness.hashCode;
 
   @override
   String toString() {
-    return 'FilterState{ selectedCategoryIndex: $selectedCategoryID, isAllOffersSelected: $isAllOffersSelected, searchText: $searchText, isLiveAuctionsSelected: $isLiveAuctionsSelected, auctionStatus: $auctionStatus, minPrice: $minPrice, maxPrice: $maxPrice, selectedCondition: $selectedCondition, selectedAge: $selectedAge}';
+    return 'FilterState{ selectedCategoryIndex: $selectedCategoryID, isAllOffersSelected: $isAllOffersSelected, searchText: $searchText, isLiveAuctionsSelected: $isLiveAuctionsSelected, auctionStatus: $auctionStatus, minPrice: $minPrice, maxPrice: $maxPrice, country: $country, dateFrom: $dateFrom, dateTo: $dateTo, denomination: $denomination, isGraded: $isGraded, gradingCompany: $gradingCompany, gradeFrom: $gradeFrom, gradeTo: $gradeTo, metalType: $metalType, metalFineness: $metalFineness}';
   }
 
   FilterState copyWith({
@@ -65,8 +99,16 @@ class FilterState {
     String? auctionStatus,
     double? minPrice,
     double? maxPrice,
-    String? selectedCondition,
-    String? selectedAge,
+    String? country,
+    int? dateFrom,
+    int? dateTo,
+    String? denomination,
+    bool? isGraded,
+    String? gradingCompany,
+    int? gradeFrom,
+    int? gradeTo,
+    String? metalType,
+    String? metalFineness,
   }) {
     return FilterState(
       selectedCategoryID: selectedCategoryID == -1
@@ -79,10 +121,16 @@ class FilterState {
       auctionStatus: auctionStatus ?? this.auctionStatus,
       minPrice: minPrice ?? this.minPrice,
       maxPrice: maxPrice ?? this.maxPrice,
-      selectedCondition: selectedCondition == ''
-          ? null
-          : selectedCondition ?? this.selectedCondition,
-      selectedAge: selectedAge == '' ? null : selectedAge ?? this.selectedAge,
+      country: country == '' ? null : country ?? this.country,
+      dateFrom: dateFrom == -1 ? null : dateFrom ?? this.dateFrom,
+      dateTo: dateTo == -1 ? null : dateTo ?? this.dateTo,
+      denomination: denomination == '' ? null : denomination ?? this.denomination,
+      isGraded: isGraded ?? this.isGraded,
+      gradingCompany: gradingCompany == '' ? null : gradingCompany ?? this.gradingCompany,
+      gradeFrom: gradeFrom == -1 ? null : gradeFrom ?? this.gradeFrom,
+      gradeTo: gradeTo == -1 ? null : gradeTo ?? this.gradeTo,
+      metalType: metalType == '' ? null : metalType ?? this.metalType,
+      metalFineness: metalFineness == '' ? null : metalFineness ?? this.metalFineness,
     );
   }
 
@@ -95,8 +143,16 @@ class FilterState {
       if (auctionStatus != null) 'status': auctionStatus,
       if (minPrice != null) 'min_price': minPrice,
       if (maxPrice != null) 'max_price': maxPrice,
-      if (selectedCondition != null) 'condition': selectedCondition,
-      if (selectedAge != null) 'age': selectedAge,
+      if (country != null) 'country': country,
+      if (dateFrom != null) 'date_from': dateFrom,
+      if (dateTo != null) 'date_to': dateTo,
+      if (denomination != null) 'denomination': denomination,
+      if (isGraded != null) 'is_graded': isGraded,
+      if (gradingCompany != null) 'grading_company': gradingCompany,
+      if (gradeFrom != null) 'grade_from': gradeFrom,
+      if (gradeTo != null) 'grade_to': gradeTo,
+      if (metalType != null) 'metal_type': metalType,
+      if (metalFineness != null) 'metal_fineness': metalFineness,
     };
   }
 

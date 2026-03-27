@@ -385,6 +385,17 @@ class AuctionProducts {
   String? condition;
   String? origin;
   String? usage;
+  String? country;
+  int? date;
+  String? denomination;
+  bool? isGraded;
+  String? gradingCompany;
+  int? grade;
+  String? metalWeight;
+  String? metalType;
+  String? metalDiameter;
+  String? metalThickness;
+  String? metalFineness;
   List<String>? images;
   List<AuctionBid>? bids;
   num? itemDuration;
@@ -421,6 +432,17 @@ class AuctionProducts {
     this.condition,
     this.origin,
     this.usage,
+    this.country,
+    this.date,
+    this.denomination,
+    this.isGraded,
+    this.gradingCompany,
+    this.grade,
+    this.metalWeight,
+    this.metalType,
+    this.metalDiameter,
+    this.metalThickness,
+    this.metalFineness,
     this.images,
     this.itemDuration,
   });
@@ -447,6 +469,17 @@ class AuctionProducts {
           condition == other.condition &&
           origin == other.origin &&
           usage == other.usage &&
+          country == other.country &&
+          date == other.date &&
+          denomination == other.denomination &&
+          isGraded == other.isGraded &&
+          gradingCompany == other.gradingCompany &&
+          grade == other.grade &&
+          metalWeight == other.metalWeight &&
+          metalType == other.metalType &&
+          metalDiameter == other.metalDiameter &&
+          metalThickness == other.metalThickness &&
+          metalFineness == other.metalFineness &&
           images == other.images;
 
   @override
@@ -468,6 +501,17 @@ class AuctionProducts {
       condition.hashCode ^
       origin.hashCode ^
       usage.hashCode ^
+      country.hashCode ^
+      date.hashCode ^
+      denomination.hashCode ^
+      isGraded.hashCode ^
+      gradingCompany.hashCode ^
+      grade.hashCode ^
+      metalWeight.hashCode ^
+      metalType.hashCode ^
+      metalDiameter.hashCode ^
+      metalThickness.hashCode ^
+      metalFineness.hashCode ^
       images.hashCode;
 
   AuctionProducts.fromJson(Map<String, dynamic> json) {
@@ -488,6 +532,17 @@ class AuctionProducts {
     condition = json['condition'];
     origin = json['origin'];
     usage = json['usage'];
+    country = json['country'];
+    date = json['date'];
+    denomination = json['denomination'];
+    isGraded = json['is_graded'];
+    gradingCompany = json['grading_company'];
+    grade = json['grade'];
+    metalWeight = json['metal_weight']?.toString();
+    metalType = json['metal_type'];
+    metalDiameter = json['metal_diameter']?.toString();
+    metalThickness = json['metal_thickness']?.toString();
+    metalFineness = json['metal_fineness'];
     if (json['images'] != null) {
       images = List<String>.from(
         json['images'],
@@ -527,6 +582,17 @@ class AuctionProducts {
     data['condition'] = condition;
     data['origin'] = origin;
     data['usage'] = usage;
+    data['country'] = country;
+    data['date'] = date;
+    data['denomination'] = denomination;
+    data['is_graded'] = isGraded;
+    data['grading_company'] = gradingCompany;
+    data['grade'] = grade;
+    data['metal_weight'] = metalWeight;
+    data['metal_type'] = metalType;
+    data['metal_diameter'] = metalDiameter;
+    data['metal_thickness'] = metalThickness;
+    data['metal_fineness'] = metalFineness;
     data['images'] = images;
     data['item_duration'] = itemDuration;
     return data;

@@ -30,7 +30,8 @@ import 'package:turathy/src/features/orders/domain/order_model.dart';
 import '../../domain/winning_auction_model.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
-import 'package:turathy/src/features/auctions/domain/auction_access_model.dart';
+
+import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
 
 class LiveAuctionScreen extends ConsumerStatefulWidget {
   final int auctionId;
@@ -156,27 +157,20 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       return;
     }
 
-    try {
-      final repository = ref.read(productsRepositoryProvider);
-      final response = await repository.checkUserAccess(
-        CachedVariables.userId ?? 0,
-        widget.auctionId,
-      );
+    final service = ref.read(auctionAccessServiceProvider);
+    final status = await service.checkAccess(
+      auctionId: widget.auctionId,
+    );
 
+    if (mounted) {
       setState(() {
-        _accessStatus = response.status.toUpperCase();
+        _accessStatus = status;
         _isAccessLoading = false;
       });
 
-      if (_accessStatus == 'GRANTED') {
+      if (status == 'GRANTED') {
         socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
       }
-    } catch (e) {
-      debugPrint("Error checking auction access: $e");
-      setState(() {
-        _accessStatus = 'ERROR';
-        _isAccessLoading = false;
-      });
     }
   }
 
@@ -184,31 +178,26 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     setState(() {
       _isAccessLoading = true;
     });
-    try {
-      final repository = ref.read(productsRepositoryProvider);
-      final response = await repository.requestAccess(
-        RequestAuctionAccessDto(
-          userId: CachedVariables.userId ?? 0,
-          auctionId: widget.auctionId,
-        ),
-      );
+    final service = ref.read(auctionAccessServiceProvider);
+    final status = await service.requestAccess(
+      auctionId: widget.auctionId,
+    );
+    if (mounted) {
       setState(() {
-        _accessStatus = response.status.toUpperCase();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppStrings.accessPending.tr()),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      debugPrint("Error requesting auction access: $e");
-    } finally {
-      setState(() {
+        _accessStatus = status;
         _isAccessLoading = false;
       });
+      if (status == 'PENDING') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.accessPending.tr()),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
     }
   }
+
 
   @override
   void dispose() {
