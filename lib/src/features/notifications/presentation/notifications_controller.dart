@@ -25,6 +25,7 @@ class NotificationsNotifier
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
       // Refresh notifications list when a new message arrives
+      if (!mounted) return;
       refresh();
     });
   }
@@ -37,7 +38,7 @@ class NotificationsNotifier
 
   Future<void> loadNotifications() async {
     // Only set loading state if we don't have data yet (initial load)
-    if (!state.hasValue) {
+    if (!state.hasValue && mounted) {
       state = const AsyncValue.loading();
     }
 
@@ -71,6 +72,9 @@ class NotificationsNotifier
   Future<void> markAsRead(int notificationId) async {
     try {
       await NotificationsRepository.markAsRead(notificationId);
+
+      if (!mounted) return;
+
       // Update local state
       state.whenData((notifications) {
         final updated = notifications.map((n) {
@@ -99,6 +103,9 @@ class NotificationsNotifier
       if (userId == null) return;
 
       await NotificationsRepository.markAllAsRead(userId);
+
+      if (!mounted) return;
+
       // Update local state
       state.whenData((notifications) {
         final updated = notifications
