@@ -197,7 +197,6 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
           children: [
             // Image Section with Heart Icon
             Expanded(
-              flex: 5,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -295,257 +294,255 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
               ),
             ),
             // Content Section
-            Expanded(
-              flex: 4,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      widget.auction.localizedTitle(
-                        context.locale.languageCode,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 6,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title
+                  Text(
+                    widget.auction.localizedTitle(
+                      context.locale.languageCode,
                     ),
-                    gapH4,
-                    // Description
-                    Text(
-                      widget.auction.localizedDescription(
-                        context.locale.languageCode,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        height: 1.3,
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                    const Spacer(),
-                    // Price and Time Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Price
-                        //Text(
-                        //  '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
-                        //  style: const TextStyle(
-                        //    fontSize: 18,
-                        //    fontWeight: FontWeight.bold,
-                        //    color: Colors.black87,
-                        //  ),
-                        //),
-                        // Remaining Time
-                        // Time Display
-                        if (widget.auction.liveStartDate != null &&
-                            widget.auction.startDate != null)
-                          Builder(
-                            builder: (context) {
-                              final now = DateTime.now();
-                              final startDate = widget.auction.startDate!;
-                              final expiryDate = widget.auction.expiryDate!;
+                  ),
+                  gapH4,
+                  // Description
+                  Text(
+                    widget.auction.localizedDescription(
+                      context.locale.languageCode,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.3,
+                    ),
+                  ),
+                  gapH8,
+                  // Price and Time Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Price
+                      //Text(
+                      //  '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
+                      //  style: const TextStyle(
+                      //    fontSize: 18,
+                      //    fontWeight: FontWeight.bold,
+                      //    color: Colors.black87,
+                      //  ),
+                      //),
+                      // Remaining Time
+                      // Time Display
+                      if (widget.auction.liveStartDate != null &&
+                          widget.auction.startDate != null)
+                        Builder(
+                          builder: (context) {
+                            final now = DateTime.now();
+                            final startDate = widget.auction.startDate!;
+                            final expiryDate = widget.auction.expiryDate!;
 
-                              if (startDate.isAfter(now)) {
-                                // Future Auction
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (widget.auction.liveStartDate !=
-                                        null) ...[
-                                      Text(
-                                        '${'preAuctionStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF1B5E20),
-                                        ),
-                                      ),
-                                      Text(
-                                        '${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(widget.auction.liveStartDate!)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ] else ...[
-                                      Text(
-                                        '${AppStrings.startedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF1B5E20),
-                                        ),
-                                      ),
-                                      //Text(
-                                      //  '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
-                                      //  style: const TextStyle(
-                                      //    fontSize: 12,
-                                      //    fontWeight: FontWeight.w500,
-                                      //    color: Colors.black54,
-                                      //  ),
-                                      //),
-                                    ],
-                                  ],
-                                );
-                              } else if (expiryDate.isBefore(now)) {
-                                // Ended Auction
-                                return Text(
-                                  '${AppStrings.endedOn.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              } else {
-                                // Live Auction
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _remainingTimeForPreAuction > Duration.zero
-                                        ? Text(
-                                            '${AppStrings.remainingTime.tr()} ${AppStrings.untilPreAuction.tr()}: ${_formatDuration(_remainingTimeForPreAuction)}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(
-                                                0xFFD32F2F,
-                                              ), // Red color
-                                            ),
-                                          )
-                                        : Text(
-                                            AppStrings.preAuctionStarted.tr(),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.green, // Red color
-                                            ),
-                                          ),
-                                    gapH4,
+                            if (startDate.isAfter(now)) {
+                              // Future Auction
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (widget.auction.liveStartDate !=
+                                      null) ...[
                                     Text(
-                                      '${AppStrings.remainingTime.tr()} ${AppStrings.untilLive.tr()}: ${_formatDuration(_remainingTimeForLive)}',
+                                      '${'preAuctionStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFFD32F2F), // Red color
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1B5E20),
                                       ),
                                     ),
+                                    Text(
+                                      '${'liveStartsAt'.tr()}: ${DateFormat('MMM d, h:mm a').format(widget.auction.liveStartDate!)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Text(
+                                      '${AppStrings.startedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(startDate)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1B5E20),
+                                      ),
+                                    ),
+                                    //Text(
+                                    //  '${AppStrings.endedAt.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
+                                    //  style: const TextStyle(
+                                    //    fontSize: 12,
+                                    //    fontWeight: FontWeight.w500,
+                                    //    color: Colors.black54,
+                                    //  ),
+                                    //),
                                   ],
-                                );
-                              }
-                            },
-                          ),
-                      ],
-                    ),
-                    gapH8,
-                    // Access-aware button
-                    if (!isEnded)
-                      Builder(
-                        builder: (context) {
-                          if (_isAccessLoading) {
-                            return const SizedBox(
-                              height: 40,
-                              child: Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              ),
-                            );
-                          }
-
-                          final bool isLiveStarted =
-                              _remainingTimeForLive == Duration.zero &&
-                              _remainingTimeForPreAuction == Duration.zero &&
-                              widget.auction.startDate != null &&
-                              widget.auction.startDate!.isBefore(DateTime.now());
-
-                          final bool isGranted = _accessStatus == 'GRANTED';
-                          final bool isPending = _accessStatus == 'PENDING';
-                          final bool isDenied = _accessStatus == 'DENIED';
-
-                          String buttonText;
-                          Color buttonColor;
-                          VoidCallback? onPressed;
-
-                          if (isGranted && isLiveStarted) {
-                            buttonText = AppStrings.joinNow.tr();
-                            buttonColor = Colors.green;
-                            onPressed = () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LiveAuctionScreen(
-                                    auctionId: widget.auction.id ?? 0,
-                                    isAdmin: widget.auction.userId == CachedVariables.userId,
-                                  ),
-                                ),
+                                ],
                               );
-                            };
-                          } else if (isGranted) {
-                            buttonText = AppStrings.bidNow.tr();
-                            buttonColor = const Color(0xFF1B5E20);
-                            onPressed = () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AuctionScreen(widget.auction),
-                                ),
-                              );
-                            };
-                          } else if (isPending) {
-                            buttonText = AppStrings.accessPending.tr();
-                            buttonColor = Colors.orange;
-                            onPressed = null;
-                          } else if (isDenied) {
-                            buttonText = AppStrings.accessDenied.tr();
-                            buttonColor = Colors.red;
-                            onPressed = null;
-                          } else {
-                            // REQUIRED or ERROR → Request Access
-                            buttonText = AppStrings.requestAccess.tr();
-                            buttonColor = const Color(0xFF1B5E20);
-                            onPressed = _requestAccess;
-                          }
-
-                          return SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: onPressed,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: buttonColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: Text(
-                                buttonText,
+                            } else if (expiryDate.isBefore(now)) {
+                              // Ended Auction
+                              return Text(
+                                '${AppStrings.endedOn.tr()}: ${DateFormat('MMM d, h:mm a').format(expiryDate)}',
                                 style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey,
                                 ),
+                              );
+                            } else {
+                              // Live Auction
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _remainingTimeForPreAuction > Duration.zero
+                                      ? Text(
+                                          '${AppStrings.remainingTime.tr()} ${AppStrings.untilPreAuction.tr()}: ${_formatDuration(_remainingTimeForPreAuction)}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(
+                                              0xFFD32F2F,
+                                            ), // Red color
+                                          ),
+                                        )
+                                      : Text(
+                                          AppStrings.preAuctionStarted.tr(),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green, // Red color
+                                          ),
+                                        ),
+                                  gapH4,
+                                  Text(
+                                    '${AppStrings.remainingTime.tr()} ${AppStrings.untilLive.tr()}: ${_formatDuration(_remainingTimeForLive)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFD32F2F), // Red color
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                  gapH8,
+                  // Access-aware button
+                  if (!isEnded)
+                    Builder(
+                      builder: (context) {
+                        if (_isAccessLoading) {
+                          return const SizedBox(
+                            height: 40,
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
                           );
-                        },
-                      ),
-                  ],
-                ),
+                        }
+
+                        final bool isLiveStarted =
+                            _remainingTimeForLive == Duration.zero &&
+                            _remainingTimeForPreAuction == Duration.zero &&
+                            widget.auction.startDate != null &&
+                            widget.auction.startDate!.isBefore(DateTime.now());
+
+                        final bool isGranted = _accessStatus == 'GRANTED';
+                        final bool isPending = _accessStatus == 'PENDING';
+                        final bool isDenied = _accessStatus == 'DENIED';
+
+                        String buttonText;
+                        Color buttonColor;
+                        VoidCallback? onPressed;
+
+                        if (isGranted && isLiveStarted) {
+                          buttonText = AppStrings.joinNow.tr();
+                          buttonColor = Colors.green;
+                          onPressed = () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LiveAuctionScreen(
+                                  auctionId: widget.auction.id ?? 0,
+                                  isAdmin: widget.auction.userId == CachedVariables.userId,
+                                ),
+                              ),
+                            );
+                          };
+                        } else if (isGranted) {
+                          buttonText = AppStrings.bidNow.tr();
+                          buttonColor = const Color(0xFF1B5E20);
+                          onPressed = () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AuctionScreen(widget.auction),
+                              ),
+                            );
+                          };
+                        } else if (isPending) {
+                          buttonText = AppStrings.accessPending.tr();
+                          buttonColor = Colors.orange;
+                          onPressed = null;
+                        } else if (isDenied) {
+                          buttonText = AppStrings.accessDenied.tr();
+                          buttonColor = Colors.red;
+                          onPressed = null;
+                        } else {
+                          // REQUIRED or ERROR → Request Access
+                          buttonText = AppStrings.requestAccess.tr();
+                          buttonColor = const Color(0xFF1B5E20);
+                          onPressed = _requestAccess;
+                        }
+
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: onPressed,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: buttonColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: Text(
+                              buttonText,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
               ),
             ),
           ],

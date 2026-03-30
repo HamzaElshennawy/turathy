@@ -86,13 +86,13 @@ class WinningAuctionModel {
 
   factory WinningAuctionModel.fromJson(Map<String, dynamic> json) {
     return WinningAuctionModel(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      auctionId: json['auction_id'] as int,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      userId: int.tryParse(json['user_id']?.toString() ?? '') ?? 0,
+      auctionId: int.tryParse(json['auction_id']?.toString() ?? '') ?? 0,
       product: json['product'] as String,
-      productId: json['product_id'] as int?,
-      price: (json['price'] as num).toDouble(),
-      sold: json['sold'] as bool,
+      productId: json['product_id'] != null ? int.tryParse(json['product_id'].toString()) : null,
+      price: double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
+      sold: json['sold'] == true || json['sold']?.toString() == 'true' || json['sold'] == 1,
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
       auctionTitle:

@@ -248,38 +248,43 @@ class ProductModel {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'] as int,
-      userId: json['user_id'] as int?,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      userId: json['user_id'] != null ? int.tryParse(json['user_id'].toString()) : null,
       title: json['title'] as String?,
       name: json['name'] as String?,
       description: json['description'] as String?,
-      price: json['price'] != null ? (json['price'] as num).toDouble() : null,
+      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
       imageUrl: (json['imageUrl'] ?? json['image']) as String?,
       category: json['category'] as String?,
       brand: json['brand'] as String?,
-      stock: json['stock'] as int? ?? 0,
-      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : 0.0,
-      reviews: json['reviews'] as int? ?? 0,
+      stock: json['stock'] != null ? (int.tryParse(json['stock'].toString()) ?? 0) : 0,
+      rating: json['rating'] != null ? (double.tryParse(json['rating'].toString()) ?? 0.0) : 0.0,
+      reviews: json['reviews'] != null ? (int.tryParse(json['reviews'].toString()) ?? 0) : 0,
       material: json['material'] as String?,
       approximateAge: json['approximateAge'] as String?,
       condition: json['condition'] as String?,
       origin: json['origin'] as String?,
       country: json['country'] as String?,
-      date: json['date'] as int?,
+      date: json['date'] != null ? int.tryParse(json['date'].toString()) : null,
       denomination: json['denomination'] as String?,
-      isGraded: (json['is_graded'] ?? json['isGraded']) as bool?,
+      isGraded: () {
+        final val = json['is_graded'] ?? json['isGraded'];
+        if (val == null) return null;
+        if (val is bool) return val;
+        return val.toString() == 'true' || val.toString() == '1';
+      }(),
       gradingCompany: (json['grading_company'] ?? json['gradingCompany']) as String?,
-      grade: json['grade'] as int?,
-      metalWeight: json['metal_weight'] != null ? (json['metal_weight'] as num).toDouble() : null,
+      grade: json['grade'] != null ? int.tryParse(json['grade'].toString()) : null,
+      metalWeight: json['metal_weight'] != null ? double.tryParse(json['metal_weight'].toString()) : null,
       metalType: json['metal_type'] as String?,
-      metalDiameter: json['metal_diameter'] != null ? (json['metal_diameter'] as num).toDouble() : null,
-      metalThickness: json['metal_thickness'] != null ? (json['metal_thickness'] as num).toDouble() : null,
+      metalDiameter: json['metal_diameter'] != null ? double.tryParse(json['metal_diameter'].toString()) : null,
+      metalThickness: json['metal_thickness'] != null ? double.tryParse(json['metal_thickness'].toString()) : null,
       metalFineness: json['metal_fineness'] as String?,
       images: json['images'] != null
           ? List<String>.from(json['images'] as Iterable)
           : null,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : DateTime.now(),
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),
     );
   }
 }

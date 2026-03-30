@@ -27,13 +27,13 @@ class OrderItemModel {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
-      id: json['id'] as int,
-      orderId: json['order_id'] as int,
-      productId: json['product_id'] as int?,
-      auctionProductId: json['auction_product_id'] as int?,
-      winningId: json['winning_id'] as int?,
-      quantity: json['quantity'] as int? ?? 1,
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      orderId: int.tryParse(json['order_id']?.toString() ?? '') ?? 0,
+      productId: json['product_id'] != null ? int.tryParse(json['product_id'].toString()) : null,
+      auctionProductId: json['auction_product_id'] != null ? int.tryParse(json['auction_product_id'].toString()) : null,
+      winningId: json['winning_id'] != null ? int.tryParse(json['winning_id'].toString()) : null,
+      quantity: json['quantity'] != null ? int.tryParse(json['quantity'].toString()) ?? 1 : 1,
+      price: json['price'] != null ? double.tryParse(json['price'].toString()) ?? 0.0 : 0.0,
       product: json['product'] as Map<String, dynamic>?,
       auctionProduct: json['auction_product'] as Map<String, dynamic>?,
       winning: json['winning'] as Map<String, dynamic>?,

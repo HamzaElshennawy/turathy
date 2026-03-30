@@ -96,7 +96,6 @@ class _ProductCardState extends ConsumerState<ProductCard> {
           children: [
             // Image Section with Heart Icon
             Expanded(
-              flex: 2,
               child: Stack(
                 fit: StackFit.passthrough,
                 children: [
@@ -163,98 +162,96 @@ class _ProductCardState extends ConsumerState<ProductCard> {
               ),
             ),
             // Content Section
-            Expanded(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      widget.product.title ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title
+                  Text(
+                    widget.product.title ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                    gapH4,
-                    // Description
-                    Text(
-                      widget.product.description ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        height: 1.3,
-                      ),
+                  ),
+                  gapH4,
+                  // Description
+                  Text(
+                    widget.product.description ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.3,
                     ),
-                    const Spacer(),
-                    // Price and Time Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Price
-                        //Text(
-                        //  '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
-                        //  style: const TextStyle(
-                        //    fontSize: 16,
-                        //    fontWeight: FontWeight.bold,
-                        //    color: Colors.black87,
-                        //  ),
-                        //),
-                        // Remaining Time
-                        //if (widget.product.expiryDate != null)
-                        //  Text(
-                        //    '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
-                        //    style: const TextStyle(
-                        //      fontSize: 12,
-                        //      fontWeight: FontWeight.w600,
-                        //      color: Color(0xFFD32F2F), // Red color
-                        //    ),
-                        //  ),
-                      ],
-                    ),
-                    gapH4,
-                    // Bid Now Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ProductScreen(product: widget.product),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Color(0xFF1B5E20),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            side: const BorderSide(color: Color(0xFF1B5E20)),
+                  ),
+                  gapH8,
+                  // Price and Time Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Price
+                      //Text(
+                      //  '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
+                      //  style: const TextStyle(
+                      //    fontSize: 16,
+                      //    fontWeight: FontWeight.bold,
+                      //    color: Colors.black87,
+                      //  ),
+                      //),
+                      // Remaining Time
+                      //if (widget.product.expiryDate != null)
+                      //  Text(
+                      //    '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
+                      //    style: const TextStyle(
+                      //      fontSize: 12,
+                      //      fontWeight: FontWeight.w600,
+                      //      color: Color(0xFFD32F2F), // Red color
+                      //    ),
+                      //  ),
+                    ],
+                  ),
+                  gapH4,
+                  // Bid Now Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProductScreen(product: widget.product),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 4),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Color(0xFF1B5E20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          side: const BorderSide(color: Color(0xFF1B5E20)),
                         ),
-                        child: Text(
-                          "${AppStrings.buyNow.tr()} :${widget.product.price ?? 0} ${AppStrings.currency.tr()}",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      child: Text(
+                        "${AppStrings.buyNow.tr()} :${widget.product.price ?? 0} ${AppStrings.currency.tr()}",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

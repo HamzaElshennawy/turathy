@@ -203,15 +203,15 @@ class OrderModel {
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
-      id: json['id'] as int,
-      userId: (json['user_id'] ?? 0) as int,
-      auctionId: (json['auction_id'] ?? 0) as int,
-      total: (json['total'] as num?)?.toDouble() ?? 0.0,
-      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
-      addressId: json['address_id'] as int?,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      userId: int.tryParse((json['user_id'] ?? 0).toString()) ?? 0,
+      auctionId: int.tryParse((json['auction_id'] ?? 0).toString()) ?? 0,
+      total: double.tryParse(json['total']?.toString() ?? '') ?? 0.0,
+      date: DateTime.tryParse(json['date']?.toString() ?? '') ?? DateTime.now(),
+      addressId: json['address_id'] != null ? int.tryParse(json['address_id'].toString()) : null,
       address:
           (json['address'] ?? json['user_addresses']) as Map<String, dynamic>?,
-      pCs: (json['PCs'] ?? 1) as int,
+      pCs: int.tryParse((json['PCs'] ?? 1).toString()) ?? 1,
       codAmt: (json['cod_amt'] ?? 0).toString(),
       weight: (json['weight'] ?? '1').toString(),
       itemDesc: json['itemDesc'] as String? ?? '',
