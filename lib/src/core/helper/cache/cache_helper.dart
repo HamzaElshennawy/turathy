@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class CacheHelper {
@@ -14,7 +15,18 @@ class CacheHelper {
     required String key,
     required String value,
   }) async {
-    await secureStorage.write(key: key, value: value);
+    try {
+      await secureStorage.write(key: key, value: value);
+    } on PlatformException catch (e) {
+      // iOS keychain error -25299: item already exists. Delete then retry.
+      if (e.code == 'Unexpected security result code' ||
+          e.message?.contains('-25299') == true) {
+        await secureStorage.delete(key: key);
+        await secureStorage.write(key: key, value: value);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   static Future<String?> getData({required String key}) async {

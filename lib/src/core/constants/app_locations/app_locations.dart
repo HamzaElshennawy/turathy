@@ -364,6 +364,24 @@ const List<GovernateOption> kGovernates = [
       CityOption(title: 'مبارك الكبير', value: 'MUBARAK AL KABEER'),
     ],
   ),
+  GovernateOption(
+    code: 'Qatar',
+    title: 'قطر',
+    cities: [
+      CityOption(title: 'الدوحة', value: 'Doha'),
+      CityOption(title: 'الوكرة', value: 'Al Wakrah'),
+      CityOption(title: 'الخور', value: 'Al Khor'),
+      CityOption(title: 'الريان', value: 'Al Rayyan'),
+      CityOption(title: 'أم صلال', value: 'Umm Salal'),
+      CityOption(title: 'الذخيرة', value: 'Al Thakhira'),
+      CityOption(title: 'الشمال', value: 'Al Shamal'),
+      CityOption(title: 'دخان', value: 'Dukhan'),
+      CityOption(title: 'مسيعيد', value: 'Mesaieed'),
+      CityOption(title: 'الغويرية', value: 'Al Ghuwairiya'),
+      CityOption(title: 'الجميلية', value: 'Al Jumaliyah'),
+      CityOption(title: 'لوسيل', value: 'Lusail'),
+    ],
+  ),
 ];
 
 const List<({String code, String nameEn, String nameAr})> countries = [

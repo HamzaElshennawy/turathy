@@ -1,0 +1,9 @@
+{
+    "aps": {
+        "alert": {
+            "title": "Test",
+            "body": "Hello from sim"
+        },
+        "sound": "default"
+    }
+}
