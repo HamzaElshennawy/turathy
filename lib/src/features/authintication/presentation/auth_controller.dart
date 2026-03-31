@@ -7,6 +7,39 @@ import '../../../core/helper/fcm/fcm_service.dart';
 import '../../notifications/presentation/notifications_controller.dart';
 import '../data/auth_repository.dart';
 import '../domain/user_model.dart';
+import 'country_code_provider.dart';
+
+/// Known dial codes for the countries we support, longest first for matching.
+const _knownDialCodes = [
+  '+966', '+971', '+965', '+974', '+973', '+968', '+962', '+961', '+963',
+  '+964', '+970', '+967', '+249', '+218', '+216', '+213', '+212', '+222',
+  '+252', '+253', '+269', '+20',
+];
+
+/// Splits a phone number string into its dial code and local number.
+/// Matches against known dial codes (longest first) to avoid greedy regex issues.
+({String? dialCode, String? localNumber}) _splitPhoneNumber(String? phone) {
+  if (phone == null || phone.isEmpty) return (dialCode: null, localNumber: phone);
+  if (phone.startsWith('+')) {
+    for (final code in _knownDialCodes) {
+      if (phone.startsWith(code)) {
+        return (
+          dialCode: code,
+          localNumber: phone.substring(code.length),
+        );
+      }
+    }
+    // Fallback: try generic 1-3 digit match
+    final match = RegExp(r'^\+(\d{1,3})').firstMatch(phone);
+    if (match != null) {
+      return (
+        dialCode: '+${match.group(1)!}',
+        localNumber: phone.substring(match.group(0)!.length),
+      );
+    }
+  }
+  return (dialCode: null, localNumber: phone);
+}
 
 class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   final Ref ref;
@@ -14,12 +47,19 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     text: CachedVariables.password,
   );
   final nameController = TextEditingController();
-  final phoneController = TextEditingController(
-    text: CachedVariables.phone_number,
-  );
+  late final TextEditingController phoneController;
   final formKey = GlobalKey<FormState>();
 
-  AuthController(this.ref) : super(const AsyncValue.data(null));
+  AuthController(this.ref) : super(const AsyncValue.data(null)) {
+    final parts = _splitPhoneNumber(CachedVariables.phone_number);
+    phoneController = TextEditingController(text: parts.localNumber);
+    if (parts.dialCode != null) {
+      // Defer to avoid modifying another provider during initialization
+      Future.microtask(() {
+        ref.read(countryCodeProvider.notifier).setCountryCode(parts.dialCode!);
+      });
+    }
+  }
 
   bool isGoogleSignInProcessing = false;
 

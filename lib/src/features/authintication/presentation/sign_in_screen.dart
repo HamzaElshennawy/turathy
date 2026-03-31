@@ -11,6 +11,7 @@ import '../../../core/common_widgets/phone_number_field.dart';
 
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../utils/validators.dart';
+import '../data/auth_repository.dart';
 import 'auth_controller.dart';
 import 'complete_profile_screen.dart';
 import 'otp_screen.dart';
@@ -28,6 +29,7 @@ class SignInScreen extends ConsumerStatefulWidget {
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -43,12 +45,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     // Using a listener to handle navigation and errors
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error.toString()),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          final err = next.error;
+          if (err is AuthException) {
+            _errorMessage = err.message;
+          } else {
+            _errorMessage = err.toString();
+          }
+        });
       } else if (next.value != null) {
         final isGoogle = ref
             .read(authControllerProvider.notifier)
@@ -130,6 +134,21 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
+
+                      // Inline error message
+                      if (_errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
 
                       Form(
                         key: _formKey,
@@ -224,22 +243,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 isLoading: state.isLoading,
                                 text: AppStrings.signIn.tr(),
                                 onPressed: () async {
+                                  setState(() => _errorMessage = null);
                                   if (_formKey.currentState!.validate()) {
                                     final local = controller
                                         .phoneController
                                         .text
                                         .trim();
 
-                                    try {
-                                      await ref
-                                          .read(authControllerProvider.notifier)
-                                          .signIn(
-                                            '$countryCode$local',
-                                            controller.passwordController.text,
-                                          );
-                                    } catch (_) {
-                                      // Error is already handled by the state listener
-                                    }
+                                    await ref
+                                        .read(authControllerProvider.notifier)
+                                        .signIn(
+                                          '$countryCode$local',
+                                          controller.passwordController.text,
+                                        );
                                   }
                                 },
                               ),

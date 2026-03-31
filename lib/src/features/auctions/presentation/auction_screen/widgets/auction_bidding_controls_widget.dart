@@ -486,9 +486,11 @@ class _AuctionBiddingControlsWidgetState
                   Row(
                     children: [
                       Text(
-                        ([highestActiveBid?.bid, currentPrice].whereType<num>().reduce((a, b) => a > b ? a : b)).toStringAsFixed(
-                          0,
-                        ),
+                        ([
+                              highestActiveBid?.bid,
+                              currentPrice,
+                            ].whereType<num>().reduce((a, b) => a > b ? a : b))
+                            .toStringAsFixed(0),
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,

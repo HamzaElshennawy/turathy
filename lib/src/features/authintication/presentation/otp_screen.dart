@@ -27,6 +27,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   // Using 6 controllers for simplicity in UI state management for focus.
   late List<TextEditingController> _controllers;
   late List<FocusNode> _focusNodes;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -68,9 +69,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     // but we should re-add the listener from original code.
     ref.listen(otpControllerProvider, (previous, next) {
       if (next.error != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(next.error.toString())));
+        setState(() {
+          _errorMessage = next.error.toString();
+        });
       }
     });
 
@@ -171,7 +172,24 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // Inline error message
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                const SizedBox(height: 8),
 
                 // Timer / Hint
                 Align(
@@ -191,6 +209,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     text: AppStrings.verify.tr(),
                     isLoading: state.isLoading,
                     onPressed: () async {
+                      setState(() => _errorMessage = null);
                       // Update the main controller text before verifying just in case
                       String otp = _controllers.map((c) => c.text).join();
                       controller.otpController.text = otp;

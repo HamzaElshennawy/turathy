@@ -45,11 +45,18 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     String initialCountryCode = '+966';
 
     if (initialPhone.startsWith('+')) {
-      RegExp regex = RegExp(r'^\+(\d{1,3})');
-      Match? match = regex.firstMatch(initialPhone);
-      if (match != null) {
-        initialCountryCode = '+' + match.group(1)!;
-        initialPhone = initialPhone.substring(match.group(0)!.length);
+      // Known dial codes (longest first) to avoid greedy matching issues
+      const knownCodes = [
+        '+966', '+971', '+965', '+974', '+973', '+968', '+962', '+961', '+963',
+        '+964', '+970', '+967', '+249', '+218', '+216', '+213', '+212', '+222',
+        '+252', '+253', '+269', '+20',
+      ];
+      for (final code in knownCodes) {
+        if (initialPhone.startsWith(code)) {
+          initialCountryCode = code;
+          initialPhone = initialPhone.substring(code.length);
+          break;
+        }
       }
     }
 

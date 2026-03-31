@@ -48,9 +48,35 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     _nameController = TextEditingController(
       text: addr?.name ?? CachedVariables.userName ?? '',
     );
-    _mobileController = TextEditingController(
-      text: addr?.mobile ?? CachedVariables.phone_number ?? '',
-    );
+
+    // Strip country code from mobile to avoid duplication with the picker
+    String initialMobile = addr?.mobile ?? CachedVariables.phone_number ?? '';
+    if (initialMobile.startsWith('+')) {
+      // Known dial codes (longest first) to avoid greedy matching issues
+      const knownCodes = [
+        '+966', '+971', '+965', '+974', '+973', '+968', '+962', '+961', '+963',
+        '+964', '+970', '+967', '+249', '+218', '+216', '+213', '+212', '+222',
+        '+252', '+253', '+269', '+20',
+      ];
+      bool matched = false;
+      for (final code in knownCodes) {
+        if (initialMobile.startsWith(code)) {
+          _mobileCountryCode = code;
+          initialMobile = initialMobile.substring(code.length);
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        final match = RegExp(r'^\+(\d{1,3})').firstMatch(initialMobile);
+        if (match != null) {
+          _mobileCountryCode = '+${match.group(1)!}';
+          initialMobile = initialMobile.substring(match.group(0)!.length);
+        }
+      }
+    }
+    _mobileController = TextEditingController(text: initialMobile);
+
     _addressController = TextEditingController(text: addr?.address ?? '');
     _shortAddressController = TextEditingController(
       text: addr?.shortAddress ?? '',
