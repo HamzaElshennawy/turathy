@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import '../../../core/constants/app_functions/app_functions.dart';
@@ -8,6 +9,20 @@ import '../../../core/helper/dio/dio_helper.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../domain/user_model.dart';
 
+/// Ensures that a Dio response's data is a [Map].
+/// If Dio returns a raw JSON string instead of a parsed Map,
+/// this helper decodes it. Returns an empty map as a fallback.
+Map<String, dynamic> _ensureMap(dynamic data) {
+  if (data is Map<String, dynamic>) return data;
+  if (data is String) {
+    try {
+      final decoded = jsonDecode(data);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+  }
+  return {};
+}
+
 class AuthRepository {
   static Future<Map<String, dynamic>> signIn(
     String phone,
@@ -17,12 +32,13 @@ class AuthRepository {
       url: EndPoints.login,
       data: {'phone_number': phone, 'password': password},
     );
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final data = result.data['data'];
+      final data = _ensureMap(body['data']);
       final user = UserModel.fromJson(data);
 
       // Cache auth token
-      final token = result.data['token'] ?? data['token'];
+      final token = body['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         log('Google token $token');
@@ -33,7 +49,7 @@ class AuthRepository {
 
       return {
         'user': user,
-        'status': result.data['status'] ?? 'success',
+        'status': body['status'] ?? 'success',
         'isProfileComplete': data['isProfileComplete'] ?? true,
         'missingFields': data['missingFields'] ?? [],
       };
@@ -42,8 +58,8 @@ class AuthRepository {
         message: 'code signIn ${result.statusCode} $result ',
       );
       String message =
-          result.data['message'] ??
-          result.data['error'] ??
+          body['message']?.toString() ??
+          body['error']?.toString() ??
           'An error occurred while signing in';
       throw AuthException(message, result.statusCode);
     }
@@ -56,11 +72,13 @@ class AuthRepository {
       data: {'token': token},
     );
 
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final user = UserModel.fromJson(result.data['data']);
+      final data = _ensureMap(body['data']);
+      final user = UserModel.fromJson(data);
 
       // Cache auth token
-      final token = result.data['token'] ?? result.data['data']['token'];
+      final token = body['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
@@ -76,7 +94,7 @@ class AuthRepository {
         message: 'code googleSignIn ${result.statusCode} $result ',
       );
       String message =
-          result.data['error'] ??
+          body['error']?.toString() ??
           'An error occurred while signing in with Google';
       throw AuthException(message, result.statusCode);
     }
@@ -88,13 +106,14 @@ class AuthRepository {
       token: CachedVariables.token,
     );
 
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200) {
-      final user = UserModel.fromJson(result.data['data']);
+      final user = UserModel.fromJson(_ensureMap(body['data']));
       await cacheData(user);
       return user;
     } else {
       String message =
-          result.data['error'] ?? 'An error occurred while fetching user data';
+          body['error']?.toString() ?? 'An error occurred while fetching user data';
       throw AuthException(message, result.statusCode);
     }
   }
@@ -104,10 +123,11 @@ class AuthRepository {
       url: EndPoints.userSignup,
       data: user.toJson(),
     );
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final data = result.data['data'];
+      final data = _ensureMap(body['data']);
       return {
-        'status': result.data['status'] ?? 'success',
+        'status': body['status'] ?? 'success',
         'userId': data['userId'],
         'isProfileComplete': data['isProfileComplete'] ?? false,
         'missingFields': data['missingFields'] ?? [],
@@ -115,8 +135,8 @@ class AuthRepository {
       };
     } else {
       String message =
-          result.data['message']?.toString() ??
-          result.data['error']?.toString() ??
+          body['message']?.toString() ??
+          body['error']?.toString() ??
           'Signup failed';
       AppFunctions.logPrint(message: 'code createUser ${result.statusCode} ');
       throw AuthException(message, result.statusCode);
@@ -131,12 +151,13 @@ class AuthRepository {
       url: EndPoints.verifyOTP,
       data: {'number': number, 'otp': otp},
     );
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final data = result.data['data'];
+      final data = _ensureMap(body['data']);
       final user = UserModel.fromJson(data);
 
       // Cache auth token if present in verification response
-      final token = result.data['token'] ?? data['token'];
+      final token = body['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
@@ -146,7 +167,7 @@ class AuthRepository {
       return user;
     } else {
       final message =
-          result.data['message']?.toString() ?? 'OTP verification failed';
+          body['message']?.toString() ?? 'OTP verification failed';
       throw AuthException(message, result.statusCode);
     }
   }
@@ -156,10 +177,11 @@ class AuthRepository {
       url: EndPoints.resendOTP,
       data: {'number': number},
     );
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
-      final message = result.data['message']?.toString() ?? 'OTP resend failed';
+      final message = body['message']?.toString() ?? 'OTP resend failed';
       throw AuthException(message, result.statusCode);
     }
   }
@@ -169,11 +191,12 @@ class AuthRepository {
       url: EndPoints.requestOTP,
       data: {'number': number},
     );
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
       final message =
-          result.data['message']?.toString() ?? 'OTP request failed';
+          body['message']?.toString() ?? 'OTP request failed';
       throw AuthException(message, result.statusCode);
     }
   }
@@ -187,11 +210,12 @@ class AuthRepository {
       url: EndPoints.changePassword,
       data: {'number': number, 'otp': otp, 'password': password},
     );
+    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
       final message =
-          result.data['message']?.toString() ?? 'Password change failed';
+          body['message']?.toString() ?? 'Password change failed';
       throw AuthException(message, result.statusCode);
     }
   }

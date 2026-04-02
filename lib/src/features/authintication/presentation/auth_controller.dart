@@ -113,7 +113,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
         return result;
       } catch (e, st) {
         state = AsyncValue.error(e.toString(), st);
-        rethrow;
+        return {'status': 'error', 'message': e.toString()};
       }
     }
     const error = 'Please fill all fields';
