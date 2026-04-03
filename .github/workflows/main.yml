@@ -1,0 +1,100 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # Extract version from pubspec.yaml
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - run: flutter pub get
+
+      # Decode keystore
+      - name: Decode Keystore
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      # Build Android
+      - run: flutter build apk --release
+      - run: flutter build appbundle
+
+      # Upload artifacts (temporary)
+      - uses: actions/upload-artifact@v3
+        with:
+          name: android-build
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: android-build
+
+      # Create GitHub Release
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: Release v${{ needs.build.outputs.version }}
+          draft: false
+          prerelease: false
+          files: |
+            app-release.apk
+            app-release.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  ios:
+    runs-on: macos-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+
+      - run: gem install fastlane
+
+      - run: flutter pub get
+
+      - name: Run Fastlane
+        run: fastlane ios beta
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
