@@ -63,7 +63,7 @@ platform :ios do
     sh("xcodebuild -exportArchive " \
        "-archivePath \"#{archive_path}\" " \
        "-exportPath \"#{ipa_output_dir}\" " \
-       "-exportOptionsPlist \"#{File.expand_path('fastlane/ExportOptions.plist', Dir.pwd)}\"")
+       "-exportOptionsPlist \"#{File.expand_path('ExportOptions.plist', Dir.pwd)}\"")
     lane_context[SharedValues::IPA_OUTPUT_PATH] = "#{ipa_output_dir}/Runner.ipa"
     
     # 8. Upload the IPA to TestFlight
