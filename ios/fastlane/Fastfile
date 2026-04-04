@@ -40,23 +40,33 @@ platform :ios do
       profile_name: "match AppStore com.deepblue.turathy"
     )
 
-    # 5. Build the app for App Store distribution
+    # 5. Archive only (skip IPA export — we need to patch App.framework first)
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
-      export_method: "app-store",
-      clean: true,
-      export_options: {
-        method: "app-store",
-        provisioningProfiles: {
-          "com.deepblue.turathy" => "match AppStore com.deepblue.turathy"
-        },
-        signingCertificate: "Apple Distribution",
-        teamID: "N6P5KD4Z98"
-      }
+      skip_package_ipa: true,
+      clean: true
     )
+
+    # 6. Patch App.framework/Info.plist — known Flutter bug: MinimumOSVersion is empty
+    archive_path = lane_context[SharedValues::XCODEBUILD_ARCHIVE]
+    app_plist = "#{archive_path}/Products/Applications/Runner.app/Frameworks/App.framework/Info.plist"
+    if File.exist?(app_plist)
+      sh("plutil -replace MinimumOSVersion -string '13.0' \"#{app_plist}\" 2>/dev/null || plutil -insert MinimumOSVersion -string '13.0' \"#{app_plist}\"")
+      UI.success("✅ Patched App.framework/Info.plist with MinimumOSVersion=13.0")
+    else
+      UI.important("⚠️  App.framework/Info.plist not found at #{app_plist}")
+    end
+
+    # 7. Export the patched archive into an IPA
+    ipa_output_dir = File.expand_path("../build", Dir.pwd)
+    sh("xcodebuild -exportArchive " \
+       "-archivePath \"#{archive_path}\" " \
+       "-exportPath \"#{ipa_output_dir}\" " \
+       "-exportOptionsPlist \"#{File.expand_path('fastlane/ExportOptions.plist', Dir.pwd)}\"")
+    lane_context[SharedValues::IPA_OUTPUT_PATH] = "#{ipa_output_dir}/Runner.ipa"
     
-    # 5. Upload to TestFlight
-    upload_to_testflight
+    # 8. Upload the IPA to TestFlight
+    upload_to_testflight(ipa: lane_context[SharedValues::IPA_OUTPUT_PATH])
   end
 end
