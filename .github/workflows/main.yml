@@ -94,7 +94,9 @@ jobs:
       - run: flutter pub get
 
       - name: Run Fastlane
-        run: fastlane ios beta
+        working-directory: ios
+        run: bundle exec fastlane ios beta
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}

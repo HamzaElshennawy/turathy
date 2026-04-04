@@ -6,7 +6,7 @@ import 'package:turathy/src/features/products/data/products_repository.dart';
 import 'package:turathy/src/features/home/data/category_repository.dart';
 
 import '../../../../core/constants/app_sizes.dart';
-import '../../../authintication/presentation/auth_controller.dart';
+
 import 'widgets/products_widget/live_auctions_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
