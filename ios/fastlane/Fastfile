@@ -30,20 +30,29 @@ platform :ios do
     # 3. Increment build number
     increment_build_number(xcodeproj: "Runner.xcodeproj")
     
-    # 4. Build the app for App Store distribution
+    # 4. Disable automatic signing ONLY for the Runner target (not Pods)
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      targets: ["Runner"],
+      team_id: "N6P5KD4Z98",
+      code_sign_identity: "Apple Distribution",
+      profile_name: "match AppStore com.deepblue.turathy"
+    )
+
+    # 5. Build the app for App Store distribution
     build_app(
-      workspace: "Runner.xcworkspace", 
+      workspace: "Runner.xcworkspace",
       scheme: "Runner",
       export_method: "app-store",
       clean: true,
-      xcargs: "CODE_SIGN_STYLE=Manual " \
-              "PROVISIONING_PROFILE_SPECIFIER='match AppStore com.deepblue.turathy' " \
-              "CODE_SIGN_IDENTITY='Apple Distribution' " \
-              "DEVELOPMENT_TEAM='N6P5KD4Z98'",
       export_options: {
+        method: "app-store",
         provisioningProfiles: {
           "com.deepblue.turathy" => "match AppStore com.deepblue.turathy"
-        }
+        },
+        signingCertificate: "Apple Distribution",
+        teamID: "N6P5KD4Z98"
       }
     )
     
