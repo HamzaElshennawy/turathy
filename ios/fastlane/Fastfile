@@ -28,11 +28,21 @@ platform :ios do
     increment_build_number(xcodeproj: "Runner.xcodeproj")
     
     # 4. Build the app for App Store distribution
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj"
+    )
+
     build_app(
       workspace: "Runner.xcworkspace", 
       scheme: "Runner",
       export_method: "app-store",
-      clean: true
+      clean: true,
+      export_options: {
+        provisioningProfiles: {
+          "com.deepblue.turathy" => "match AppStore com.deepblue.turathy"
+        }
+      }
     )
     
     # 5. Upload to TestFlight
