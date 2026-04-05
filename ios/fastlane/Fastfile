@@ -27,8 +27,15 @@ platform :ios do
     # 2. Ensure Pods are up to date
     cocoapods
     
-    # 3. Increment build number
-    increment_build_number(xcodeproj: "Runner.xcodeproj")
+    # 3. Increment build number based on the latest build on App Store Connect
+    latest_build = latest_testflight_build_number(
+      app_identifier: "com.deepblue.turathy",
+      initial_build_number: 0
+    )
+    increment_build_number(
+      xcodeproj: "Runner.xcodeproj",
+      build_number: latest_build + 1
+    )
     
     # 4. Disable automatic signing ONLY for the Runner target (not Pods)
     update_code_signing_settings(
