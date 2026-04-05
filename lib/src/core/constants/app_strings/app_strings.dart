@@ -429,4 +429,51 @@ class AppStrings {
   static const String shortAddressHint = 'shortAddressHint';
   static const String invalidShortAddress = 'invalidShortAddress';
   static const String cityArea = 'cityArea';
+
+  // Terms and Conditions
+  static const String terms1Title = "terms1Title";
+  static const String terms1Content = "terms1Content";
+  static const String terms2Title = "terms2Title";
+  static const String terms2Content = "terms2Content";
+  static const String terms3Title = "terms3Title";
+  static const String terms3Content = "terms3Content";
+  static const String terms4Title = "terms4Title";
+  static const String terms4Content = "terms4Content";
+  static const String terms5Title = "terms5Title";
+  static const String terms5Content = "terms5Content";
+  static const String terms6Title = "terms6Title";
+  static const String terms6Content = "terms6Content";
+  static const String terms7Title = "terms7Title";
+  static const String terms7Content = "terms7Content";
+  static const String terms8Title = "terms8Title";
+  static const String terms8Content = "terms8Content";
+  static const String terms9Title = "terms9Title";
+  static const String terms9Content = "terms9Content";
+  static const String terms10Title = "terms10Title";
+  static const String terms10Content = "terms10Content";
+  static const String terms11Title = "terms11Title";
+  static const String terms11Content = "terms11Content";
+
+  // Privacy Policy
+  static const String privacy1Title = "privacy1Title";
+  static const String privacy1Content = "privacy1Content";
+  static const String privacy2Title = "privacy2Title";
+  static const String privacy2Content = "privacy2Content";
+  static const String privacy3Title = "privacy3Title";
+  static const String privacy3Content = "privacy3Content";
+  static const String privacy4Title = "privacy4Title";
+  static const String privacy4Content = "privacy4Content";
+  static const String privacy5Title = "privacy5Title";
+  static const String privacy5Content = "privacy5Content";
+  static const String privacy6Title = "privacy6Title";
+  static const String privacy6Content = "privacy6Content";
+  static const String privacy7Title = "privacy7Title";
+  static const String privacy7Content = "privacy7Content";
+  static const String privacy8Title = "privacy8Title";
+  static const String privacy8Content = "privacy8Content";
+  static const String privacy9Title = "privacy9Title";
+  static const String privacy9Content = "privacy9Content";
+
+  static const String whatsApp = "whatsApp";
+  static const String call = "call";
 }

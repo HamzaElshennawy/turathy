@@ -1,8 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
@@ -12,7 +10,7 @@ import '../../authintication/presentation/sign_in_screen.dart';
 import '../../auctions/presentation/auction_screen/my_auction_requests_screen.dart';
 // import '../../main_screen.dart';
 import '../controller/theme_controller.dart';
-import 'widgets/language_widget/language_widget.dart';
+// import 'widgets/language_widget/language_widget.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -29,7 +27,7 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: Text(
-          AppStrings.profileAndSettings.tr(),
+          AppStrings.profile.tr(),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -210,67 +208,7 @@ class ProfileScreen extends ConsumerWidget {
         gapH24,
       ],
 
-      // --- Preferences Section ---
-      _buildSectionTitle(AppStrings.preferences.tr(), context),
-      _buildSettingsGroup([
-        //_buildSettingsTile(
-        //  icon: Icons.dark_mode_outlined,
-        //  title: AppStrings.darkMode.tr(),
-        //  trailing: Switch.adaptive(
-        //    value: theme.mode == ThemeMode.dark,
-        //    activeColor: themeColor,
-        //    onChanged: (value) {
-        //      ref
-        //          .read(themeControllerProvider.notifier)
-        //          .setTheme(
-        //            theme.copyWith(
-        //              mode: value
-        //                  ? ThemeMode.dark
-        //                  : ThemeMode.light,
-        //            ),
-        //          );
-        //    },
-        //  ),
-        //),
-        _buildSettingsTile(
-          icon: Icons.language_outlined,
-          title: AppStrings.changeLanguage.tr(),
-          trailing: const LanguageWidget(),
-        ),
-      ]),
-      gapH24,
 
-      // --- Support & Legal Section ---
-      _buildSectionTitle(AppStrings.supportAndLegal.tr(), context),
-      _buildSettingsGroup([
-        _buildSettingsTile(
-          icon: Icons.headset_mic_outlined,
-          title: AppStrings.contactUs.tr(),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              //_buildSocialIcon('assets/icons/facebook.png', () {}),
-              //gapW8,
-              //_buildSocialIcon('assets/icons/insta.png', () {}),
-              //gapW8,
-              //_buildSocialIcon('assets/icons/tiktok.png', () {}),
-              gapW8,
-              _buildSocialIcon('assets/icons/whats.png', () {}),
-            ],
-          ),
-        ),
-        _buildSettingsTile(
-          icon: Icons.privacy_tip_outlined,
-          title: AppStrings.privacyPolicy.tr(),
-          onTap: () {},
-        ),
-        _buildSettingsTile(
-          icon: Icons.description_outlined,
-          title: AppStrings.termsAndConditions.tr(),
-          onTap: () {},
-        ),
-      ]),
-      gapH24,
 
       // --- Danger Zone ---
       if (isSignedIn) ...[
@@ -293,14 +231,7 @@ class ProfileScreen extends ConsumerWidget {
         ]),
       ],
 
-      gapH32,
-      Center(
-        child: Text(
-          '${AppStrings.version.tr()} : ${ref.watch(versionProvider).value ?? ""}',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-        ),
-      ),
-      gapH32,
+
     ];
   }
 
@@ -393,13 +324,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSocialIcon(String assetPath, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Image.asset(assetPath, width: 32, height: 32, fit: BoxFit.contain),
-    );
-  }
+
 
   Future<void> _handleSignOut(BuildContext context, WidgetRef ref) async {
     final result = await showDialog<bool>(
@@ -459,10 +384,4 @@ class ProfileScreen extends ConsumerWidget {
   //}
 }
 
-final versionProvider = FutureProvider<String>((ref) async {
-  PackageInfo packageInfo = await PackageInfo.fromPlatform();
 
-  String version = packageInfo.version;
-
-  return version;
-});

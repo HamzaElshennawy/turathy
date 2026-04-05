@@ -7,6 +7,7 @@ import 'package:turathy/src/features/authintication/presentation/sign_in_screen.
 import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
 import 'package:turathy/src/features/profile/presentation/profile_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
+import 'package:turathy/src/features/settings/presentation/settings_screen.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -56,8 +57,7 @@ class MoreScreen extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 20),
                   ..._buildProfileSection(context, user),
-                  const SizedBox(height: 30),
-                  const Divider(),
+                  const SizedBox(height: 10),
                   ..._buildMenuItems(context, ref, user),
                 ],
               ),
@@ -128,9 +128,17 @@ class MoreScreen extends ConsumerWidget {
             );
           },
         ),
-        const Divider(),
       ],
-      //ListTile(
+      ListTile(
+        leading: const Icon(Icons.settings_outlined),
+        title: Text(AppStrings.settings.tr()),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const SettingsScreen()),
+          );
+        },
+      ),
       //  leading: const Icon(Icons.settings),
       //  title: Text(AppStrings.settings.tr()),
       //  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -139,24 +147,17 @@ class MoreScreen extends ConsumerWidget {
       //  },
       //),
       //const Divider(),
-      ListTile(
-        leading: const Icon(Icons.calendar_month),
-        title: Text(AppStrings.auctions.tr()),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // TODO: Navigate to Auctions History or similar
-        },
-      ),
-      const Divider(),
-      ListTile(
-        leading: const Icon(Icons.shopping_bag), // Or receipt_long
-        title: Text(AppStrings.products.tr()),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // TODO: Navigate to Products
-        },
-      ),
-      const Divider(),
+      //ListTile(
+      //  leading: const Icon(Icons.calendar_month),
+      //  title: Text(AppStrings.auctions.tr()),
+      //  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      //  onTap: () {
+      //    // TODO: Navigate to Auctions History or similar
+      //  },
+      //),
+      //    // TODO: Navigate to Products
+      //  },
+      //),
       ListTile(
         leading: const Icon(Icons.favorite),
         title: Text(AppStrings.likes.tr()),
@@ -167,20 +168,16 @@ class MoreScreen extends ConsumerWidget {
           ).push(MaterialPageRoute(builder: (context) => const LikesScreen()));
         },
       ),
-      const Divider(),
-      if (user != null) ...[
-        ListTile(
-          leading: const Icon(Icons.history),
-          title: Text(AppStrings.myPayments.tr()),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const MyPaymentsScreen()),
-            );
-          },
-        ),
-        const Divider(),
-      ],
+      ListTile(
+        leading: const Icon(Icons.history),
+        title: Text(AppStrings.myPayments.tr()),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const MyPaymentsScreen()),
+          );
+        },
+      ),
       //ListTile(
       //  leading: const Icon(Icons.dashboard_customize_outlined),
       //  title: Text(AppStrings.hostDashboard.tr()),

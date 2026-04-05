@@ -44,6 +44,7 @@
 		<string>mailto</string>
 		<string>http</string>
 		<string>https</string>
+		<string>whatsapp</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
