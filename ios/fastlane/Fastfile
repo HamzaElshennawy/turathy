@@ -64,7 +64,8 @@ platform :ios do
        "-archivePath \"#{archive_path}\" " \
        "-exportPath \"#{ipa_output_dir}\" " \
        "-exportOptionsPlist \"#{File.expand_path('ExportOptions.plist', Dir.pwd)}\"")
-    lane_context[SharedValues::IPA_OUTPUT_PATH] = "#{ipa_output_dir}/Runner.ipa"
+    exported_ipa = Dir.glob("#{ipa_output_dir}/*.ipa").first
+    lane_context[SharedValues::IPA_OUTPUT_PATH] = exported_ipa
     
     # 8. Upload the IPA to TestFlight
     upload_to_testflight(ipa: lane_context[SharedValues::IPA_OUTPUT_PATH])
