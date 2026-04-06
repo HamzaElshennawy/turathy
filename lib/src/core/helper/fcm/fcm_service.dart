@@ -1,3 +1,15 @@
+/// {@category Core}
+///
+/// Integrated Firebase Cloud Messaging (FCM) and Local Notifications service.
+/// 
+/// This file handles:
+/// - Requesting OS-level notification permissions.
+/// - FCM token retrieval and backend registration/unregistration.
+/// - Local Notification channel setup (especially for Android).
+/// - Routing logic for interactive notifications (deep-linking).
+/// - Handling messages in foreground, background, and terminated states.
+library;
+
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
@@ -12,11 +24,13 @@ import 'package:turathy/src/routing/app_router.dart';
 import 'package:turathy/src/routing/rout_constants.dart';
 import 'dart:convert';
 
-/// Background message handler - must be a top-level function
+/// High-level background message interceptor.
+/// 
+/// **Warning:** This must be a top-level function or a static method annotated 
+/// with `@pragma('vm:entry-point')` to be reachable while the app is in background.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  // Handle background message
   log(
     'Handling background message: ${message.messageId}',
     time: DateTime.now(),
@@ -24,7 +38,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   );
 }
 
-/// FCM Service for handling push notifications
+/// The central coordinator for the app's notification subsystem.
+/// 
+/// Implemented as a Singleton to ensure consistent stream management and 
+/// listener registration across the app lifecycle.
 class FCMService {
   static final FCMService _instance = FCMService._internal();
   factory FCMService() => _instance;
@@ -34,44 +51,44 @@ class FCMService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  /// The most recently retrieved FCM registration token.
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
-  // Stream controller for broadcasting foreground messages
+  /// Internal broadcast controller for exposing incoming foreground messages.
   final StreamController<RemoteMessage> _messageController =
       StreamController<RemoteMessage>.broadcast();
 
-  /// Stream of foreground messages
+  /// A stream of [RemoteMessage] instances received while the app is in the foreground.
   Stream<RemoteMessage> get onMessage => _messageController.stream;
 
-  /// Initialize FCM service
+  /// Boots up the notification system.
+  /// 
+  /// Usually called in `main.dart` after Firebase initialization.
+  /// Sets up permissions, local channels, token listeners, and message handlers.
   Future<void> initialize() async {
-    // Request permission
+    // 1. Seek OS permission (iOS) or prompt (Android 13+)
     await _requestPermission();
 
-    // Initialize local notifications
+    // 2. Prepare local notification library (used for foreground visibility)
     await _initLocalNotifications();
 
-    // Get FCM token
+    // 3. Retrieve and sync the push token
     await _getToken();
 
-    // Listen for token refresh
+    // 4. Attach persistent listeners
     _messaging.onTokenRefresh.listen(_handleTokenRefresh);
-
-    // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-    // Handle notification tap when app is in background/terminated
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
-    // Check if app was opened from a notification
+    // 5. Handle "Cold Start" case where user clicked a notification to open the app
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleMessageOpenedApp(initialMessage);
     }
   }
 
-  /// Request notification permissions
+  /// Internal: Triggers the native permission dialog.
   Future<void> _requestPermission() async {
     final settings = await _messaging.requestPermission(
       alert: true,
@@ -89,6 +106,7 @@ class FCMService {
       level: 1,
     );
 
+    // Ensure notifications appear even when the app is active
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
@@ -96,7 +114,7 @@ class FCMService {
     );
   }
 
-  /// Initialize local notifications for foreground display
+  /// Internal: Configures the [FlutterLocalNotificationsPlugin] for cross-platform display.
   Future<void> _initLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -117,7 +135,7 @@ class FCMService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    // Create notification channel for Android
+    // Define a High Importance channel for Android to support Heads-up notifications
     if (Platform.isAndroid) {
       const channel = AndroidNotificationChannel(
         'turathy_notifications',
@@ -134,161 +152,87 @@ class FCMService {
     }
   }
 
-  /// Get FCM token and register with backend
+  /// Internal: Fetches the FCM token with specialized retry logic for iOS APNs readiness.
   Future<void> _getToken() async {
     try {
       if (Platform.isIOS) {
-        // Wait for APNs token before trying to get FCM token to avoid 'apns-token-not-set' error
+        // iOS requires a valid APNs token before Firebase can generate an FCM token.
+        // We retry for up to 10 seconds to account for network/handshake delay.
         int retries = 0;
         String? apnsToken;
         while (retries < 5) {
           apnsToken = await _messaging.getAPNSToken();
-          if (apnsToken != null) {
-            log(
-              'APNs Token successfully retrieved.',
-              time: DateTime.now(),
-              level: 1,
-            );
-            break;
-          }
-          log('APNs Token is null, waiting...', time: DateTime.now(), level: 1);
+          if (apnsToken != null) break;
           await Future.delayed(const Duration(seconds: 2));
           retries++;
         }
         if (apnsToken == null) {
-          log(
-            'APNs token not set after retries. Skipping FCM token generation (common on simulators without APNs capabilities).',
-            time: DateTime.now(),
-            level: 1,
-          );
+          log('APNs token not set. Token generation skipped.');
           return;
         }
       }
 
       _fcmToken = await _messaging.getToken();
-      log('FCM Token: $_fcmToken', time: DateTime.now(), level: 1);
-
       if (_fcmToken != null) {
-        log(
-          'FCM Token retrieved successfully: $_fcmToken',
-          time: DateTime.now(),
-          level: 1,
-        );
         await _registerTokenWithBackend(_fcmToken!);
-      } else {
-        log(
-          'FCM Token is null after getToken()',
-          time: DateTime.now(),
-          level: 1,
-        );
       }
     } catch (e, stack) {
-      log(
-        'Error getting FCM token: $e',
-        time: DateTime.now(),
-        level: 1,
-        stackTrace: stack,
-      );
+      log('Error getting FCM token: $e', stackTrace: stack);
     }
   }
 
-  /// Handle token refresh
+  /// Internal: Callback for token rotation events.
   Future<void> _handleTokenRefresh(String newToken) async {
-    log('FCM Token refreshed: $newToken', time: DateTime.now(), level: 1);
+    log('FCM Token refreshed: $newToken');
     _fcmToken = newToken;
     await _registerTokenWithBackend(newToken);
   }
 
-  /// Register token with backend
+  /// Internal: Syncs the [token] to the Turathy backend for the current user.
   Future<void> _registerTokenWithBackend(String token) async {
     final userId = CachedVariables.userId;
     if (userId == null) {
-      log(
-        'User not logged in, skipping token registration for now. Token will be registered after login.',
-        time: DateTime.now(),
-        level: 1,
-      );
+      log('User not logged in; registration deferred.');
       return;
     }
 
-    log(
-      'Attempting to register FCM token with backend for user $userId...',
-      time: DateTime.now(),
-      level: 1,
-    );
-
     try {
-      //final platform = Platform.isAndroid
-      //    ? 'android'
-      //    : 'ios'; // Lowercase might be expected by backend, strict check?
-      // Keeping original 'ANDROID'/'IOS' based on existing code, but logging it.
       final platformToSend = Platform.isAndroid ? 'ANDROID' : 'IOS';
-
-      log(
-        'Sending registration request: Token=$token, Platform=$platformToSend',
-        time: DateTime.now(),
-        level: 1,
-      );
-
       await NotificationsRepository.registerDevice(
         userId: userId,
         token: token,
         platform: platformToSend,
       );
-      log(
-        'FCM token registered with backend successfully',
-        time: DateTime.now(),
-        level: 1,
-      );
+      log('FCM token registered with backend successfully');
     } catch (e, stack) {
-      log(
-        'Error registering FCM token with backend: $e',
-        time: DateTime.now(),
-        level: 1,
-        stackTrace: stack,
-      );
+      log('Error registering FCM token: $e', stackTrace: stack);
     }
   }
 
-  /// Unregister device token on logout
+  /// Cleans up the device token from the backend database (usually called on Logout).
   Future<void> unregisterDevice() async {
     if (_fcmToken == null) return;
 
     try {
       await NotificationsRepository.unregisterDevice(_fcmToken!);
-      log(
-        'FCM token unregistered from backend',
-        time: DateTime.now(),
-        level: 1,
-      );
+      log('FCM token unregistered from backend');
     } catch (e) {
-      log('Error unregistering FCM token: $e', time: DateTime.now(), level: 1);
+      log('Error unregistering FCM token: $e');
     }
   }
 
-  /// Handle foreground message - show local notification
+  /// Main handler for foreground messages.
+  /// 
+  /// Broadcasts the [message] to UI listeners via [_messageController] and 
+  /// triggers a local 'Heads-up' notification for immediate visibility.
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    log(
-      'Received foreground message: ${message.messageId}',
-      time: DateTime.now(),
-      level: 1,
-    );
-    log('Message data: ${message.data}', time: DateTime.now(), level: 1);
-    if (message.notification != null) {
-      log(
-        'Message notification: ${message.notification?.title}, ${message.notification?.body}',
-        time: DateTime.now(),
-        level: 1,
-      );
-    }
-
-    // Add message to stream for UI updates
+    log('Received foreground message: ${message.messageId}');
+    
     _messageController.add(message);
 
     final notification = message.notification;
     if (notification == null) return;
 
-    // Show local notification
     await _localNotifications.show(
       message.hashCode,
       notification.title,
@@ -312,31 +256,26 @@ class FCMService {
     );
   }
 
-  /// Handle notification tap when app is in background/terminated
+  /// Callback for when a Firebase notification is tapped while the app is 
+  /// in background or terminated state.
   void _handleMessageOpenedApp(RemoteMessage message) {
-    log(
-      'Message opened app: ${message.messageId}',
-      time: DateTime.now(),
-      level: 1,
-    );
+    log('Message opened app: ${message.messageId}');
     _navigateBasedOnData(message.data);
   }
 
-  /// Handle local notification tap
+  /// Callback for when a Local notification is tapped.
+  /// 
+  /// Since [RemoteMessage.data] becomes a stringified [Map] when passed as a 
+  /// payload, this method includes defensive parsing logic to recover the 
+  /// JSON structure before routing.
   void _onNotificationTap(NotificationResponse response) {
-    log(
-      'Notification tapped: ${response.payload}',
-      time: DateTime.now(),
-      level: 1,
-    );
-
     if (response.payload != null) {
       Map<String, dynamic> data = {};
       try {
         data = jsonDecode(response.payload!) as Map<String, dynamic>;
       } catch (e) {
-        log('Error parsing notification payload initially: $e');
-        // Try manual parsing for unquoted key-values
+        // Fallback: Manually parse the "{Key: Value, ...}" stringified map 
+        // if standard JSON decoding fails (legacy payloads).
         try {
           String content = response.payload!
               .replaceAll('{', '')
@@ -347,15 +286,11 @@ class FCMService {
             for (String pair in pairs) {
               List<String> keyValue = pair.split(':');
               if (keyValue.length >= 2) {
-                String key = keyValue[0].trim();
-                String value = keyValue.sublist(1).join(':').trim();
-                data[key] = value;
+                data[keyValue[0].trim()] = keyValue.sublist(1).join(':').trim();
               }
             }
           }
-        } catch (e2) {
-          log('Failed to manually parse notification data payload: $e2');
-        }
+        } catch (_) {}
       }
 
       if (data.isNotEmpty) {
@@ -364,57 +299,44 @@ class FCMService {
     }
   }
 
-  /// Navigate based on notification data
+  /// The routing engine for push notifications.
+  /// 
+  /// Inspects the `type` and ID keys (`auction_id`, `product_id`, `order_id`) 
+  /// to perform deep-linking via [goRouter].
+  /// 
+  /// Standard Types mapped:
+  /// - `AUCTION_STARTED`, `AUCTION_WON`, `AUCTION_ENDING_SOON`: Redirects to Live Auction.
+  /// - `OUTBID`, `NEW_BID`: Redirects to Auction Details.
+  /// - `ORDER_STATUS`, `PAYMENT_APPROVED`: Redirects to Order Details.
   void _navigateBasedOnData(Map<String, dynamic> data) {
-    // Ensure we are on the main thread and context is available if needed,
-    // but GoRouter works without context if using the global instance.
     log('Navigating based on data: $data');
 
-    // Check for specific types or keys
-    // Adjust keys (auction_id, product_id, order_id) based on actual backend payload
-
-    // First let's check exact Notification Screen logic
     final type = data['type']?.toString();
 
+    // Auction Group Logic
     if (type == 'AUCTION_STARTED' ||
         type == 'AUCTION_WON' ||
         type == 'AUCTION_ENDING_SOON') {
-      String? auctionId;
-      if (data.containsKey('auction_id')) {
-        auctionId = data['auction_id'].toString();
-      } else if (data.containsKey('id')) {
-        auctionId = data['id'].toString();
-      } else if (data.containsKey('auctionId')) {
-        auctionId = data['auctionId'].toString();
-      }
-
+      final auctionId = data['auction_id'] ?? data['id'] ?? data['auctionId'];
       if (auctionId != null) {
         goRouter.pushNamed(
           RouteConstants.liveAuction,
-          pathParameters: {'id': auctionId},
+          pathParameters: {'id': auctionId.toString()},
         );
         return;
       }
     } else if (type == 'OUTBID' || type == 'NEW_BID') {
-      // Route to adaptive auction details — will show AuctionScreen
-      // (pre-auction) or LiveAuctionScreen (live) based on auction state
-      String? auctionId;
-      if (data.containsKey('auction_id')) {
-        auctionId = data['auction_id'].toString();
-      } else if (data.containsKey('id')) {
-        auctionId = data['id'].toString();
-      } else if (data.containsKey('auctionId')) {
-        auctionId = data['auctionId'].toString();
-      }
-
+      final auctionId = data['auction_id'] ?? data['id'] ?? data['auctionId'];
       if (auctionId != null) {
         goRouter.pushNamed(
           RouteConstants.auctionDetails,
-          pathParameters: {'id': auctionId},
+          pathParameters: {'id': auctionId.toString()},
         );
         return;
       }
-    } else if (type == 'ORDER_STATUS' || type == 'PAYMENT_APPROVED') {
+    } 
+    // Order Group Logic
+    else if (type == 'ORDER_STATUS' || type == 'PAYMENT_APPROVED') {
       final orderId = data['order_id'] ?? data['orderId'];
       if (orderId != null) {
         goRouter.pushNamed(
@@ -427,7 +349,7 @@ class FCMService {
       return;
     }
 
-    // Fallbacks
+    // Generic fallback routing based on presence of IDs
     if (data.containsKey('auction_id') || data['type'] == 'AUCTION') {
       final auctionId = data['auction_id'] ?? data['auctionId'];
       if (auctionId != null) {
@@ -444,39 +366,34 @@ class FCMService {
           pathParameters: {'id': productId.toString()},
         );
       }
-    } else if (data.containsKey('order_id') ||
-        data.containsKey('orderId') ||
-        data['type'] == 'ORDER' ||
-        data['type'] == 'ORDER_STATUS') {
-      // Navigate to specific order if ID available
+    } else if (data.containsKey('order_id') || data.containsKey('orderId')) {
       final orderId = data['order_id'] ?? data['orderId'];
       if (orderId != null) {
         goRouter.pushNamed(
           RouteConstants.orderDetails,
           pathParameters: {'id': orderId.toString()},
         );
-      } else {
-        goRouter.pushNamed(RouteConstants.orders);
       }
     }
   }
 
-  /// Register token after login
+  /// Forces a token synchronization with the backend.
+  /// 
+  /// Typically called after a successful login event to ensure the user's
+  /// active account is linked to the current device's push token.
   Future<void> registerAfterLogin() async {
-    log('registerAfterLogin called', time: DateTime.now(), level: 1);
     if (_fcmToken != null) {
       await _registerTokenWithBackend(_fcmToken!);
     } else {
-      log(
-        'FCM Token is null in registerAfterLogin, attempting to get it...',
-        time: DateTime.now(),
-        level: 1,
-      );
       await _getToken();
     }
   }
 
-  /// Show a local notification
+  /// Triggers a local OS notification manually.
+  /// 
+  /// * [title]: The primary heading of the notification.
+  /// * [body]: The detailed text content.
+  /// * [payload]: A JSON-stringified map to be parsed on tap.
   Future<void> showLocalNotification({
     required String title,
     required String body,
@@ -497,21 +414,16 @@ class FCMService {
       presentSound: true,
     );
 
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
     await _localNotifications.show(
       DateTime.now().millisecond,
       title,
       body,
-      details,
+      const NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload ?? '{"type": "local"}',
     );
   }
 
-  /// Show a test notification locally
+  /// Displays a hardcoded test notification for development and troubleshooting.
   Future<void> showTestNotification() async {
     await showLocalNotification(
       title: 'Test Notification',
@@ -521,5 +433,5 @@ class FCMService {
   }
 }
 
-/// Global instance
+/// Singleton instance available across the app.
 final fcmService = FCMService();

@@ -1,3 +1,9 @@
+/// {@category Presentation}
+///
+/// Starting screen for the "Forgot Password" flow.
+/// 
+/// This screen prompts the user to enter their registered phone number
+/// (currently limited to KSA +966) to receive a password reset code.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
@@ -13,6 +19,7 @@ import 'reset_password_screen.dart';
 import 'forgot_password_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Screen for entering the phone number to initiate password reset.
 class InputEmailForgotPasswordScreen extends ConsumerStatefulWidget {
   const InputEmailForgotPasswordScreen({super.key});
 
@@ -28,7 +35,6 @@ class _InputEmailForgotPasswordScreenState
 
   @override
   void dispose() {
-    // TODO: implement dispose
     _phoneLocalController.dispose();
     super.dispose();
   }
@@ -47,6 +53,7 @@ class _InputEmailForgotPasswordScreenState
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
+                    // Visual Branding
                     Image.asset(
                       AppImages.logo,
                       width: MediaQuery.of(context).size.width / 1.5,
@@ -63,6 +70,9 @@ class _InputEmailForgotPasswordScreenState
                             ),
                           ),
                           const SizedBox(height: 10),
+                          
+                          // Phone Input with fixed KSA prefix.
+                          // Using LTR directionality for the number field.
                           Directionality(
                             textDirection: ui.TextDirection.ltr,
                             child: WhiteRoundedTextFormField(
@@ -70,40 +80,38 @@ class _InputEmailForgotPasswordScreenState
                               prefixIcon: const Icon(Icons.phone),
                               controller: _phoneLocalController,
                               validator: Validators.ksaLocalPhoneValidator,
-                              inputFormatters:
-                                  Validators.ksaLocalPhoneInputFormatters,
+                              inputFormatters: Validators.ksaLocalPhoneInputFormatters,
                               keyboardType: TextInputType.phone,
                               prefix: '+966',
                             ),
                           ),
                           const SizedBox(height: 10),
+                          
+                          // Action Button
                           PrimaryButton(
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
-                                final e164 =
-                                    '+966${_phoneLocalController.text.trim()}';
+                                final e164 = '+966${_phoneLocalController.text.trim()}';
+                                
+                                // Request the verification code.
                                 final ok = await ref
-                                    .read(
-                                      forgotPasswordControllerProvider.notifier,
-                                    )
+                                    .read(forgotPasswordControllerProvider.notifier)
                                     .requestOtp(e164Phone: e164);
+                                
                                 if (!mounted) return;
+                                
                                 if (ok) {
-                                  // ignore: use_build_context_synchronously
+                                  // Navigate to OTP verification & password reset screen.
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => ResetPasswordScreen(
-                                        phone_number: e164,
-                                      ),
+                                      builder: (_) => ResetPasswordScreen(phone_number: e164),
                                     ),
                                   );
                                 }
                               }
                             },
                             text: AppStrings.sendCode.tr(),
-                            isLoading: ref
-                                .watch(forgotPasswordControllerProvider)
-                                .isLoading,
+                            isLoading: ref.watch(forgotPasswordControllerProvider).isLoading,
                           ),
                         ],
                       ),
@@ -118,3 +126,4 @@ class _InputEmailForgotPasswordScreenState
     );
   }
 }
+

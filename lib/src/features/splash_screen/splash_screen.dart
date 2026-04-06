@@ -1,3 +1,10 @@
+/// {@category Navigation}
+///
+/// The initial loading screen that orchestrates the app's visual entrance.
+///
+/// [SplashScreen] provides an animated introduction (logo scale-up) and
+/// determines whether to navigate the user to the main screen or
+/// profile completion flow based on their authentication status.
 import 'dart:async';
 import 'dart:developer';
 
@@ -17,6 +24,7 @@ import '../authintication/data/auth_repository.dart';
 import '../authintication/presentation/auth_controller.dart';
 import '../authintication/presentation/country_code_provider.dart';
 
+/// The entry-point widget that handles initial app state and splash animations.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -25,6 +33,7 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  /// Controls the size of the logo for the scale-in animation.
   double logoScale = 0;
   double loadingTurns = 0;
   bool loadingVisibility = false;
@@ -32,9 +41,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // Auto-detect country code for the phone input fields early.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(countryCodeProvider.notifier).autoDetectCountry();
     });
+    // Start scale animation after a short delay for smoothness.
     Timer(const Duration(milliseconds: 600), () {
       setState(() {
         logoScale = 1;
@@ -50,8 +61,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           children: [
             Center(
               child: AnimatedScale(
+                /// Once the logo scaling animation completes, we transition to the app logic.
                 onEnd: () async {
                   try {
+                    // Attempt to load cached session details (tokens/IDs).
                     await AuthRepository.getLocalDetails();
                     if (!mounted) return;
 
@@ -69,17 +82,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     if (CachedVariables.token != null &&
                         CachedVariables.userId != null) {
                       try {
-                        // Try to restore session
                         final user = await AuthRepository.getUser(
                           CachedVariables.userId!,
                         );
                         if (!mounted) return;
 
-                        // Update auth controller state safely
                         ref
                             .read(authControllerProvider.notifier)
                             .updateUser(user);
 
+                        // If user is logged in but has missing required fields, send them to complete profile.
                         if (user.missingFields != null &&
                             user.missingFields!.isNotEmpty) {
                           GoRouter.of(
@@ -93,10 +105,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         );
                         if (!mounted) return;
 
-                        // Fallback 1: Google silent sign-in (for Google SSO users)
+                        // Fallback 1: Silent Google Re-authentication
                         if (CachedVariables.isGoogleSignIn) {
                           try {
-                            log("Attempting Google silent sign-in...");
                             final googleSignIn = GoogleSignIn();
                             final googleUser = await googleSignIn
                                 .signInSilently();
@@ -119,7 +130,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                             log("Google silent sign-in failed: $googleError");
                           }
                         }
-                        // Fallback 2: phone/password re-login
+                        // Fallback 2: Stored Credential Re-login
                         else if (CachedVariables.phone_number != null &&
                             CachedVariables.password != null) {
                           final result = await ref
@@ -146,12 +157,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                           }
                         }
                       }
-                    } else if (CachedVariables.isGoogleSignIn &&
+                    }
+                    // Case for Google users whose token might have expired but session remains valid.
+                    else if (CachedVariables.isGoogleSignIn &&
                         CachedVariables.userId != null) {
-                      // Token is null but user previously signed in with Google — attempt silent re-auth
-                      log(
-                        "Token null for Google user, attempting silent sign-in...",
-                      );
                       try {
                         final googleSignIn = GoogleSignIn();
                         final googleUser = await googleSignIn.signInSilently();
@@ -172,7 +181,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       } catch (googleError) {
                         log("Google silent sign-in failed: $googleError");
                       }
-                    } else if (CachedVariables.phone_number != null &&
+                    }
+                    // Final attempt: explicit sign-in if credentials exist.
+                    else if (CachedVariables.phone_number != null &&
                         CachedVariables.password != null) {
                       final result = await ref
                           .read(authControllerProvider.notifier)
@@ -199,12 +210,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     }
 
                     if (mounted) {
-                      // Navigate to home regardless of auth state (will act as guest if not authenticated)
+                      // Navigate to home; if auth failed, app will assume Guest state.
                       GoRouter.of(context).go(RouteConstants.home);
                     }
                   } catch (e) {
                     log("Fatal error in splash screen routing: $e");
-                    // On complete failure (e.g. no network), just go to home so app doesn't freeze
                     if (mounted) {
                       GoRouter.of(context).go(RouteConstants.home);
                     }
@@ -218,6 +228,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 ),
               ),
             ),
+
+            // Branding Footer
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(

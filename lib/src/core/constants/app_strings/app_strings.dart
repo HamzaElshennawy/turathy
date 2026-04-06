@@ -1,17 +1,54 @@
+/// {@category Constants}
+///
+/// Registry of all string keys used for localization and UI text.
+/// 
+/// This class centralizes all hardcoded identifiers that map to the app's 
+/// internationalization (i18n) system. Using these constants prevents 
+/// "magic strings" and ensures consistency across different features.
 class AppStrings {
+  // ── Core & Branding ────────────────────────────────────────────────────────
+  
+  /// The localizable key for the application name.
   static const String appName = "appName";
+  
+  /// Identifier for the 'Player' user type or role.
   static const String player = "player";
+  
+  /// Identifier for the 'Coach' user type or role.
   static const String coach = "coach";
+  
+  /// Identifier for the 'Store' user type or role.
   static const String store = "store";
+  
+  /// Key for "Profile Picture" label.
   static const String profilePicture = "profilePicture";
+  
+  /// Key for "ID Picture" label.
   static const String idPicture = "idPicture";
+  
+  /// Key for "Store Picture" label.
   static const String storePicture = "storePicture";
+  
+  /// Key for "Tax Card Picture" label.
   static const String taxCardPicture = "taxCardPicture";
+  
+  /// Key for "First Name" input field.
   static const String firstName = "firstName";
+  
+  /// Key for "Last Name" input field.
   static const String lastName = "lastName";
+  
+  /// Key for "Email" input field.
   static const String email = "email";
+  
+  /// Key for "Password" input field.
   static const String password = "password";
+  
+  /// Key for "Phone Number" input field.
   static const String phone = "phone";
+  
+  // ── Authentication ─────────────────────────────────────────────────────────
+  
   static const String signUp = "signUp";
   static const String alreadyHaveAnAccount = "alreadyHaveAnAccount";
   static const String signIn = "signIn";
@@ -36,15 +73,17 @@ class AppStrings {
   static const String editProfile = "editProfile";
   static const String name = "name";
   static const String signOut = "signOut";
-  static const String areYouSureToSignOut =
-      "areYouSureToSignOut"; // Kept for ProfileScreen compatibility
+  
+  /// Confirmation prompt before logging out.
+  /// Kept for ProfileScreen compatibility.
+  static const String areYouSureToSignOut = "areYouSureToSignOut";
+  
   static const String cancel = "cancel";
   static const String holdPressToDeleteAccount = "holdPressToDeleteAccount";
   static const String deleteAccount = "deleteAccount";
   static const String areYouSureToDeleteAccount = "areYouSureToDeleteAccount";
   static const String delete = "delete";
-  static const String pleaseSignInOrCreateAccount =
-      "pleaseSignInOrCreateAccount";
+  static const String pleaseSignInOrCreateAccount = "pleaseSignInOrCreateAccount";
   static const String contactUs = "contactUs";
   static const String myOrders = "myOrders";
   static const String pending = "pending";
@@ -80,8 +119,7 @@ class AppStrings {
   static const String city = "city";
   static const String selectCityToProceed = "selectCityToProceed";
   static const String cashOnDelivery = "cashOnDelivery";
-  static const String phone_numberCopiedToClipboard =
-      "phone_numberCopiedToClipboard";
+  static const String phone_numberCopiedToClipboard = "phone_numberCopiedToClipboard";
   static const String vodafoneCash = "vodafoneCash";
   static const String pleaseCopyThePhone = "pleaseCopyThePhone";
   static const String orderPlacedSuccessfully = "orderPlacedSuccessfully";
@@ -92,10 +130,8 @@ class AppStrings {
   static const String buildingNO = "buildingNO";
   static const String submitOrder = "submitOrder";
   static const String resetPassword = "resetPassword";
-  static const String enterYourEmailToResetPassword =
-      "enterYourEmailToResetPassword";
-  static const String enterYourPhoneToResetPassword =
-      "enterYourPhoneToResetPassword";
+  static const String enterYourEmailToResetPassword = "enterYourEmailToResetPassword";
+  static const String enterYourPhoneToResetPassword = "enterYourPhoneToResetPassword";
   static const String sendCode = "sendCode";
   static const String enterCodeAndPassword = "enterCodeAndPassword";
   static const String code = "code";
@@ -103,8 +139,7 @@ class AppStrings {
   static const String newPassword = "newPassword";
   static const String pleaseEnterTheNewPassword = "pleaseEnterTheNewPassword";
   static const String confirmPassword = "confirmPassword";
-  static const String pleaseEnterTheConfirmPassword =
-      "pleaseEnterTheConfirmPassword";
+  static const String pleaseEnterTheConfirmPassword = "pleaseEnterTheConfirmPassword";
   static const String passwordsDoNotMatch = "passwordsDoNotMatch";
   static const String resetPasswordSuccess = "resetPasswordSuccess";
   static const String home = "home";
@@ -128,6 +163,9 @@ class AppStrings {
   static const String auctionProducts = "auctionProducts";
   static const String comments = "comments";
   static const String writeComment = "writeComment";
+  
+  // ── Auctions ───────────────────────────────────────────────────────────────
+  
   static const String liveAuctions = "liveAuctions";
   static const String openAuctions = "openAuctions";
   static const String currentAuctions = "currentAuctions";
@@ -169,7 +207,9 @@ class AppStrings {
   static const String countdownStartsIn = "countdownStartsIn";
   static const String currentItem = "currentItem";
   static const String auctionInformation = "auctionInformation";
-  // Validation - phone numbers
+  
+  // ── Validation ─────────────────────────────────────────────────────────────
+  
   static const String phoneRequired = "phoneRequired";
   static const String phoneInvalidInternational = "phoneInvalidInternational";
   static const String phoneInvalidKsa = "phoneInvalidKsa";
@@ -196,27 +236,28 @@ class AppStrings {
   static const String allNotificationsMarkedRead = "allNotificationsMarkedRead";
   static const String failedToMarkNotifications = "failedToMarkNotifications";
   static const String noNotifications = "noNotifications";
-  static const String notificationsWillAppearHere =
-      "notificationsWillAppearHere";
+  static const String notificationsWillAppearHere = "notificationsWillAppearHere";
   static const String errorLoadingNotifications = "errorLoadingNotifications";
 
-  // Notification Types
+  // ── Notification Types ─────────────────────────────────────────────────────
+  
   static const String notificationAuctionStarted = "notificationAuctionStarted";
   static const String notificationNewBid = "notificationNewBid";
   static const String notificationOutbid = "notificationOutbid";
   static const String notificationAuctionWon = "notificationAuctionWon";
-  static const String notificationAuctionEndingSoon =
-      "notificationAuctionEndingSoon";
+  static const String notificationAuctionEndingSoon = "notificationAuctionEndingSoon";
   static const String notificationOrderStatus = "notificationOrderStatus";
 
-  // Time Ago
+  // ── Time Formatting ────────────────────────────────────────────────────────
+  
   static const String daysAgo = "daysAgo";
   static const String yesterday = "yesterday";
   static const String hoursAgo = "hoursAgo";
   static const String minutesAgo = "minutesAgo";
   static const String justNow = "justNow";
 
-  // Product Screen
+  // ── Product Details ───────────────────────────────────────────────────────
+  
   static const String productInfo = "productInfo";
   static const String basicData = "basicData";
   static const String productType = "productType";
@@ -226,13 +267,15 @@ class AppStrings {
   static const String origin = "origin";
   static const String orderPending = "orderPending";
 
-  // Cart (cart key already exists at line 75)
+  // ── Cart ───────────────────────────────────────────────────────────────────
+  
   static const String cartEmpty = "cartEmpty";
   static const String checkout = "checkout";
   static const String signInRequired = "signInRequired";
   static const String signInToAddToCart = "signInToAddToCart";
 
-  // Auction Bidding Controls
+  // ── Bidding Controls ───────────────────────────────────────────────────────
+  
   static const String currentPrice = "currentPrice";
   static const String bidWith = "bidWith";
   static const String bidBy = "bidBy";
@@ -255,7 +298,8 @@ class AppStrings {
   static const String noBidsYet = 'noBidsYet';
   static const String noResultsFound = 'noResultsFound';
 
-  // Host / Create Item Screen
+  // ── Seller / Create Item ───────────────────────────────────────────────────
+  
   static const String createAuction = 'createAuction';
   static const String createProduct = 'createProduct';
   static const String product = 'product';
@@ -270,8 +314,7 @@ class AppStrings {
   static const String conditionOptional = 'conditionOptional';
   static const String approximateAgeOptional = 'approximateAgeOptional';
   static const String required_ = 'required_';
-  static const String pleaseSelectAtLeastOneImage =
-      'pleaseSelectAtLeastOneImage';
+  static const String pleaseSelectAtLeastOneImage = 'pleaseSelectAtLeastOneImage';
   static const String pleaseSelectCategory = 'pleaseSelectCategory';
   static const String itemCreatedSuccessfully = 'itemCreatedSuccessfully';
   static const String hostDashboard = 'hostDashboard';
@@ -286,7 +329,8 @@ class AppStrings {
   static const String untitledProduct = 'untitledProduct';
   static const String errorLoadingCategories = 'errorLoadingCategories';
 
-  // Auction Creation Fields
+  // ── Auction Details / Creation ───────────────────────────────────────────
+  
   static const String actualPrice = 'actualPrice';
   static const String minBidPriceLabel = 'minBidPriceLabel';
   static const String bidIncrement = 'bidIncrement';
@@ -298,7 +342,8 @@ class AppStrings {
   static const String usageOptional = 'usageOptional';
   static const String selectDate = 'selectDate';
 
-  // Owner Restrictions
+  // ── Access & Permissions ──────────────────────────────────────────────────
+  
   static const String youAreAuctionOwner = 'youAreAuctionOwner';
   static const String yourProduct = 'yourProduct';
   static const String likes = 'likes';
@@ -307,14 +352,14 @@ class AppStrings {
   static const String letsWinAuctions = 'letsWinAuctions';
   static const String createNewAccount = 'createNewAccount';
 
-  // Filters
+  // ── Filtering ─────────────────────────────────────────────────────────────
+  
   static const String priceRange = 'priceRange';
   static const String minPriceLabel = 'minPriceLabel';
   static const String maxPriceLabel = 'maxPriceLabel';
   static const String condition = 'condition';
   static const String age = 'age';
 
-  // Filter Options
   static const String lessThan10Years = 'lessThan10Years';
   static const String tenToFiftyYears = 'tenToFiftyYears';
   static const String plus50Years = 'plus50Years';
@@ -335,12 +380,12 @@ class AppStrings {
   static const String metalType_ = 'metalType_';
   static const String metalFineness = 'metalFineness';
 
-  // Auction Payments
+  // ── Payments & Receipts ──────────────────────────────────────────────────
+  
   static const String uploadReceipt = 'uploadReceipt';
   static const String selectFile = 'selectFile';
   static const String uploadingReceipt = 'uploadingReceipt';
-  static const String receiptUploadedSuccessfully =
-      'receiptUploadedSuccessfully';
+  static const String receiptUploadedSuccessfully = 'receiptUploadedSuccessfully';
   static const String myPayments = 'myPayments';
   static const String paymentPending = 'paymentPending';
   static const String paymentApproved = 'paymentApproved';
@@ -360,7 +405,8 @@ class AppStrings {
   static const String completeYourOrder = 'completeYourOrder';
   static const String viewReceipt = 'viewReceipt';
 
-  // Order Details Screen
+  // ── Order Tracking ────────────────────────────────────────────────────────
+  
   static const String shipped = 'shipped';
   static const String delivered = 'delivered';
   static const String confirmed = 'confirmed';
@@ -372,11 +418,13 @@ class AppStrings {
   static const String itemDeliveredSuccessfully = 'itemDeliveredSuccessfully';
   static const String checkOrder = 'checkOrder';
 
-  // Internet Connection Error
+  // ── Errors & Connectivity ─────────────────────────────────────────────────
+  
   static const String noInternetConnection = 'noInternetConnection';
   static const String checkInternetConnection = 'checkInternetConnection';
 
-  // Address Management
+  // ── Address Book ──────────────────────────────────────────────────────────
+  
   static const String myAddresses = 'myAddresses';
   static const String addNewAddress = 'addNewAddress';
   static const String editAddress = 'editAddress';
@@ -394,7 +442,8 @@ class AppStrings {
   static const String selectedAddress = 'selectedAddress';
   static const String selectItemToBid = 'selectItemToBid';
 
-  // Auction Access Control
+  // ── Access Control ────────────────────────────────────────────────────────
+  
   static const String requestAccess = 'requestAccess';
   static const String requestAccessDescription = 'requestAccessDescription';
   static const String accessPending = 'accessPending';
@@ -404,7 +453,8 @@ class AppStrings {
   static const String auctionAccessRequired = 'auctionAccessRequired';
   static const String accessGranted = 'accessGranted';
 
-  // Auction Bidding Controls
+  // ── Real-time Bidding ─────────────────────────────────────────────────────
+  
   static const String auctionBidNumber = 'auctionBidNumber';
   static const String highestBid = 'highestBid';
   static const String outbid = 'outbid';
@@ -424,13 +474,15 @@ class AppStrings {
   static const String bid = 'bid';
   static const String priceUpdatedRetry = 'priceUpdatedRetry';
 
-  // Saudi Short Address
+  // ── Localization Extensions ────────────────────────────────────────────────
+  
   static const String shortAddressCode = 'shortAddressCode';
   static const String shortAddressHint = 'shortAddressHint';
   static const String invalidShortAddress = 'invalidShortAddress';
   static const String cityArea = 'cityArea';
 
-  // Terms and Conditions
+  // ── Legal ──────────────────────────────────────────────────────────────────
+  
   static const String terms1Title = "terms1Title";
   static const String terms1Content = "terms1Content";
   static const String terms2Title = "terms2Title";
@@ -454,7 +506,6 @@ class AppStrings {
   static const String terms11Title = "terms11Title";
   static const String terms11Content = "terms11Content";
 
-  // Privacy Policy
   static const String privacy1Title = "privacy1Title";
   static const String privacy1Content = "privacy1Content";
   static const String privacy2Title = "privacy2Title";

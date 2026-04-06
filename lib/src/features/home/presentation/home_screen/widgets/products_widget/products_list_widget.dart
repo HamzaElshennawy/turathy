@@ -7,6 +7,7 @@ import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart
 import '../../../../../../core/constants/app_functions/app_functions.dart';
 import '../../../../../../core/constants/app_sizes.dart';
 import '../../../../../../core/constants/app_strings/app_strings.dart';
+import '../../../../../main_screen.dart';
 import '../../../../../products/data/products_repository.dart';
 
 class ProductsListWidget extends StatelessWidget {
@@ -17,9 +18,33 @@ class ProductsListWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          AppStrings.products.tr(),
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              AppStrings.products.tr(),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+            ),
+            Consumer(
+              builder: (context, ref, child) {
+                return TextButton(
+                  onPressed: () {
+                    ref.read(mainScreenTabIndexProvider.notifier).state = 2;
+                  },
+                  child: Text(
+                    AppStrings.more.tr(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      decoration: TextDecoration.underline,
+                      color: Theme.of(context).primaryColor,
+                      letterSpacing: 1.2,
+                      height: 1.2,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         gapH4,
         SizedBox(

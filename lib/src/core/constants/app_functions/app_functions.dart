@@ -1,3 +1,12 @@
+/// {@category Constants}
+///
+/// Global utility functions and UI helpers.
+/// 
+/// This class provides a centralized collection of static methods for:
+/// - Responsive design checks ([isMobile]).
+/// - Localization shortcuts ([translateText]).
+/// - Common UI components (Dialogs, DatePickers, SnackBars).
+/// - string/date formatting and platform integrations (URLs).
 import 'dart:developer';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,15 +17,22 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../breakpoints.dart';
 
+/// Static repository of shared logic and common UI interactions.
 abstract class AppFunctions {
+  /// Simple check for mobile-sized viewports based on [Breakpoint.tablet].
   static bool isMobile({required BuildContext context}) =>
       MediaQuery.of(context).size.width < Breakpoint.tablet;
 
+  /// Shorthand for translating text using [easy_localization].
   static String translateText({required String text, required context}) =>
       text.tr(context: context);
 
+  /// Standardized logging wrapper.
   static void logPrint({required String message}) => log(message);
 
+  /// Displays a localized date picker restricted from 1970 to the current date.
+  /// 
+  /// Returns a YYYY-MM-DD formatted string or an empty string if canceled.
   static Future<String> showMyDatePicker({
     required BuildContext context,
   }) async {
@@ -33,6 +49,7 @@ abstract class AppFunctions {
     }
   }
 
+  /// Displays a standard success alert dialog.
   static Future<dynamic> showSuccessDialogBox({
     required BuildContext context,
     String? title,
@@ -48,8 +65,7 @@ abstract class AppFunctions {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Image.asset(AppIcons.success),
-              Text(title ?? ''),
+              Text(title ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
               Text(description ?? ''),
               if (child != null)
                 Padding(
@@ -63,7 +79,7 @@ abstract class AppFunctions {
     },
   );
 
-  //snack bar
+  /// Shows a customized floating SnackBar with support for error states.
   static void showSnackBar({
     required BuildContext context,
     required String message,
@@ -108,6 +124,7 @@ abstract class AppFunctions {
     );
   }
 
+  /// Shows a standardized Modal Bottom Sheet with a pull-handle indicator.
   static Future<dynamic> showBottomSheet({
     required BuildContext context,
     required Widget child,
@@ -136,24 +153,25 @@ abstract class AppFunctions {
     ),
   );
 
+  /// Helper to join names from a list of objects into a comma-separated string.
   static String getStringFromList({required List item}) =>
       item.map((e) => e.name).join(', ');
 
+  /// Safely attempts to open an external URL in the system browser.
   static Future<void> launchUrl({required String url}) async {
     var uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(url: url);
-    } else {
-      // can't launch url
-    }
+    } 
   }
 
+  /// Formats an ISO date string to a "Day, Month d" format.
   static String formatDateTimeFromString({required String date}) {
     DateTime parsedDate = DateTime.parse(date);
     return DateFormat('EEEE, MMMM d').format(parsedDate);
   }
 
-  // format date to be like this "Friday August 11, 2023"
+  /// Formats an ISO date string to "Day Month d, yyyy" (common in session lists).
   static String formatDateTimeFromStringForSessionDetails({
     required String date,
   }) {
@@ -161,6 +179,7 @@ abstract class AppFunctions {
     return DateFormat('EEEE MMMM d, yyyy').format(parsedDate);
   }
 
+  /// Converts a 24-hour time string ("HH:mm:ss") to 12-hour format ("h:mm AM").
   static String convertTimeFormat(String time24) {
     final format24 = DateFormat('HH:mm:ss');
     final format12 = DateFormat('h:mm a');
@@ -169,6 +188,7 @@ abstract class AppFunctions {
     return format12.format(time);
   }
 
+  /// Displays a fullscreen interactive image viewer with zoom support.
   static void showImageDialog({
     required BuildContext context,
     required String imageUrl,
@@ -206,3 +226,4 @@ abstract class AppFunctions {
     );
   }
 }
+

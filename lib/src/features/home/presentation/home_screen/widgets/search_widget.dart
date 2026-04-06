@@ -1,14 +1,33 @@
+/// {@category Presentation}
+///
+/// A specialized header widget that coordinates search input and category filtering.
+/// 
+/// [SearchWidget] is a stateful component that manages a local text buffer with 
+/// built-in debouncing to prevent excessive state updates during typing. It 
+/// also provides a entry point for the advanced [FilterWidget] modal.
+/// 
+/// Logic:
+/// - **Debouncing**: Updates the global [searchQueryProvider] only after 500ms 
+///   of inactivity.
+/// - **State Sync**: Reactively updates the UI (clear button visibility) based on 
+///   the controller's text.
+/// - **Theming**: Implements a 'floating' design with 16.0 border radius and 
+///   low-opacity shadows.
+library;
+
 import 'dart:async';
-import 'dart:developer';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/search/presentation/widgets/filter_widget/filter_widget.dart';
 import '../controllers/search_provider.dart';
 
+/// A composite search bar and filter button for the home screen.
 class SearchWidget extends ConsumerStatefulWidget {
+  /// Creates a [SearchWidget].
   const SearchWidget({super.key});
 
   @override
@@ -16,20 +35,24 @@ class SearchWidget extends ConsumerStatefulWidget {
 }
 
 class _SearchWidgetState extends ConsumerState<SearchWidget> {
+  /// Local controller for handling standard text input.
   final TextEditingController _controller = TextEditingController();
+
+  /// Internal timer used to throttle the [searchQueryProvider] updates.
   Timer? _debounce;
 
   @override
   void dispose() {
     _controller.dispose();
-    _debounce?.cancel();
+    _debounce?.cancel(); // Essential: prevent timers from firing after unmount
     super.dispose();
   }
 
+  /// Internal: Handles text changes with a 500ms debounce buffer.
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      log('Updating search query state: "$query"');
+      // Syncs the local query with the global provider which drives result filtering
       ref.read(searchQueryProvider.notifier).state = query;
     });
   }
@@ -38,7 +61,7 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Search Bar
+        // ── Search Input Field ──────────────────────────────────────────────
         Expanded(
           child: Container(
             height: 52,
@@ -67,8 +90,10 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
                   child: TextField(
                     textAlignVertical: TextAlignVertical.center,
                     controller: _controller,
-                    onChanged: _onSearchChanged,
-                    //textAlign: TextAlign.right, // Assuming RTL based on "ابحث"
+                    onChanged: (val) {
+                      _onSearchChanged(val);
+                      setState(() {}); // Logic: Refresh to show/hide 'clear' button
+                    },
                     decoration: InputDecoration(
                       hintText: AppStrings.search.tr(),
                       hintStyle: TextStyle(
@@ -99,7 +124,7 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
 
         gapW12,
 
-        // Filter Button
+        // ── Filter Entry Point ──────────────────────────────────────────────
         Container(
           height: 52,
           width: 52,
@@ -117,15 +142,15 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
           ),
           child: IconButton(
             onPressed: () {
+              // Action: Invoke the global filter system in a bottom sheet
               showModalBottomSheet(
-                shape: RoundedRectangleBorder(
+                shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 sheetAnimationStyle: AnimationStyle(
-                  duration: Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                 ),
-
                 context: context,
                 isScrollControlled: true,
                 useSafeArea: true,
@@ -133,7 +158,7 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
               );
             },
             icon: Icon(
-              Icons.tune_rounded, // Better match for filter icon
+              Icons.tune_rounded,
               color: Colors.grey.shade700,
             ),
           ),

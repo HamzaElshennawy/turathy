@@ -22,7 +22,12 @@ class OpenAuctionsWidget extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         gapH4,
-        Expanded(
+        SizedBox(
+          height: AppFunctions.isMobile(context: context)
+              ? MediaQuery.of(context).size.width * 0.9
+              : (MediaQuery.of(context).orientation == Orientation.landscape
+                    ? 360
+                    : 400),
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final openAuctionsListValue = ref.watch(openAuctionsProvider);
@@ -33,17 +38,19 @@ class OpenAuctionsWidget extends StatelessWidget {
                   }
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemExtent: MediaQuery.of(context).size.width * .7,
+                    itemExtent: AppFunctions.isMobile(context: context)
+                        ? MediaQuery.of(context).size.width * .7
+                        : (MediaQuery.of(context).orientation ==
+                                  Orientation.landscape
+                              ? 290
+                              : 300),
                     itemCount: data.length,
-                    // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    //     crossAxisCount:
-                    //         AppFunctions.isMobile(context: context) ? 2 : 3,
-                    //     childAspectRatio: .7,
-                    //     crossAxisSpacing: 8,
-                    //     mainAxisSpacing: 8),
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
-                      return AuctionCard(auction: product);
+                      return AuctionCard(
+                        auction: product,
+                        heroTag: 'open_auctions_${product.id}_$index',
+                      );
                     },
                   );
                 },

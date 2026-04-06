@@ -1,3 +1,9 @@
+/// {@category Presentation}
+///
+/// Screen for verifying the reset OTP and setting a new account password.
+/// 
+/// This is the final step in the "Forgot Password" flow. The user must
+/// provide the code received via SMS and a new, matching pair of passwords.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +16,9 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_strings/app_strings.dart';
 import 'forgot_password_controller.dart';
 
+/// Screen where users enter the sent OTP and their new password.
 class ResetPasswordScreen extends ConsumerStatefulWidget {
+  /// The phone number in E.164 format to which the code was sent.
   final String phone_number;
 
   const ResetPasswordScreen({super.key, required this.phone_number});
@@ -29,7 +37,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     _codeController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
@@ -38,7 +45,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // form with enter code and new password and confirm password
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.resetPassword.tr())),
       body: CustomScrollView(
@@ -67,38 +73,42 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                             ),
                           ),
                           const SizedBox(height: 10),
+                          
+                          // OTP Code Input
                           WhiteRoundedTextFormField(
                             controller: _codeController,
                             hintText: AppStrings.code.tr(),
                             keyboardType: TextInputType.number,
                             validator: (value) {
-                              if (value!.isEmpty) {
+                              if (value == null || value.isEmpty) {
                                 return AppStrings.pleaseEnterTheCode.tr();
                               }
                               return null;
                             },
                           ),
                           const SizedBox(height: 10),
+                          
+                          // New Password Input
                           WhiteRoundedTextFormField(
                             controller: _newPasswordController,
                             hintText: AppStrings.newPassword.tr(),
                             validator: (value) {
-                              if (value!.isEmpty) {
-                                return AppStrings.pleaseEnterTheNewPassword
-                                    .tr();
+                              if (value == null || value.isEmpty) {
+                                return AppStrings.pleaseEnterTheNewPassword.tr();
                               }
                               return null;
                             },
                             keyboardType: TextInputType.visiblePassword,
                           ),
                           const SizedBox(height: 10),
+                          
+                          // Confirm Password Input with matching check
                           WhiteRoundedTextFormField(
                             controller: _confirmPasswordController,
                             hintText: AppStrings.confirmPassword.tr(),
                             validator: (value) {
-                              if (value!.isEmpty) {
-                                return AppStrings.pleaseEnterTheConfirmPassword
-                                    .tr();
+                              if (value == null || value.isEmpty) {
+                                return AppStrings.pleaseEnterTheConfirmPassword.tr();
                               }
                               if (value != _newPasswordController.text) {
                                 return AppStrings.passwordsDoNotMatch.tr();
@@ -108,41 +118,34 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                             keyboardType: TextInputType.visiblePassword,
                           ),
                           const SizedBox(height: 10),
+                          
+                          // Submission Button
                           PrimaryButton(
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
                                 final ok = await ref
-                                    .read(
-                                      forgotPasswordControllerProvider.notifier,
-                                    )
+                                    .read(forgotPasswordControllerProvider.notifier)
                                     .changePassword(
                                       e164Phone: widget.phone_number,
                                       otp: _codeController.text.trim(),
-                                      password: _newPasswordController.text
-                                          .trim(),
+                                      password: _newPasswordController.text.trim(),
                                     );
+                                
                                 if (!mounted) return;
+                                
                                 if (ok) {
-                                  // ignore: use_build_context_synchronously
-                                  Navigator.of(
-                                    // ignore: use_build_context_synchronously
-                                    context,
-                                  ).popUntil((route) => route.isFirst);
-                                  // ignore: use_build_context_synchronously
+                                  // Go back to the login screen and show success message.
+                                  Navigator.of(context).popUntil((route) => route.isFirst);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                        AppStrings.resetPasswordSuccess.tr(),
-                                      ),
+                                      content: Text(AppStrings.resetPasswordSuccess.tr()),
                                     ),
                                   );
                                 }
                               }
                             },
                             text: AppStrings.resetPassword.tr(),
-                            isLoading: ref
-                                .watch(forgotPasswordControllerProvider)
-                                .isLoading,
+                            isLoading: ref.watch(forgotPasswordControllerProvider).isLoading,
                           ),
                         ],
                       ),
@@ -157,3 +160,4 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     );
   }
 }
+

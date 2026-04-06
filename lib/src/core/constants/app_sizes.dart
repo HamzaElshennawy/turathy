@@ -1,6 +1,19 @@
+/// {@category Constants}
+///
+/// Standardized layout dimensions and spacing utilities.
+/// 
+/// This file defines:
+/// - [Sizes]: Raw numeric values for margins, padding, and radii.
+/// - [gapW]: Horizontal spacing blocks ([SizedBox] with width).
+/// - [gapH]: Vertical spacing blocks ([SizedBox] with height).
+/// 
+/// Naming Convention:
+/// - `p{N}` refers to a numeric value of `N` logical pixels.
+/// - `gapW{N}` refers to a [SizedBox] with width `N`.
+/// - `gapH{N}` refers to a [SizedBox] with height `N`.
 import 'package:flutter/material.dart';
 
-/// Constant sizes to be used in the app (paddings, gaps, rounded corners etc.)
+/// Numeric spacing and dimension tokens.
 class Sizes {
   static const p2 = 2.0;
   static const p4 = 4.0;
@@ -14,7 +27,7 @@ class Sizes {
   static const p64 = 64.0;
 }
 
-/// Constant gap widths
+/// Constant horizontal gaps.
 const gapW2 = SizedBox(width: Sizes.p2);
 const gapW4 = SizedBox(width: Sizes.p4);
 const gapW8 = SizedBox(width: Sizes.p8);
@@ -26,7 +39,7 @@ const gapW32 = SizedBox(width: Sizes.p32);
 const gapW48 = SizedBox(width: Sizes.p48);
 const gapW64 = SizedBox(width: Sizes.p64);
 
-/// Constant gap heights
+/// Constant vertical gaps.
 const gapH2 = SizedBox(height: Sizes.p2);
 const gapH4 = SizedBox(height: Sizes.p4);
 const gapH8 = SizedBox(height: Sizes.p8);

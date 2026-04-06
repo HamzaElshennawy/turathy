@@ -1,4 +1,14 @@
-/// Unified riverpod providers for socket connection, state, and events.
+/// {@category Core}
+///
+/// Riverpod providers and state management for the WebSocket system.
+/// 
+/// This file bridges the [SocketService] with the rest of the application using 
+/// Riverpod, providing:
+/// - Reactive access to connection status and event streams.
+/// - Authoritative state synchronization logic (gap detection).
+/// - A high-level [SocketActions] class for emitting events.
+library;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
@@ -6,11 +16,13 @@ import 'socket_connection_state.dart';
 import 'socket_models.dart';
 import 'socket_service.dart';
 
-/// Global socket service provider
+/// The primary provider for the singleton [SocketService] instance.
+/// 
+/// Automatically handles resource cleanup via [ref.onDispose] to ensure 
+/// connections are closed when the provider is no longer needed.
 final socketServiceProvider = Provider<SocketService>((ref) {
   final service = SocketService();
 
-  // Auto-dispose when no longer needed
   ref.onDispose(() {
     service.dispose();
   });
@@ -18,14 +30,20 @@ final socketServiceProvider = Provider<SocketService>((ref) {
   return service;
 });
 
-/// Socket connection status provider
+/// Watches the raw connection status of the global socket.
+/// 
+/// Useful for UI elements that need to show "Connecting...", "Connected", 
+/// or "Offline" status indicators.
 final socketConnectionProvider =
     StreamProvider.autoDispose<SocketConnectionStatus>((ref) {
       final service = ref.watch(socketServiceProvider);
       return service.connectionStream;
     });
 
-/// Helper provider to ensure socket is connected
+/// A utility provider that attempts to connect the socket if not already active.
+/// 
+/// Consumers can 'read' or 'watch' this to trigger the initial connection handshake.
+/// Handled asynchronously to prevent blocking the main UI thread.
 final socketEnsureConnectedProvider = FutureProvider.autoDispose<void>((
   ref,
 ) async {
@@ -42,7 +60,7 @@ final socketEnsureConnectedProvider = FutureProvider.autoDispose<void>((
 
 // ========== Event Stream Providers ==========
 
-/// Auction started event stream
+/// Notifies when a new live auction session officially begins.
 final auctionStartedProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<AuctionModel>(
@@ -51,7 +69,7 @@ final auctionStartedProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   );
 });
 
-/// Auction pre-started event stream
+/// Notifies when an auction enters its "Preparing" or "Pre-start" phase.
 final auctionPreStartedProvider = StreamProvider.autoDispose<AuctionModel>((
   ref,
 ) {
@@ -62,7 +80,7 @@ final auctionPreStartedProvider = StreamProvider.autoDispose<AuctionModel>((
   );
 });
 
-/// User count update event stream
+/// Real-time stream of the number of active participants in an auction room.
 final userCountUpdateProvider = StreamProvider.autoDispose<UserCountUpdate>((
   ref,
 ) {
@@ -73,7 +91,7 @@ final userCountUpdateProvider = StreamProvider.autoDispose<UserCountUpdate>((
   );
 });
 
-/// New comment event stream
+/// Stream of all incoming chat comments and system notifications.
 final newCommentProvider = StreamProvider.autoDispose<CommentEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<CommentEvent>(
@@ -82,13 +100,13 @@ final newCommentProvider = StreamProvider.autoDispose<CommentEvent>((ref) {
   );
 });
 
-/// State provider to track current bid value
+/// Reactive state for the single most recent bid in a live session.
 final currentBidStateProvider = StateProvider.autoDispose<AuctionBid?>((ref) {
   final bidEvent = ref.watch(newBidEventProvider);
   return bidEvent.valueOrNull?.newBid;
 });
 
-/// State provider to track the latest expiry date from incoming bids
+/// Reactive state for the authoritative expiry date received from the server pulse.
 final latestExpiryDateStateProvider = StateProvider.autoDispose<DateTime?>((
   ref,
 ) {
@@ -96,7 +114,9 @@ final latestExpiryDateStateProvider = StateProvider.autoDispose<DateTime?>((
   return bidEvent.valueOrNull?.expiryDate;
 });
 
-/// New bid event stream - now updates the state provider
+/// Stream provider for successful 'newBid' events.
+/// 
+/// This is the primary driver for bid-related UI updates.
 final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<BidPlacedEvent>('newBid', (data) {
@@ -104,48 +124,51 @@ final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   });
 });
 
-/// Helper method to reset the new bid stream
+/// Utility to reset transient bid states when navigating between distinct auctions.
 void resetNewBidStream(WidgetRef ref) {
-  // Reset the state provider to null immediately
   ref.read(currentBidStateProvider.notifier).state = null;
   ref.read(latestExpiryDateStateProvider.notifier).state = null;
 }
 
-/// Notifier that accumulates ALL incoming socket bids (newest first)
+/// Helper notifier for maintaining an ordered history of bids in the current session.
+/// 
+/// Encapsulates logic for merging authoritative lists and individual events.
 class AccumulatedBidsNotifier extends StateNotifier<List<AuctionBid>> {
   AccumulatedBidsNotifier() : super([]);
 
-  /// Replace the entire bid list with the authoritative list from the backend
+  /// Overrides the entire history with an authoritative list from the server.
+  /// Typically called after a room re-sync or pulse event.
   void updateAll(List<AuctionBid> bids) {
     state = bids;
   }
 
+  /// Appends a single new bid to the history, performing a de-duplication check.
   void addBid(AuctionBid bid) {
-    // Avoid duplicates by checking bid id
     if (bid.id != null && state.any((b) => b.id == bid.id)) return;
     state = [bid, ...state];
   }
 }
 
-/// Provider that accumulates every real-time socket bid into a list
+/// Provides an accumulated, sorted list of all bids received during the session.
+/// 
+/// Listens to [newBidEventProvider] and automatically incorporates updates 
+/// from the server's authoritative `auctionBids` list.
 final accumulatedBidsProvider =
     StateNotifierProvider.autoDispose<
       AccumulatedBidsNotifier,
       List<AuctionBid>
     >((ref) {
       final notifier = AccumulatedBidsNotifier();
-      // Listen to new bid events and use the full authoritative list from backend
+      // Reactive binding: Update local list whenever a new bid event occurs
       ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (
         previous,
         next,
       ) {
         final event = next.valueOrNull;
         if (event != null) {
-          // Use the full auctionBids list from the backend as the source of truth
           if (event.auctionBids.isNotEmpty) {
             notifier.updateAll(event.auctionBids);
           } else {
-            // Fallback: if auctionBids is empty, just add the new bid
             notifier.addBid(event.newBid);
           }
         }
@@ -153,7 +176,7 @@ final accumulatedBidsProvider =
       return notifier;
     });
 
-/// Auction canceled event stream
+/// Notifies when an auction has been canceled by an administrator.
 final auctionCanceledProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<AuctionModel>(
@@ -162,7 +185,7 @@ final auctionCanceledProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   );
 });
 
-/// Auction ended event stream
+/// Notifies when an auction officially concludes and a winner is determined.
 final auctionEndedProvider = StreamProvider.autoDispose<AuctionEndedEvent>((
   ref,
 ) {
@@ -173,7 +196,7 @@ final auctionEndedProvider = StreamProvider.autoDispose<AuctionEndedEvent>((
   );
 });
 
-/// Auction item ended event stream
+/// Notifies when a specific item unit within a multi-item auction has ended.
 final auctionItemEndedProvider =
     StreamProvider.autoDispose<AuctionItemEndedEvent>((ref) {
       final service = ref.watch(socketServiceProvider);
@@ -183,14 +206,14 @@ final auctionItemEndedProvider =
       );
     });
 
-/// Auction product change event stream
+/// High-level state provider for the most recent product transition event.
 final auctionProductChangeProvider =
     StateProvider.autoDispose<AuctionProductChangeEvent?>((ref) {
       final productChange = ref.watch(_auctionProductChangeProvider);
       return productChange.valueOrNull;
     });
 
-/// Auction product change event stream
+/// Internal stream for 'auction_change_product' events.
 final _auctionProductChangeProvider =
     StreamProvider.autoDispose<AuctionProductChangeEvent>((ref) {
       final service = ref.watch(socketServiceProvider);
@@ -201,11 +224,12 @@ final _auctionProductChangeProvider =
       );
     });
 
+/// Resets the persistent product change state.
 void resetProductChangeStream(WidgetRef ref) {
   ref.read(auctionProductChangeProvider.notifier).state = null;
 }
 
-/// Socket error event stream
+/// Global stream for handling business-logic errors emitted by the server.
 final socketErrorProvider = StreamProvider.autoDispose<SocketErrorEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<SocketErrorEvent>(
@@ -214,9 +238,7 @@ final socketErrorProvider = StreamProvider.autoDispose<SocketErrorEvent>((ref) {
   );
 });
 
-/// Bid rejected event stream — emitted when the server rejects a bid due to
-/// a stale price. The event includes the server's current price so the UI
-/// can self-correct instantly without an HTTP request.
+/// Notifies when a user's bid attempt is rejected (e.g., bid was too low).
 final bidRejectedProvider = StreamProvider.autoDispose<BidRejectedEvent>((
   ref,
 ) {
@@ -227,19 +249,19 @@ final bidRejectedProvider = StreamProvider.autoDispose<BidRejectedEvent>((
   );
 });
 
-/// Auction sync event stream — emitted by the server when a client (re-)joins
-/// a room or requests a manual sync. Carries the authoritative `seq` counter
-/// so the client can bootstrap its rolling counter.
+/// Authoritative snapshot of the entire auction state.
+/// 
+/// Also seeds the rolling sequence counter [auctionSeqProvider] to facilitate 
+/// authoritative gap detection.
 final auctionSyncProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<AuctionModel>(
     'auctionSync',
     (data) {
       final json = data as Map<String, dynamic>;
-      // Seed the rolling counter whenever we receive a fresh snapshot.
       final seqFromServer = json['seq'] as int?;
       if (seqFromServer != null) {
-        // Schedule a microtask so we don't mutate state during a build.
+        // Asynchronously update sequence state to avoid provider loop errors
         Future.microtask(() {
           try {
             ref.read(auctionSeqProvider.notifier).state = seqFromServer;
@@ -251,41 +273,38 @@ final auctionSyncProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   );
 });
 
-// ── Rolling sequence counter ──────────────────────────────────────────────────
+// ── Sequence Matching and Gap Detection ──────────────────────────────────────────
 
-/// Stores the last successfully processed `seq` value from the server.
-/// Initialised to -1 ("not yet bootstrapped").
-/// Reset to whatever `seq` arrives in `auctionSync` to survive server restarts.
+/// Tracks the last processed [seq] ID from the server broadcast.
+/// 
+/// Initialized to -1. Values 0+ are considered valid sequence IDs used to 
+/// detect missed packets in real-time streams.
 final auctionSeqProvider = StateProvider<int>((ref) => -1);
 
-/// Side-effect provider: watches all sequenced events, detects forward gaps,
-/// and calls `requestSync` when a gap is found — no UI state is changed here.
-/// Screens should call `ref.watch(auctionGapDetectedProvider)` to activate it.
+/// A background logic provider that monitors all sequenced streams for state gaps.
+/// 
+/// If an event arrives with a `seq` ID much higher than the last known one 
+/// (e.g. last=10, incoming=12), it implicitly triggers a 'requestSync' emit 
+/// to catch up on missed data.
 final auctionGapDetectedProvider = Provider<void>((ref) {
-  // We must watch inside a provider body so Riverpod re-evaluates when events
-  // arrive. We use a helper closure to avoid code duplication.
+  /// Compares the [incoming] sequence ID with the [last] known one.
   void checkSeq(int? incoming, int auctionId) {
-    if (incoming == null) return; // event has no seq yet (pre-deploy compat)
+    if (incoming == null) return;
     final last = ref.read(auctionSeqProvider);
 
     if (last == -1) {
-      // First event: bootstrap counter silently.
       ref.read(auctionSeqProvider.notifier).state = incoming;
       return;
     }
 
-    if (incoming <= last) {
-      // Duplicate or retransmit — ignore safely.
-      return;
-    }
+    if (incoming <= last) return; // Ignore old or duplicate events
 
     if (incoming > last + 1) {
-      // Gap detected! Ask the server for a fresh snapshot.
-      // ignore: avoid_print
+      // Gap detected: missed one or more packets
       assert(() {
         // ignore: avoid_print
         print('[SeqGap] auction=$auctionId gap=${incoming - last - 1} '  
-              '(last=$last, received=$incoming) — requesting sync');
+              '(last=$last, received=$incoming) — triggering force sync');
         return true;
       }());
       try {
@@ -293,26 +312,22 @@ final auctionGapDetectedProvider = Provider<void>((ref) {
       } catch (_) {}
     }
 
-    // Advance the counter regardless (fill in the gap optimistically).
     ref.read(auctionSeqProvider.notifier).state = incoming;
   }
 
-  // Listen to newBid events.
+  // Cross-reference all streams that provide sequence numbers
   ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
-    // Derive auctionId from the bid itself (available on AuctionBid).
     checkSeq(event.seq, event.newBid.auctionId ?? 0);
   });
 
-  // Listen to auctionItemEnded events.
   ref.listen<AsyncValue<AuctionItemEndedEvent>>(auctionItemEndedProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
     checkSeq(event.seq, event.auction.id ?? 0);
   });
 
-  // Listen to auctionEnded events.
   ref.listen<AsyncValue<AuctionEndedEvent>>(auctionEndedProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
@@ -322,7 +337,7 @@ final auctionGapDetectedProvider = Provider<void>((ref) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Provider for socket actions (emit events)
+/// High-level wrapper for emitting standardized socket events.
 final socketActionsProvider = Provider.autoDispose<SocketActions>((ref) {
   final service = ref.watch(socketServiceProvider);
   return SocketActions._(service);
@@ -330,8 +345,10 @@ final socketActionsProvider = Provider.autoDispose<SocketActions>((ref) {
 
 // ── State Broadcast Provider ───────────────────────────────────────────────────
 
-/// Stream of `auctionStateUpdate` events blindly fired by the server every 2s.
-/// Contains the most up-to-date timer and the latest 3 bids for the active product.
+/// Heartbeat stream providing the authoritative server source-of-truth.
+/// 
+/// Typically emitted every 2 seconds by the server to sync timers, top bids, 
+/// and product statuses across all devices.
 final auctionStateUpdateProvider =
     StreamProvider.autoDispose<AuctionStateUpdateEvent>((ref) {
       final service = ref.watch(socketServiceProvider);
@@ -344,37 +361,40 @@ final auctionStateUpdateProvider =
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Socket actions class for emitting events
+/// A command-pattern helper class for all outgoing WebSocket communication.
+/// 
+/// Consolidates all 'emit' logic in a central place to ensure consistent 
+/// connectivity checks and payload formatting.
 class SocketActions {
   final SocketService _service;
 
   const SocketActions._(this._service);
 
-  /// Start live auction
+  /// Requests the server to transition an auction to the 'Live' state.
   Future<void> startLiveAuction(int auctionId, int userId) async {
     await _ensureConnected();
     _service.emitStartLiveAuction(auctionId, userId);
   }
 
-  /// Join auction
+  /// Registers interest in an auction room by joining its namespace.
   Future<void> joinAuction(int auctionId, int userId) async {
     await _ensureConnected();
     _service.emitJoinAuction(auctionId, userId);
   }
 
-  /// Leave auction
+  /// Unregisters interest and stops receiving room-specific broadcasts.
   Future<void> leaveAuction(int auctionId, int userId) async {
     await _ensureConnected();
     _service.emitLeaveAuction(auctionId, userId);
   }
 
-  /// Send comment
+  /// Broadcasts a participant chat comment to the entire room.
   Future<void> sendComment(int auctionId, int userId, String comment) async {
     await _ensureConnected();
     _service.emitComment(auctionId, userId, comment);
   }
 
-  /// Place bid
+  /// Submits a competitive bid attempt for a specific product.
   Future<void> placeBid(
     int auctionId,
     int userId,
@@ -385,19 +405,19 @@ class SocketActions {
     _service.emitPlaceBid(auctionId, userId, amount, productId);
   }
 
-  /// Cancel auction
+  /// Performs an administrative cancellation of the current auction session.
   Future<void> cancelAuction(int auctionId, int userId) async {
     await _ensureConnected();
     _service.emitCancelAuction(auctionId, userId);
   }
 
-  /// Award auction
+  /// Officially awards a product item to a winner.
   Future<void> awardAuction(int auctionId, int userId, String product) async {
     await _ensureConnected();
     _service.emitAwardingAuction(auctionId, userId, product);
   }
 
-  /// Change current product
+  /// Updates the metadata for the product currently being auctioned.
   Future<void> changeCurrentProduct({
     required int auctionId,
     required String product,
@@ -415,13 +435,15 @@ class SocketActions {
     );
   }
 
-  /// Request a fresh auction state snapshot (gap recovery)
+  /// Manually triggers an 'auctionSync' snapshot from the backend.
+  /// 
+  /// Usually called automatically by [auctionGapDetectedProvider].
   Future<void> requestSync(int auctionId) async {
     await _ensureConnected();
     _service.emitRequestSync(auctionId);
   }
 
-  /// Ensure socket is connected before performing actions
+  /// Internal: Verifies connectivity and handshakes before attempting an emit action.
   Future<void> _ensureConnected() async {
     if (!_service.isConnected) {
       try {
@@ -433,3 +455,4 @@ class SocketActions {
     }
   }
 }
+

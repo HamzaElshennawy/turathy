@@ -3,7 +3,17 @@ import 'package:flutter/services.dart';
 
 import '../core/constants/app_strings/app_strings.dart';
 
+/// {@category Utils}
+///
+/// Collection of input validation logic and formatting rules for the application's forms.
+/// 
+/// This class provides static methods used by [TextFormField] widgets for 
+/// standardizing data entry. It includes support for email, password, and
+/// specialized phone number formats (including KSA-specific logic).
 class Validators {
+  /// Validates an email address using a standard RFC 5322-compliant regex.
+  /// 
+  /// Returns a localized error message if the email is empty or invalid.
   static String? emailValidator(String? value) {
     if (value == null || value.isEmpty) {
       return AppStrings.email.tr();
@@ -16,17 +26,23 @@ class Validators {
     return null;
   }
 
+  /// Validates a password's length and presence.
+  /// 
+  /// Currently enforces a minimum length of 8 characters (matching the logic in
+  /// [passwordValidator]). Returns a localized error message if empty.
   static String? passwordValidator(String? value) {
     if (value == null || value.isEmpty) {
       return AppStrings.password.tr();
     }
-    if (value.length < 4) {
+    if (value.length < 8) {
       return 'Password must be at least 8 characters long';
     }
     return null;
   }
 
-  // not empty validator
+  /// Ensures a field is not null or empty.
+  /// 
+  /// Generic validator for any required text input.
   static String? required(String? value) {
     if (value == null || value.isEmpty) {
       return 'This field is required';
@@ -34,9 +50,13 @@ class Validators {
     return null;
   }
 
-  // E.164 international phone validator: requires leading + and 7-15 digits total after +
+  /// Regex for E.164 international phone number format.
+  /// Requires leading '+' and 7-15 digits.
   static final RegExp _e164RegExp = RegExp(r'^\+[1-9]\d{6,14}$');
 
+  /// Validates an international phone number (E.164).
+  /// 
+  /// Used for general account registration and contact verification.
   static String? phoneValidator(String? value) {
     if (value == null || value.isEmpty) {
       return AppStrings.phoneRequired.tr();
@@ -47,16 +67,22 @@ class Validators {
     return null;
   }
 
-  // Input formatters to allow only + and digits, and limit length to 16
+  /// A list of formatters for international phone input fields.
+  /// 
+  /// Allows only digits and the '+' prefix, with a 16-character limit.
   static final List<TextInputFormatter> phoneInputFormatters =
       <TextInputFormatter>[
     FilteringTextInputFormatter.allow(RegExp(r'[+0-9]')),
     LengthLimitingTextInputFormatter(16),
   ];
 
-  // KSA-specific: 9 digits local part, no leading zero (e.g., 5XXXXXXXX)
+  /// Regex for local Kingdom of Saudi Arabia (KSA) mobile format.
+  /// Expects 9 digits starting with a non-zero digit (e.g., 5XXXXXXXX).
   static final RegExp _ksaLocalRegExp = RegExp(r'^[1-9]\d{8}$');
 
+  /// Validates a local KSA mobile number.
+  /// 
+  /// Ensures the number follows the local dialing rules (9 digits, no leading 0).
   static String? ksaLocalPhoneValidator(String? value) {
     if (value == null || value.isEmpty) {
       return AppStrings.phoneRequired.tr();
@@ -67,7 +93,10 @@ class Validators {
     return null;
   }
 
-  // Only digits, 9 max, and drop any leading zero the user tries to enter
+  /// A list of formatters for KSA-specific mobile input fields.
+  /// 
+  /// Restricts input to digits only, enforces a 9-digit max, and 
+  /// automatically strips any leading zeros.
   static final List<TextInputFormatter> ksaLocalPhoneInputFormatters =
       <TextInputFormatter>[
     FilteringTextInputFormatter.digitsOnly,
@@ -76,6 +105,8 @@ class Validators {
   ];
 }
 
+/// Helper formatter that automatically removes any leading '0' characters
+/// while the user is typing.
 class _NoLeadingZeroFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

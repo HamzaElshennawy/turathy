@@ -1,15 +1,39 @@
+/// {@category Components}
+///
+/// A suite of UI indicators for monitoring real-time [SocketService] health.
+/// 
+/// These components provide visual feedback to the user regarding the state of 
+/// the WebSocket connection, which is critical for live bidding synchronization.
+/// 
+/// It includes:
+/// 1. [SocketConnectionIndicator]: A layout wrapper that shifts content to show 
+///    a persistent top banner during connection issues.
+/// 2. [FloatingConnectionIndicator]: A non-intrusive floating overlay (toast-style)
+///    for transient state changes.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../helper/socket/socket_connection_state.dart';
 import '../helper/socket/socket_providers.dart';
 
-/// Widget that displays socket connection status to users
+/// A consumer wrapper that injects a connection status banner above its [child].
+/// 
+/// When the socket state is anything other than [SocketConnectionState.connected], 
+/// this widget automatically renders a colored status bar at the top of the 
+/// widget tree, pushing the [child] content down.
 class SocketConnectionIndicator extends ConsumerWidget {
+  /// The primary UI content to be wrapped.
   final Widget child;
+
+  /// Control flag to globally enable or disable the indicator. Defaults to true.
   final bool showIndicator;
+
+  /// The vertical spacing injected between the banner and the [child] content.
   final EdgeInsets padding;
 
+  /// Creates a [SocketConnectionIndicator] for the given [child].
   const SocketConnectionIndicator({
     required this.child,
     this.showIndicator = true,
@@ -21,6 +45,7 @@ class SocketConnectionIndicator extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!showIndicator) return child;
 
+    // Listen to the global socket connection stream
     final connectionStatus = ref.watch(socketConnectionProvider);
 
     return connectionStatus.when(
@@ -44,10 +69,8 @@ class SocketConnectionIndicator extends ConsumerWidget {
     );
   }
 
-  Widget _buildConnectionBanner(
-    BuildContext context,
-    SocketConnectionStatus status,
-  ) {
+  /// Internal: Builds a status-specific banner with colors and icons.
+  Widget _buildConnectionBanner(BuildContext context, SocketConnectionStatus status) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -75,28 +98,29 @@ class SocketConnectionIndicator extends ConsumerWidget {
                   Text(
                     _getStatusTitle(status.state),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
                   if (status.errorMessage != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       status.errorMessage!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
-                      ),
+                            color: Colors.white.withOpacity(0.9),
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                   if (status.state == SocketConnectionState.reconnecting) ...[
                     const SizedBox(height: 2),
+                    // Localized (Arabic) attempt counter for UX feedback
                     Text(
                       'محاولة ${status.reconnectionAttempts + 1}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
-                      ),
+                            color: Colors.white.withOpacity(0.9),
+                          ),
                     ),
                   ],
                 ],
@@ -118,6 +142,7 @@ class SocketConnectionIndicator extends ConsumerWidget {
     );
   }
 
+  /// Internal: Builds a critical failure banner for unhandled exceptions.
   Widget _buildErrorBanner(BuildContext context, String error) {
     return Container(
       width: double.infinity,
@@ -133,9 +158,9 @@ class SocketConnectionIndicator extends ConsumerWidget {
               child: Text(
                 'خطأ في الاتصال: $error',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -146,6 +171,7 @@ class SocketConnectionIndicator extends ConsumerWidget {
     );
   }
 
+  /// Internal: Maps connection states to visual theme colors.
   Color _getStatusColor(SocketConnectionState state) {
     switch (state) {
       case SocketConnectionState.connecting:
@@ -161,6 +187,7 @@ class SocketConnectionIndicator extends ConsumerWidget {
     }
   }
 
+  /// Internal: Maps connection states to descriptive UI icons.
   Widget _getStatusIcon(SocketConnectionState state) {
     switch (state) {
       case SocketConnectionState.connecting:
@@ -176,6 +203,7 @@ class SocketConnectionIndicator extends ConsumerWidget {
     }
   }
 
+  /// Internal: Maps states to localized Arabic display titles.
   String _getStatusTitle(SocketConnectionState state) {
     switch (state) {
       case SocketConnectionState.connecting:
@@ -192,8 +220,12 @@ class SocketConnectionIndicator extends ConsumerWidget {
   }
 }
 
-/// Floating connection status indicator
+/// A non-intrusive floating overlay for displaying background connection events.
+/// 
+/// Unlike the banner, this widget is positioned absolutely and does not 
+/// shift surrounding layout. It is ideal for "My Account" or "Profile" screens.
 class FloatingConnectionIndicator extends ConsumerWidget {
+  /// Creates a [FloatingConnectionIndicator].
   const FloatingConnectionIndicator({super.key});
 
   @override
@@ -202,6 +234,7 @@ class FloatingConnectionIndicator extends ConsumerWidget {
 
     return connectionStatus.when(
       data: (status) {
+        // Hide if successfully connected
         if (status.state == SocketConnectionState.connected) {
           return const SizedBox.shrink();
         }
@@ -255,6 +288,7 @@ class FloatingConnectionIndicator extends ConsumerWidget {
     );
   }
 
+  /// Internal: Maps states to toast-appropriate colors.
   Color _getStatusColor(SocketConnectionState state) {
     switch (state) {
       case SocketConnectionState.connecting:
@@ -270,6 +304,7 @@ class FloatingConnectionIndicator extends ConsumerWidget {
     }
   }
 
+  /// Internal: Maps states to suggestive icons.
   Widget _getStatusIcon(SocketConnectionState state) {
     switch (state) {
       case SocketConnectionState.connecting:
@@ -285,6 +320,7 @@ class FloatingConnectionIndicator extends ConsumerWidget {
     }
   }
 
+  /// Internal: Maps states to concise Arabic status snippets.
   String _getStatusText(SocketConnectionState state) {
     switch (state) {
       case SocketConnectionState.connecting:
@@ -300,3 +336,4 @@ class FloatingConnectionIndicator extends ConsumerWidget {
     }
   }
 }
+

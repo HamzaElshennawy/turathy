@@ -1,3 +1,11 @@
+/// {@category Data}
+///
+/// Data repository for all authentication-related operations.
+/// 
+/// This repository acts as the single point of entry for:
+/// - **API Interactions**: Login, Signup, OTP Verification, Password Changes.
+/// - **Session Management**: Storing and retrieving tokens and user IDs from local cache.
+/// - **Third-Party Auth**: Direct integration with Google Sign-In.
 import 'dart:convert';
 import 'dart:developer';
 
@@ -9,9 +17,10 @@ import '../../../core/helper/dio/dio_helper.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../domain/user_model.dart';
 
-/// Ensures that a Dio response's data is a [Map].
-/// If Dio returns a raw JSON string instead of a parsed Map,
-/// this helper decodes it. Returns an empty map as a fallback.
+/// Internal utility to ensure a Dio response's data is a [Map].
+/// 
+/// If Dio returns a raw JSON string instead of a parsed Map, this helper 
+/// decodes it. Returns an empty map as a fallback to prevent runtime crashes.
 Map<String, dynamic> _ensureMap(dynamic data) {
   if (data is Map<String, dynamic>) return data;
   if (data is String) {
@@ -23,7 +32,16 @@ Map<String, dynamic> _ensureMap(dynamic data) {
   return {};
 }
 
+/// Manages authentication state and persistence.
 class AuthRepository {
+  /// Authenticates a user using phone and password.
+  /// 
+  /// On success:
+  /// - Caches the auth token.
+  /// - Persists user details locally.
+  /// - Returns a map containing the [UserModel] and navigation flags.
+  /// 
+  /// Throws [AuthException] on failure.
   static Future<Map<String, dynamic>> signIn(
     String phone,
     String password,
@@ -33,18 +51,18 @@ class AuthRepository {
       data: {'phone_number': phone, 'password': password},
     );
     final body = _ensureMap(result.data);
+    
     if (result.statusCode == 200 || result.statusCode == 201) {
       final data = _ensureMap(body['data']);
       final user = UserModel.fromJson(data);
 
-      // Cache auth token
       final token = body['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
-        log('Google token $token');
         CachedVariables.token = token;
       }
 
+      // Store credentials for auto-login on next app restart.
       await cacheData(user.copyWith(password: password, phone_number: phone));
 
       return {
@@ -54,21 +72,21 @@ class AuthRepository {
         'missingFields': data['missingFields'] ?? [],
       };
     } else {
-      AppFunctions.logPrint(
-        message: 'code signIn ${result.statusCode} $result ',
-      );
-      String message =
-          body['message']?.toString() ??
+      AppFunctions.logPrint(message: 'signIn error: ${result.statusCode}');
+      String message = body['message']?.toString() ??
           body['error']?.toString() ??
           'An error occurred while signing in';
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Verifies a Google ID token with the backend.
+  /// 
+  /// This method is called after the client successfully signs in via 
+  /// the Google SDK.
   static Future<UserModel> googleSignIn(String token) async {
     final result = await DioHelper.postData(
-      url:
-          'auth/google-login', // EndPoints.googleLogin (I should add this to EndPoints ideally but hardcoding for now or I'll update EndPoints too)
+      url: 'auth/google-login',
       data: {'token': token},
     );
 
@@ -77,29 +95,25 @@ class AuthRepository {
       final data = _ensureMap(body['data']);
       final user = UserModel.fromJson(data);
 
-      // Cache auth token
       final token = body['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
       }
 
-      await cacheData(user); // No password to cache
-      // Mark this user as a Google Sign-In user for silent re-auth on restart
+      await cacheData(user);
+      // Mark as Google account to trigger silent re-auth instead of password login.
       await CacheHelper.setData(key: CachedKeys.isGoogleSignIn, value: 'true');
       CachedVariables.isGoogleSignIn = true;
       return user;
     } else {
-      AppFunctions.logPrint(
-        message: 'code googleSignIn ${result.statusCode} $result ',
-      );
-      String message =
-          body['error']?.toString() ??
+      String message = body['error']?.toString() ??
           'An error occurred while signing in with Google';
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Fetches fresh user data from the backend.
   static Future<UserModel> getUser(int id) async {
     final result = await DioHelper.getData(
       url: EndPoints.getUser(id),
@@ -112,12 +126,15 @@ class AuthRepository {
       await cacheData(user);
       return user;
     } else {
-      String message =
-          body['error']?.toString() ?? 'An error occurred while fetching user data';
+      String message = body['error']?.toString() ?? 'Failed to fetch user data';
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Registers a new user account.
+  /// 
+  /// Returns registration status and identifying information (userId).
+  /// Subsequent verification (OTP) is usually required.
   static Future<Map<String, dynamic>> createUser(UserModel user) async {
     final result = await DioHelper.postData(
       url: EndPoints.userSignup,
@@ -134,15 +151,16 @@ class AuthRepository {
         'message': data['message'],
       };
     } else {
-      String message =
-          body['message']?.toString() ??
+      String message = body['message']?.toString() ??
           body['error']?.toString() ??
           'Signup failed';
-      AppFunctions.logPrint(message: 'code createUser ${result.statusCode} ');
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Validates a One-Time Password for a specific phone number.
+  /// 
+  /// If successfully verified, the user session is initialized.
   static Future<UserModel> verifyOtp({
     required String number,
     required String otp,
@@ -156,7 +174,6 @@ class AuthRepository {
       final data = _ensureMap(body['data']);
       final user = UserModel.fromJson(data);
 
-      // Cache auth token if present in verification response
       final token = body['token'] ?? data['token'];
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
@@ -166,41 +183,42 @@ class AuthRepository {
       await cacheData(user.copyWith(phone_number: number));
       return user;
     } else {
-      final message =
-          body['message']?.toString() ?? 'OTP verification failed';
+      final message = body['message']?.toString() ?? 'OTP verification failed';
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Requests a new OTP code to be sent to the user's phone.
   static Future<bool> resendOtp({required String number}) async {
     final result = await DioHelper.postData(
       url: EndPoints.resendOTP,
       data: {'number': number},
     );
-    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
+      final body = _ensureMap(result.data);
       final message = body['message']?.toString() ?? 'OTP resend failed';
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Triggers the OTP flow (e.g. for registration or password reset).
   static Future<bool> requestOtp({required String number}) async {
     final result = await DioHelper.postData(
       url: EndPoints.requestOTP,
       data: {'number': number},
     );
-    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
-      final message =
-          body['message']?.toString() ?? 'OTP request failed';
+      final body = _ensureMap(result.data);
+      final message = body['message']?.toString() ?? 'OTP request failed';
       throw AuthException(message, result.statusCode);
     }
   }
 
+  /// Updates the user's password using a verified OTP.
   static Future<bool> changePassword({
     required String number,
     required String otp,
@@ -210,118 +228,68 @@ class AuthRepository {
       url: EndPoints.changePassword,
       data: {'number': number, 'otp': otp, 'password': password},
     );
-    final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
     } else {
-      final message =
-          body['message']?.toString() ?? 'Password change failed';
+      final body = _ensureMap(result.data);
+      final message = body['message']?.toString() ?? 'Password change failed';
       throw AuthException(message, result.statusCode);
     }
   }
 
-  // static Future<bool> signOut() async {
-  //   final result = await DioHelper.postData(
-  //       url: EndPoints.logout, token: CachedVariables.token);
-  //   AppFunctions.logPrint(
-  //       message: 'code SignOut ${result.statusCode.toString()}');
-  //   if (result.statusCode == 200) {
-  //     return true;
-  //   } else {
-  //     String message =
-  //         result.data['error'] ?? 'An error occurred while signing out';
-  //     throw AuthException(message, result.statusCode);
-  //   }
-  // }
-
-  // // delete account
-  // static Future<bool> deleteAccount() async {
-  //   final result = await DioHelper.deleteData(
-  //       url: EndPoints.deleteAccount, token: CachedVariables.token);
-  //   if (result.statusCode == 200) {
-  //     return true;
-  //   } else {
-  //     String message = result.data.toString();
-  //     throw AuthException(message, result.statusCode);
-  //   }
-  // }
-
-  // local storage
+  /// Synchronizes [user] data with persistent local storage.
+  /// 
+  /// Updates both [CacheHelper] (Secure Storage) and [CachedVariables] (In-Memory).
   static Future<void> cacheData(UserModel? user) async {
     if (user != null) {
       if (user.id != null) {
-        await CacheHelper.setData(
-          key: CachedKeys.userId,
-          value: user.id.toString(),
-        ).then((value) async {
-          CachedVariables.userId = int.tryParse(
-            await CacheHelper.getData(key: CachedKeys.userId) ?? '',
-          );
-        });
+        await CacheHelper.setData(key: CachedKeys.userId, value: user.id.toString());
+        CachedVariables.userId = user.id;
       }
       if (user.name != null) {
         await CacheHelper.setData(key: CachedKeys.userName, value: user.name!);
         CachedVariables.userName = user.name;
       }
       if (user.phone_number != null) {
-        await CacheHelper.setData(
-          key: CachedKeys.phone_number,
-          value: user.phone_number!,
-        ).then((value) async {
-          CachedVariables.phone_number = await CacheHelper.getData(
-            key: CachedKeys.phone_number,
-          );
-        });
+        await CacheHelper.setData(key: CachedKeys.phone_number, value: user.phone_number!);
+        CachedVariables.phone_number = user.phone_number;
       }
       if (user.password != null) {
-        await CacheHelper.setData(
-          key: CachedKeys.password,
-          value: user.password!,
-        ).then((value) async {
-          CachedVariables.password = await CacheHelper.getData(
-            key: CachedKeys.password,
-          );
-        });
+        await CacheHelper.setData(key: CachedKeys.password, value: user.password!);
+        CachedVariables.password = user.password;
       }
     }
   }
 
+  /// Hydrates [CachedVariables] from [CacheHelper] during app initialization.
+  /// 
+  /// Also handles legacy token migration from early app versions.
   static Future<void> getLocalDetails() async {
-    CachedVariables.userId = int.tryParse(
-      await CacheHelper.getData(key: CachedKeys.userId) ?? '',
-    );
-    CachedVariables.userName = await CacheHelper.getData(
-      key: CachedKeys.userName,
-    );
-    CachedVariables.phone_number = await CacheHelper.getData(
-      key: CachedKeys.phone_number,
-    );
-    CachedVariables.password = await CacheHelper.getData(
-      key: CachedKeys.password,
-    );
-    CachedVariables.onBoard = await CacheHelper.getData(
-      key: CachedKeys.onBoard,
-    );
-    CachedVariables.token = await CacheHelper.getData(
-      key: CachedKeys.authToken,
-    );
-    // Migration: if auth_token is not set, fall back to old fcm_token key
+    CachedVariables.userId = int.tryParse(await CacheHelper.getData(key: CachedKeys.userId) ?? '');
+    CachedVariables.userName = await CacheHelper.getData(key: CachedKeys.userName);
+    CachedVariables.phone_number = await CacheHelper.getData(key: CachedKeys.phone_number);
+    CachedVariables.password = await CacheHelper.getData(key: CachedKeys.password);
+    CachedVariables.onBoard = await CacheHelper.getData(key: CachedKeys.onBoard);
+    CachedVariables.token = await CacheHelper.getData(key: CachedKeys.authToken);
+
+    // Migration logic for old installs (fcmToken -> authToken)
     if (CachedVariables.token == null) {
       final legacyToken = await CacheHelper.getData(key: CachedKeys.fcmToken);
       if (legacyToken != null) {
         log('Migrating auth token from legacy fcmToken key');
-        await CacheHelper.setData(
-          key: CachedKeys.authToken,
-          value: legacyToken,
-        );
+        await CacheHelper.setData(key: CachedKeys.authToken, value: legacyToken);
         await CacheHelper.deleteData(key: CachedKeys.fcmToken);
         CachedVariables.token = legacyToken;
       }
     }
+    
     final isGoogle = await CacheHelper.getData(key: CachedKeys.isGoogleSignIn);
     CachedVariables.isGoogleSignIn = isGoogle == 'true';
   }
 
+  /// Wipes all user data from memory and local storage.
+  /// 
+  /// Typically called during logout or account deletion.
   static Future<void> clearLocalDetails() async {
     CachedVariables.token = null;
     CachedVariables.userId = null;
@@ -329,6 +297,8 @@ class AuthRepository {
     CachedVariables.email = null;
     CachedVariables.phone_number = null;
     CachedVariables.password = null;
+    CachedVariables.isGoogleSignIn = false;
+
     await CacheHelper.deleteData(key: CachedKeys.userId);
     await CacheHelper.deleteData(key: CachedKeys.userName);
     await CacheHelper.deleteData(key: CachedKeys.phone_number);
@@ -336,10 +306,12 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.onBoard);
     await CacheHelper.deleteData(key: CachedKeys.authToken);
     await CacheHelper.deleteData(key: CachedKeys.isGoogleSignIn);
-    CachedVariables.isGoogleSignIn = false;
   }
 }
 
+/// Custom exception for authentication-related failures.
+/// 
+/// Contains a descriptive [message] and an optional HTTP error [code].
 class AuthException implements Exception {
   final String message;
   final int? code;
@@ -348,6 +320,7 @@ class AuthException implements Exception {
 
   @override
   String toString() {
-    return message + (code != null ? ' code: $code' : '');
+    return message + (code != null ? ' (error: $code)' : '');
   }
 }
+

@@ -1,3 +1,16 @@
+/// {@category Presentation}
+///
+/// A mandatory or optional screen to collect missing user information.
+/// 
+/// This screen is typically shown when a user logs in via a social provider 
+/// (like Google) but hasn't provided essential details like:
+/// - **Full Name**
+/// - **Email Address**
+/// - **Phone Number**
+/// - **Nationality**
+/// - **Physical Address**
+/// 
+/// It acts as a bridge between account creation and full platform access.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,8 +29,7 @@ import '../../profile/domain/address_model.dart';
 import 'auth_controller.dart';
 import 'country_code_provider.dart';
 
-/// Country list with 2-letter ISO codes for the nationality picker.
-
+/// Screen for completing user profile details.
 class CompleteProfileScreen extends ConsumerStatefulWidget {
   const CompleteProfileScreen({super.key});
 
@@ -40,12 +52,11 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     super.initState();
     final user = ref.read(authControllerProvider).valueOrNull;
 
-    String initialPhone =
-        user?.phone_number ?? CachedVariables.phone_number ?? '';
+    // Split raw phone string into dial code and local number for the UI fields.
+    String initialPhone = user?.phone_number ?? CachedVariables.phone_number ?? '';
     String initialCountryCode = '+966';
 
     if (initialPhone.startsWith('+')) {
-      // Known dial codes (longest first) to avoid greedy matching issues
       const knownCodes = [
         '+966', '+971', '+965', '+974', '+973', '+968', '+962', '+961', '+963',
         '+964', '+970', '+967', '+249', '+218', '+216', '+213', '+212', '+222',
@@ -60,6 +71,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       }
     }
 
+    // Set initial country code in the shared provider.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(countryCodeProvider.notifier).setCountryCode(initialCountryCode);
     });
@@ -80,6 +92,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     super.dispose();
   }
 
+  /// Validates and uploads the updated profile information to the backend.
+  /// 
+  /// On success:
+  /// - Updates local [CachedVariables].
+  /// - Optimistically updates the [authControllerProvider]'s user state.
+  /// - Navigates the user to the [MainScreen].
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     final userId = CachedVariables.userId;
@@ -89,15 +107,11 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
 
     final success = await ProfileRepository.updateUser(
       userId: userId,
-      name: _nameController.text.trim().isNotEmpty
-          ? _nameController.text.trim()
-          : null,
+      name: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,
       number: _phoneController.text.trim().isNotEmpty
           ? '${ref.read(countryCodeProvider)}${_phoneController.text.trim()}'
           : null,
-      email: _emailController.text.trim().isNotEmpty
-          ? _emailController.text.trim()
-          : null,
+      email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
       nationality: _selectedNationalityCode,
     );
 
@@ -106,12 +120,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     if (!mounted) return;
 
     if (success) {
-      // Update cached variables
+      // Sync cache
       CachedVariables.userName = _nameController.text.trim();
       CachedVariables.phone_number = _phoneController.text.trim();
       CachedVariables.email = _emailController.text.trim();
 
-      // Update the auth state so the UI refreshes
+      // Update in-memory auth state
       final currentUser = ref.read(authControllerProvider).valueOrNull;
       if (currentUser != null) {
         final updatedUser = currentUser.copyWith(
@@ -121,14 +135,10 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               : '',
           email: _emailController.text.trim(),
           nationality: _selectedNationalityCode,
+          // Recalculate missing fields to determine next UI state.
           missingFields: (currentUser.missingFields ?? []).where((field) {
-            if (field == 'phone_number' &&
-                _phoneController.text.trim().isNotEmpty) {
-              return false;
-            }
-            if (field == 'email' && _emailController.text.trim().isNotEmpty) {
-              return false;
-            }
+            if (field == 'phone_number' && _phoneController.text.trim().isNotEmpty) return false;
+            if (field == 'email' && _emailController.text.trim().isNotEmpty) return false;
             return true;
           }).toList(),
         );
@@ -136,27 +146,18 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('profileUpdatedSuccessfully'.tr()),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('profileUpdatedSuccessfully'.tr()), backgroundColor: Colors.green),
       );
 
-      // Navigate to home page after successful update
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('profileUpdateFailed'.tr()),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('profileUpdateFailed'.tr()), backgroundColor: Colors.red),
       );
     }
   }
 
+  /// Opens the address creation screen and refreshes the list on success.
   void _showAddAddressDialog() async {
     final result = await Navigator.push(
       context,
@@ -166,14 +167,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     if (result != null && mounted) {
       ref.invalidate(userAddressesProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('addressSavedSuccessfully'.tr()),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('addressSavedSuccessfully'.tr()), backgroundColor: Colors.green),
       );
     }
   }
 
+  /// Confirm and delete an existing address via [ProfileRepository].
   Future<void> _deleteAddress(int addressId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -181,16 +180,10 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         title: Text('deleteAddressTitle'.tr()),
         content: Text('deleteAddressConfirmation'.tr()),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('cancel'.tr()),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('cancel'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'delete'.tr(),
-              style: const TextStyle(color: Colors.red),
-            ),
+            child: Text('delete'.tr(), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -201,23 +194,19 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       if (success && mounted) {
         ref.invalidate(userAddressesProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('addressDeletedSuccessfully'.tr()),
-            backgroundColor: Colors.green,
-          ),
+          SnackBar(content: Text('addressDeletedSuccessfully'.tr()), backgroundColor: Colors.green),
         );
       }
     }
   }
 
+  /// Helper to build standard form labels.
   Widget _buildFieldLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -233,10 +222,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text(
-          'completeProfile'.tr(),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text('completeProfile'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -247,40 +233,29 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // ─── Header Profile Summary ───
               Container(
                 color: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 32,
-                  horizontal: 16,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                 child: Column(
                   children: [
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: themeColor.withOpacity(0.1),
                       child: Text(
-                        user?.name?.isNotEmpty == true
-                            ? user!.name!.substring(0, 1).toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: themeColor,
-                        ),
+                        user?.name?.isNotEmpty == true ? user!.name!.substring(0, 1).toUpperCase() : '?',
+                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: themeColor),
                       ),
                     ),
                     gapH16,
                     Text(
                       user?.name ?? AppStrings.name.tr(),
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     gapH4,
                     Text(
                       user?.phone_number ?? '',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
                     ),
                   ],
                 ),
@@ -293,7 +268,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Missing fields banner
+                      // Warning banner if information is missing
                       if (missingFields.isNotEmpty) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
@@ -304,18 +279,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.warning_amber_rounded,
-                                color: Colors.orange.shade700,
-                              ),
+                              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
                               gapW8,
                               Expanded(
                                 child: Text(
                                   'missingFieldsBanner'.tr(),
-                                  style: TextStyle(
-                                    color: Colors.orange.shade800,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ],
@@ -324,24 +293,17 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         gapH16,
                       ],
 
-                      // ─── Personal Info Section ───
+                      // ─── Personal Info Block ───
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildSectionHeader(
-                            icon: Icons.person_outline,
-                            title: 'personalInfo'.tr(),
-                          ),
+                          _buildSectionHeader(icon: Icons.person_outline, title: 'personalInfo'.tr()),
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.02),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
+                                BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
                               ],
                             ),
                             child: Padding(
@@ -355,10 +317,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     keyboardType: TextInputType.name,
                                     hintText: 'name',
                                     validator: (v) => null,
+                                    // Highlight missing fields with orange borders
                                     borderSide: BorderSide(
-                                      color: missingFields.contains('name')
-                                          ? Colors.orange
-                                          : Colors.grey.shade300,
+                                      color: missingFields.contains('name') ? Colors.orange : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,
@@ -369,18 +330,13 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     initialCountryCode: countryCode,
                                     onCountryChanged: (country) {
                                       if (country.dialCode != null) {
-                                        ref
-                                            .read(countryCodeProvider.notifier)
-                                            .setCountryCode(country.dialCode!);
+                                        ref.read(countryCodeProvider.notifier).setCountryCode(country.dialCode!);
                                       }
                                     },
                                     validator: (v) => null,
                                     hintText: '5XXXXXXXXXX',
                                     borderSide: BorderSide(
-                                      color:
-                                          missingFields.contains('phone_number')
-                                          ? Colors.orange
-                                          : Colors.grey.shade300,
+                                      color: missingFields.contains('phone_number') ? Colors.orange : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,
@@ -392,55 +348,34 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     hintText: 'email',
                                     validator: (v) => null,
                                     borderSide: BorderSide(
-                                      color: missingFields.contains('email')
-                                          ? Colors.orange
-                                          : Colors.grey.shade300,
+                                      color: missingFields.contains('email') ? Colors.orange : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,
 
                                   _buildFieldLabel('nationality'.tr()),
                                   ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 400,
-                                    ),
+                                    constraints: const BoxConstraints(maxWidth: 400),
                                     child: DropdownButtonFormField<String>(
                                       value: _selectedNationalityCode,
                                       isExpanded: true,
                                       decoration: InputDecoration(
                                         filled: true,
-                                        fillColor: Theme.of(
-                                          context,
-                                        ).colorScheme.surface,
+                                        fillColor: Theme.of(context).colorScheme.surface,
                                         border: OutlineInputBorder(
-                                          borderSide: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
+                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                         enabledBorder: OutlineInputBorder(
-                                          borderSide: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
+                                          borderSide: BorderSide(color: Colors.grey.shade300),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 14,
-                                            ),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                                       ),
                                       hint: Text('nationality'.tr()),
                                       items: countries.map((c) {
-                                        final flag = SocketUser.getFlagEmoji(
-                                          c.code,
-                                        );
-                                        final isAr =
-                                            context.locale.languageCode == 'ar';
+                                        final flag = SocketUser.getFlagEmoji(c.code);
+                                        final isAr = context.locale.languageCode == 'ar';
                                         final name = isAr ? c.nameAr : c.nameEn;
                                         return DropdownMenuItem<String>(
                                           value: c.code,
@@ -448,10 +383,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                         );
                                       }).toList(),
                                       onChanged: (value) {
-                                        setState(
-                                          () =>
-                                              _selectedNationalityCode = value,
-                                        );
+                                        setState(() => _selectedNationalityCode = value);
                                       },
                                     ),
                                   ),
@@ -461,17 +393,14 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                           ),
                           gapH24,
 
+                          // ─── Addresses Block ───
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  _buildSectionHeader(
-                                    icon: Icons.location_on_outlined,
-                                    title: 'addressesSection'.tr(),
-                                  ),
+                                  _buildSectionHeader(icon: Icons.location_on_outlined, title: 'addressesSection'.tr()),
                                   TextButton.icon(
                                     onPressed: _showAddAddressDialog,
                                     icon: const Icon(Icons.add, size: 18),
@@ -484,18 +413,13 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: Text(
                                     'noAddressesYet'.tr(),
-                                    style: TextStyle(
-                                      color: Colors.orange.shade700,
-                                      fontSize: 13,
-                                    ),
+                                    style: TextStyle(color: Colors.orange.shade700, fontSize: 13),
                                   ),
                                 ),
                               gapH8,
 
                               addressesAsync.when(
-                                loading: () => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                                loading: () => const Center(child: CircularProgressIndicator()),
                                 error: (e, _) => Text('Error: $e'),
                                 data: (addresses) {
                                   if (addresses.isEmpty) {
@@ -504,31 +428,16 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(16),
                                         boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.02,
-                                            ),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 4),
-                                          ),
+                                          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
                                         ],
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.all(24),
                                         child: Column(
                                           children: [
-                                            Icon(
-                                              Icons.location_off,
-                                              size: 48,
-                                              color: Colors.grey.shade400,
-                                            ),
+                                            Icon(Icons.location_off, size: 48, color: Colors.grey.shade400),
                                             gapH8,
-                                            Text(
-                                              'noAddressesYet'.tr(),
-                                              style: TextStyle(
-                                                color: Colors.grey.shade600,
-                                              ),
-                                            ),
+                                            Text('noAddressesYet'.tr(), style: TextStyle(color: Colors.grey.shade600)),
                                           ],
                                         ),
                                       ),
@@ -539,26 +448,17 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.02),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
-                                        ),
+                                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
                                       ],
                                     ),
                                     child: Padding(
                                       padding: const EdgeInsets.all(8.0),
                                       child: ListView.separated(
                                         shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
+                                        physics: const NeverScrollableScrollPhysics(),
                                         itemCount: addresses.length,
-                                        separatorBuilder: (_, __) =>
-                                            const Divider(),
-                                        itemBuilder: (ctx, index) {
-                                          final addr = addresses[index];
-                                          return _buildAddressCard(addr);
-                                        },
+                                        separatorBuilder: (_, __) => const Divider(),
+                                        itemBuilder: (ctx, index) => _buildAddressCard(addresses[index]),
                                       ),
                                     ),
                                   );
@@ -570,7 +470,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                       ),
                       gapH24,
 
-                      // Save button
+                      // ─── Save Action ───
                       SizedBox(
                         height: 50,
                         width: double.infinity,
@@ -578,26 +478,17 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                           onPressed: _isSaving ? null : _saveProfile,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Theme.of(context).primaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           child: _isSaving
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
                               : Text(
                                   'save'.tr(),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                                 ),
                         ),
                       ),
@@ -613,6 +504,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     );
   }
 
+  /// Builds a section title with an identifying icon.
   Widget _buildSectionHeader({required IconData icon, required String title}) {
     return Row(
       children: [
@@ -620,14 +512,13 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         gapW8,
         Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
     );
   }
 
+  /// Displays an individual address entry with a delete option.
   Widget _buildAddressCard(AddressModel addr) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -640,11 +531,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               color: const Color(0xFF2D4739).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              Icons.location_on,
-              color: Color(0xFF2D4739),
-              size: 20,
-            ),
+            child: const Icon(Icons.location_on, color: Color(0xFF2D4739), size: 20),
           ),
           gapW12,
           Expanded(
@@ -655,18 +542,12 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                   children: [
                     Text(
                       addr.label ?? addr.name ?? '',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     if (addr.isDefault == true) ...[
                       gapW8,
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.green.shade50,
                           borderRadius: BorderRadius.circular(4),
@@ -674,10 +555,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         ),
                         child: Text(
                           'defaultAddress'.tr(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.green.shade700,
-                          ),
+                          style: TextStyle(fontSize: 10, color: Colors.green.shade700),
                         ),
                       ),
                     ],
@@ -690,10 +568,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                 ),
                 if (addr.mobile != null) ...[
                   gapH2,
-                  Text(
-                    addr.mobile!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
+                  Text(addr.mobile!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                 ],
               ],
             ),
@@ -711,3 +586,4 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     );
   }
 }
+

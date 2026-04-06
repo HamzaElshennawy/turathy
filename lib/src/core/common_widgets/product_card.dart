@@ -1,9 +1,20 @@
-//import 'dart:async';
+/// {@category Components}
+///
+/// A primary list-item component representing a [ProductModel].
+/// 
+/// This widget is designed for fixed-price item displays in galleries or search results.
+/// Key features include:
+/// - **Asset Handling**: Smart image resolution logic covering remote, relative, and list-based paths.
+/// - **Visual Polish**: High-quality [Hero] animations and shadow-based elevation.
+/// - **Quick Actions**: Integrated "Buy Now" CTA with price display and "Favorite" toggling.
+/// - **Interactive Previews**: Long-press support for fullscreen image inspection.
+library;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
@@ -13,12 +24,17 @@ import '../../features/products/domain/product_model.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
-import 'package:turathy/src/core/helper/dio/end_points.dart';
 
+/// A sleek, consumer-aware card for displaying fixed-price product summaries.
 class ProductCard extends ConsumerStatefulWidget {
+  /// The product entity containing title, price, and media metadata.
   final ProductModel product;
+
+  /// Optional identifier for [Hero] transition animations.
+  /// Defaults to [product.id] if not specified.
   final String? heroTag;
 
+  /// Creates a [ProductCard] for the given [product].
   const ProductCard({super.key, required this.product, this.heroTag});
 
   @override
@@ -31,11 +47,13 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     super.initState();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
+  /// Calculates the absolute URL for the product's primary image.
+  /// 
+  /// Logic heuristic:
+  /// 1. Check `product.images` list; take the first entry if available.
+  /// 2. If empty, fallback to the single `product.imageUrl` field.
+  /// 3. If the resulting path is relative, prepend [EndPoints.baseUrl].
+  /// 4. Return an empty string if no valid path exists.
   String get _imageUrl {
     String? url;
     if (widget.product.images != null && widget.product.images!.isNotEmpty) {
@@ -54,6 +72,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Sync with the global reactive favorites state
     final favoritesState = ref.watch(favoritesControllerProvider);
     final isLiked = favoritesState.maybeWhen(
       data: (state) => state.likedProductIds.contains(widget.product.id),
@@ -75,15 +94,9 @@ class _ProductCardState extends ConsumerState<ProductCard> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProductScreen(product: widget.product),
-            ),
-          );
-        },
+        onTap: () => _navigateToDetails(),
         onLongPress: () {
+          // Visual-first feature: Inspect the product image in a fullscreen dialog
           AppFunctions.showImageDialog(
             context: context,
             imageUrl: _imageUrl,
@@ -92,9 +105,8 @@ class _ProductCardState extends ConsumerState<ProductCard> {
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            // Image Section with Heart Icon
+            // ── Hero Media Layer ────────────────────────────────────────────
             Expanded(
               child: Stack(
                 fit: StackFit.passthrough,
@@ -109,14 +121,10 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                       child: CachedNetworkImage(
                         imageUrl: _imageUrl,
                         memCacheHeight: 400,
-                        width: double.infinity,
                         fit: BoxFit.cover,
-                        progressIndicatorBuilder:
-                            (context, url, downloadProgress) => Center(
-                              child: CircularProgressIndicator(
-                                value: downloadProgress.progress,
-                              ),
-                            ),
+                        progressIndicatorBuilder: (context, url, progress) => Center(
+                          child: CircularProgressIndicator(value: progress.progress),
+                        ),
                         errorWidget: (context, url, error) => Container(
                           color: Colors.grey[200],
                           child: const Icon(Icons.image, size: 50),
@@ -124,54 +132,23 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                       ),
                     ),
                   ),
-                  // Heart Icon (Favorite)
+                  // Floating Interaction: Wishlist/Like
                   Positioned(
                     top: 12,
                     right: 12,
-                    child: InkWell(
-                      onTap: () {
-                        final user = ref.read(authControllerProvider).value;
-                        if (user == null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SignInScreen(),
-                            ),
-                          );
-                          return;
-                        }
-                        ref
-                            .read(favoritesControllerProvider.notifier)
-                            .toggleLikeProduct(widget.product);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(200),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isLiked ? Colors.red : Colors.grey[600],
-                          size: 24,
-                        ),
-                      ),
-                    ),
+                    child: _buildHeartIcon(isLiked),
                   ),
                 ],
               ),
             ),
-            // Content Section
+
+            // ── Information & Purchase Layer ────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Title
                   Text(
                     widget.product.title ?? '',
                     maxLines: 1,
@@ -183,74 +160,15 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                     ),
                   ),
                   gapH4,
-                  // Description
                   Text(
                     widget.product.description ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      height: 1.3,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3),
                   ),
-                  gapH8,
-                  // Price and Time Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Price
-                      //Text(
-                      //  '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
-                      //  style: const TextStyle(
-                      //    fontSize: 16,
-                      //    fontWeight: FontWeight.bold,
-                      //    color: Colors.black87,
-                      //  ),
-                      //),
-                      // Remaining Time
-                      //if (widget.product.expiryDate != null)
-                      //  Text(
-                      //    '${AppStrings.remainingTime.tr()}:${_formatDuration(_remainingTime)}',
-                      //    style: const TextStyle(
-                      //      fontSize: 12,
-                      //      fontWeight: FontWeight.w600,
-                      //      color: Color(0xFFD32F2F), // Red color
-                      //    ),
-                      //  ),
-                    ],
-                  ),
-                  gapH4,
-                  // Bid Now Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ProductScreen(product: widget.product),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Color(0xFF1B5E20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          side: const BorderSide(color: Color(0xFF1B5E20)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                      ),
-                      child: Text(
-                        "${AppStrings.buyNow.tr()} :${widget.product.price ?? 0} ${AppStrings.currency.tr()}",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+                  gapH16,
+                  // Buy Now Button with integrated price display
+                  _buildBuyNowButton(),
                 ],
               ),
             ),
@@ -259,4 +177,62 @@ class _ProductCardState extends ConsumerState<ProductCard> {
       ),
     );
   }
+
+  /// Internal: Builds the favoriting toggle with authentication guard.
+  Widget _buildHeartIcon(bool isLiked) {
+    return InkWell(
+      onTap: () {
+        final user = ref.read(authControllerProvider).value;
+        if (user == null) {
+          // Ensure valid session before allowing wishlist mutations
+          Navigator.push(context, MaterialPageRoute(builder: (_) => SignInScreen()));
+          return;
+        }
+        ref.read(favoritesControllerProvider.notifier).toggleLikeProduct(widget.product);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(200),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          isLiked ? Icons.favorite : Icons.favorite_border,
+          color: isLiked ? Colors.red : Colors.grey[600],
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  /// Internal: Builds the primary call-to-action with localized price labels.
+  Widget _buildBuyNowButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () => _navigateToDetails(),
+        style: ElevatedButton.styleFrom(
+          foregroundColor: const Color(0xFF1B5E20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: Color(0xFF1B5E20)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+        ),
+        child: Text(
+          "${AppStrings.buyNow.tr()} :${widget.product.price ?? 0} ${AppStrings.currency.tr()}",
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  /// Internal: Routes the user to the full [ProductScreen] view.
+  void _navigateToDetails() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductScreen(product: widget.product)),
+    );
+  }
 }
+

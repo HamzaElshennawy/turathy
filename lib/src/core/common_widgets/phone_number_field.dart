@@ -1,3 +1,18 @@
+/// {@category Components}
+///
+/// A specialized, locale-aware input field for international phone numbers.
+/// 
+/// This widget is specifically designed to handle the complexities of Middle Eastern 
+/// and African phone numbering plans. It provides:
+/// - **Filtered Country Picker**: Limited to Arab League nations as per project scope.
+/// - **Smart Hinting**: Contextually updates the visual '9XXXXXXXX' placeholder based on the 
+///   selected country prefix (e.g., SA vs. EG).
+/// - **Automatic Normalization**: Uses [LeadingZeroFormatter] to strip trunk prefixes ('0') 
+///   required for clean international dialing.
+/// - **LTR Enforcement**: Wraps the input in a Left-to-Right [Directionality] even in 
+///   RTL (Arabic) locales to ensure digits remain ordered correctly.
+library;
+
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
@@ -5,19 +20,30 @@ import 'package:flutter/services.dart';
 
 import 'white_rounded_text_form_field.dart';
 
+/// An integrated phone number input consisting of a country prefix picker and a text field.
 class PhoneNumberField extends StatelessWidget {
+  /// The controller managing the digit-only portion of the phone number.
   final TextEditingController controller;
+
+  /// Custom validation logic for the numeric string.
   final String? Function(String?)? validator;
+
+  /// The currently active country dial code (e.g., '+966' or 'SA').
   final String initialCountryCode;
+
+  /// Callback triggered when a user selects a different country from the dropdown.
   final void Function(CountryCode) onCountryChanged;
 
-  // Use this for Auth screens (which use WhiteRoundedTextFormField)
+  /// The base placeholder text shown when the field is empty.
   final String hintText;
+
+  /// Optional stylistic border configuration.
   final BorderSide? borderSide;
 
-  // Use this for screens that need custom decoration (like AddEditAddressScreen)
+  /// If provided, overrides the default rounded style with a custom decoration.
   final InputDecoration? decoration;
 
+  /// Creates a [PhoneNumberField] with pre-configured filters and formatters.
   const PhoneNumberField({
     super.key,
     required this.controller,
@@ -31,34 +57,17 @@ class PhoneNumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Standardized picker for Arab countries
     final picker = CountryCodePicker(
       key: ValueKey(initialCountryCode),
       onChanged: onCountryChanged,
       initialSelection: initialCountryCode,
       favorite: const ['+966', 'SA'],
+      // Restricted list based on the Turathy target market (Arab League)
       countryFilter: const [
-        'SA',
-        'EG',
-        'AE',
-        'KW',
-        'QA',
-        'BH',
-        'OM',
-        'JO',
-        'LB',
-        'SY',
-        'IQ',
-        'PS',
-        'YE',
-        'SD',
-        'LY',
-        'TN',
-        'DZ',
-        'MA',
-        'MR',
-        'SO',
-        'DJ',
-        'KM',
+        'SA', 'EG', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'SY',
+        'IQ', 'PS', 'YE', 'SD', 'LY', 'TN', 'DZ', 'MA', 'MR', 'SO',
+        'DJ', 'KM',
       ],
       showCountryOnly: false,
       showOnlyCountryWhenClosed: false,
@@ -66,11 +75,13 @@ class PhoneNumberField extends StatelessWidget {
       padding: EdgeInsets.zero,
     );
 
+    // Enforce canonical phone formats (digits only, no trunk zeros)
     final inputFormatters = [
       FilteringTextInputFormatter.digitsOnly,
       LeadingZeroFormatter(),
     ];
 
+    // Case 1: Custom Decorated TextFormField
     if (decoration != null) {
       return Directionality(
         textDirection: ui.TextDirection.ltr,
@@ -87,6 +98,7 @@ class PhoneNumberField extends StatelessWidget {
       );
     }
 
+    // Case 2: Standard Project Theme (Rounded White Field)
     return Directionality(
       textDirection: ui.TextDirection.ltr,
       child: WhiteRoundedTextFormField(
@@ -101,6 +113,7 @@ class PhoneNumberField extends StatelessWidget {
     );
   }
 
+  /// Internal: Resolves a localized placeholder pattern for the provided dial [code].
   String _getHintForCountry(String code) {
     switch (code) {
       case '+966':
@@ -175,6 +188,11 @@ class PhoneNumberField extends StatelessWidget {
   }
 }
 
+/// A [TextInputFormatter] that prevents users from entering leading '0' characters.
+/// 
+/// Since country codes (e.g., +966) act as the primary prefix, redundant 
+/// local trunk zeros (e.g., 055...) are stripped to ensure the backend 
+/// receives a canonical international number.
 class LeadingZeroFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -184,6 +202,7 @@ class LeadingZeroFormatter extends TextInputFormatter {
     if (newValue.text.startsWith('0')) {
       final stripped = newValue.text.replaceFirst(RegExp(r'^0+'), '');
 
+      // Recalculate cursor offset to prevent jumping
       int offset =
           newValue.selection.baseOffset -
           (newValue.text.length - stripped.length);
@@ -197,3 +216,4 @@ class LeadingZeroFormatter extends TextInputFormatter {
     return newValue;
   }
 }
+

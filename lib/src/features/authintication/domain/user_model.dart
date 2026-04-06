@@ -1,21 +1,58 @@
+/// {@category Domain}
+///
+/// Representative model for a user in the Turathy system.
+/// 
+/// This class encapsulates all user attributes, including authentication state, 
+/// authorization levels (isAdmin), and profile completeness status.
 class UserModel {
+  /// Unique identifier from the database.
   final int? id;
+
+  /// Full display name of the user.
   final String? name;
-  final String? password; // Raw password for signup/local cache
-  final String? passwordHashed; // Hashed password from DB
+
+  /// Raw password from input (typically used during signup or local caching).
+  final String? password;
+
+  /// Hashed password string returned from the backend.
+  final String? passwordHashed;
+
+  /// Primary contact number, including country code.
   final String? phone_number;
+
+  /// Primary email address.
   final String? email;
+
+  /// Unique username or display alias.
   final String? nickname;
+
+  /// Country of origin or residence.
   final String? nationality;
+
+  /// Whether the user has administrative privileges.
   final bool? isAdmin;
+
+  /// Whether the user has top-level system-wide privileges.
   final bool? isSuperAdmin;
+
+  /// Whether the user's phone/email has been verified.
   final bool? isVerified;
+
+  /// Whether the user has completed all required profile fields.
   final bool? isProfileComplete;
+
+  /// A list of field names that are still required to complete the profile.
+  /// 
+  /// If this list is not empty, the UI should redirect the user to 
+  /// the Complete Profile screen.
   final List<String>? missingFields;
+
+  /// ISO 8601 timestamp of record creation.
   final String? createdAt;
+
+  /// ISO 8601 timestamp of last record update.
   final String? updatedAt;
 
-  ///<editor-fold desc="Data Methods">
   const UserModel({
     this.id,
     this.name,
@@ -150,8 +187,9 @@ class UserModel {
     return UserModel(
       id: map['id'] as int?,
       name: map['name'] as String?,
-      password: map['password'] as String?, // Might be null from DB
+      password: map['password'] as String?,
       passwordHashed: map['passwordHashed'] as String?,
+      // API sometimes returns 'number' instead of 'phone_number' in certain response structures.
       phone_number: (map['phone_number'] ?? map['number']) as String?,
       email: map['email'] as String?,
       nickname: map['nickname'] as String?,
@@ -167,6 +205,5 @@ class UserModel {
       updatedAt: map['updatedAt'] as String?,
     );
   }
-
-  ///<editor-fold>
 }
+

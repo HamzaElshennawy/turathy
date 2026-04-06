@@ -1,3 +1,9 @@
+/// {@category Presentation}
+///
+/// Authentication screen for new users to create an account.
+/// 
+/// This screen handles the initial registration step, collecting the user's
+/// name, phone number, and password. It then transitions to OTP verification.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +24,7 @@ import 'widgets/social_login_buttons.dart';
 import 'country_code_provider.dart';
 import '../../main_screen.dart';
 
+/// Entry point for the account creation process.
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
@@ -27,17 +34,12 @@ class SignUpScreen extends ConsumerStatefulWidget {
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     var controller = ref.read(authControllerProvider.notifier);
     final state = ref.watch(authControllerProvider);
     final countryCode = ref.watch(countryCodeProvider);
 
-    // Using a listener to handle navigation and errors
+    /// Listen for side-effects like Google Sign-In completion during registration.
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -47,10 +49,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           ),
         );
       } else if (next.value != null) {
-        final isGoogle = ref
-            .read(authControllerProvider.notifier)
-            .isGoogleSignInProcessing;
+        final isGoogle = ref.read(authControllerProvider.notifier).isGoogleSignInProcessing;
         if (isGoogle) {
+          // If Google sign-in returns a user with missing profile data, go to completion screen.
           if (next.value!.missingFields != null && next.value!.missingFields!.isNotEmpty) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
@@ -75,45 +76,39 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               hasScrollBody: false,
               child: ResponsiveCenter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16.0,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 20),
-                      // Logo
+                      // Branding
                       Center(child: Image.asset(AppImages.logo, height: 100)),
                       const SizedBox(height: 40),
 
-                      // Title
+                      // Motivational Header (RTL)
                       Text(
                         AppStrings.createNewAccount.tr(),
                         textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
                             ),
                       ),
                       const SizedBox(height: 8),
-                      // Subtitle
                       Text(
                         AppStrings.letsWinAuctions.tr(),
                         textAlign: TextAlign.end,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
 
+                      // Registration Form
                       Form(
                         key: controller.formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Name Field
+                            // Full Name Input
                             Text(
                               AppStrings.name.tr(),
                               textAlign: TextAlign.end,
@@ -126,13 +121,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               validator: Validators.required,
                               hintText: AppStrings.name,
                               prefixIcon: const Icon(Icons.person),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                              ),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
                             ),
                             const SizedBox(height: 16),
 
-                            // Phone Field
+                            // Mobile Number Input
                             Text(
                               AppStrings.mobileNumber.tr(),
                               textAlign: TextAlign.end,
@@ -144,20 +137,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               initialCountryCode: countryCode,
                               onCountryChanged: (country) {
                                 if (country.dialCode != null) {
-                                  ref
-                                      .read(countryCodeProvider.notifier)
-                                      .setCountryCode(country.dialCode!);
+                                  ref.read(countryCodeProvider.notifier).setCountryCode(country.dialCode!);
                                 }
                               },
                               validator: Validators.required,
                               hintText: '5XXXXXXXX',
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                              ),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
                             ),
                             const SizedBox(height: 16),
 
-                            // Password Field
+                            // Security (Password)
                             Text(
                               AppStrings.password.tr(),
                               textAlign: TextAlign.end,
@@ -170,14 +159,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               validator: Validators.passwordValidator,
                               hintText: AppStrings.password,
                               prefixIcon: const Icon(Icons.lock),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                              ),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
                             ),
 
                             const SizedBox(height: 32),
 
-                            // Create Account Button
+                            // Submission
                             SizedBox(
                               width: double.infinity,
                               height: 50,
@@ -185,15 +172,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 isLoading: state.isLoading,
                                 text: AppStrings.createAccount.tr(),
                                 onPressed: () async {
-                                  final fullphone_number =
-                                      '$countryCode${controller.phoneController.text}';
+                                  final fullphone_number = '$countryCode${controller.phoneController.text}';
                                   final result = await controller.signUp(fullphone_number);
+                                  
+                                  // Navigate to OTP on success to verify the phone number.
                                   if (result['status'] == 'success' && context.mounted) {
                                     Navigator.of(context).pushReplacement(
                                       MaterialPageRoute(
-                                        builder: (context) => OtpScreen(
-                                          phone_number: fullphone_number,
-                                        ),
+                                        builder: (context) => OtpScreen(phone_number: fullphone_number),
                                       ),
                                     );
                                   }
@@ -206,7 +192,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Divider "Or"
+                      // Alternative Registration
                       Row(
                         children: [
                           Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -223,21 +209,18 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Social Login
                       const SocialLoginButtons(),
 
                       const Spacer(),
 
-                      // Already have account
+                      // Footer Navigation back to Sign-In
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TextButton(
                             onPressed: () {
                               Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (context) => SignInScreen(),
-                                ),
+                                MaterialPageRoute(builder: (context) => const SignInScreen()),
                                 (route) => false,
                               );
                             },
@@ -250,9 +233,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             ),
                           ),
                           Text(
-                            AppStrings.alreadyHaveAnAccount.tr(
-                              context: context,
-                            ),
+                            AppStrings.alreadyHaveAnAccount.tr(context: context),
                             style: const TextStyle(color: Colors.grey),
                           ),
                         ],
@@ -269,3 +250,4 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     );
   }
 }
+
