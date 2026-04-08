@@ -2,9 +2,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:go_router/go_router.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:turathy/src/features/notifications/domain/notification_model.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_controller.dart';
@@ -251,19 +253,244 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     BuildContext context,
     NotificationModel notification,
   ) {
-    showDialog(
+    final theme = Theme.of(context);
+    final languageCode = context.locale.languageCode;
+    final imageUrl = _resolveNotificationImageUrl(
+      notification.data?['imageUrl']?.toString(),
+    );
+    final externalUrl = notification.data?['url']?.toString();
+
+    showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(notification.title),
-        content: SingleChildScrollView(child: Text(notification.body)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppStrings.ok.tr()),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primaryContainer,
+                          theme.colorScheme.surface,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.18,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            _notificationIcon(notification.type),
+                            color: theme.colorScheme.primary,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          notification.formattedTitleFor(languageCode),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: 16,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              notification.timeAgo,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                    child: Text(
+                      notification.localizedBodyFor(languageCode),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        height: 1.6,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (externalUrl != null && externalUrl.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.55),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.link_rounded,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                externalUrl,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                    child: Row(
+                      children: [
+                        if (externalUrl != null && externalUrl.isNotEmpty) ...[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final uri = Uri.tryParse(externalUrl);
+                                if (uri != null) {
+                                  await launchUrl(
+                                    uri,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.open_in_new_rounded),
+                              label: Text(AppStrings.openLink.tr()),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(AppStrings.ok.tr()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  IconData _notificationIcon(String? type) {
+    switch (type) {
+      case 'PROMOTIONAL':
+        return Icons.campaign_rounded;
+      case 'BROADCAST':
+        return Icons.notifications_active_rounded;
+      case 'PAYMENT_APPROVED':
+      case 'ORDER_STATUS':
+        return Icons.receipt_long_rounded;
+      default:
+        return Icons.mark_email_unread_rounded;
+    }
+  }
+
+  String? _resolveNotificationImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return null;
+    }
+
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+
+    final normalizedPath = imageUrl.startsWith('/')
+        ? imageUrl.substring(1)
+        : imageUrl;
+    return '${EndPoints.baseUrl}$normalizedPath';
   }
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {

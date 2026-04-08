@@ -32,6 +32,9 @@ class UserModel {
   /// Country of origin or residence.
   final String? nationality;
 
+  /// Preferred app language persisted on the backend.
+  final String? preferredLanguage;
+
   /// Whether the user has administrative privileges.
   final bool? isAdmin;
 
@@ -66,6 +69,7 @@ class UserModel {
     this.profilePicUrl,
     this.nickname,
     this.nationality,
+    this.preferredLanguage,
     this.isAdmin,
     this.isSuperAdmin,
     this.isVerified,
@@ -89,6 +93,7 @@ class UserModel {
           profilePicUrl == other.profilePicUrl &&
           nickname == other.nickname &&
           nationality == other.nationality &&
+          preferredLanguage == other.preferredLanguage &&
           isAdmin == other.isAdmin &&
           isSuperAdmin == other.isSuperAdmin &&
           isVerified == other.isVerified &&
@@ -107,6 +112,7 @@ class UserModel {
       profilePicUrl.hashCode ^
       nickname.hashCode ^
       nationality.hashCode ^
+      preferredLanguage.hashCode ^
       isAdmin.hashCode ^
       isSuperAdmin.hashCode ^
       isVerified.hashCode ^
@@ -124,6 +130,7 @@ class UserModel {
         ' profilePicUrl: $profilePicUrl,'
         ' nickname: $nickname,'
         ' nationality: $nationality,'
+        ' preferredLanguage: $preferredLanguage,'
         ' isAdmin: $isAdmin,'
         ' isSuperAdmin: $isSuperAdmin,'
         ' isVerified: $isVerified,'
@@ -144,6 +151,7 @@ class UserModel {
     String? profilePicUrl,
     String? nickname,
     String? nationality,
+    String? preferredLanguage,
     bool? isAdmin,
     bool? isSuperAdmin,
     bool? isVerified,
@@ -162,6 +170,7 @@ class UserModel {
       profilePicUrl: profilePicUrl ?? this.profilePicUrl,
       nickname: nickname ?? this.nickname,
       nationality: nationality ?? this.nationality,
+      preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       isAdmin: isAdmin ?? this.isAdmin,
       isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
       isVerified: isVerified ?? this.isVerified,
@@ -183,6 +192,7 @@ class UserModel {
       'profilePicUrl': profilePicUrl,
       'nickname': nickname,
       'nationality': nationality,
+      'preferredLanguage': preferredLanguage,
       'isAdmin': isAdmin,
       'isSuperAdmin': isSuperAdmin,
       'isVerified': isVerified,
@@ -205,6 +215,7 @@ class UserModel {
       profilePicUrl: map['profilePicUrl'] as String?,
       nickname: map['nickname'] as String?,
       nationality: map['nationality'] as String?,
+      preferredLanguage: map['preferredLanguage'] as String?,
       isAdmin: map['isAdmin'] as bool?,
       isSuperAdmin: map['isSuperAdmin'] as bool?,
       isVerified: map['isVerified'] as bool?,
@@ -217,4 +228,3 @@ class UserModel {
     );
   }
 }
-

@@ -63,8 +63,14 @@ class NotificationsRepository {
 
   /// Mark a single notification as read
   static Future<bool> markAsRead(int notificationId) async {
+    final userId = CachedVariables.userId;
+    if (userId == null) {
+      throw NotificationsException('User not logged in', 401);
+    }
+
     final result = await DioHelper.patchData(
       url: EndPoints.markAsRead(notificationId),
+      data: {'user_id': userId},
       token: CachedVariables.token,
     );
 

@@ -11,6 +11,7 @@ class NotificationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isRead = notification.isRead;
+    final languageCode = Localizations.localeOf(context).languageCode;
 
     return InkWell(
       onTap: onTap,
@@ -48,7 +49,7 @@ class NotificationItem extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          notification.formattedTitle,
+                          notification.formattedTitleFor(languageCode),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -69,7 +70,7 @@ class NotificationItem extends StatelessWidget {
                   ),
                   gapH4,
                   Text(
-                    notification.body,
+                    notification.localizedBodyFor(languageCode),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.black54,
                       height: 1.3,

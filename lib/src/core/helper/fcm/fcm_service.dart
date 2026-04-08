@@ -17,6 +17,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../features/notifications/data/notifications_repository.dart';
 import '../cache/cached_variables.dart';
@@ -312,6 +313,16 @@ class FCMService {
     );
   }
 
+  Future<void> _openExternalUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (error, stackTrace) {
+      log('Failed to open notification URL: $error', stackTrace: stackTrace);
+    }
+  }
   /// The routing engine for push notifications.
   /// 
   /// Inspects the `type` and ID keys (`auction_id`, `product_id`, `order_id`) 
@@ -325,6 +336,14 @@ class FCMService {
     log('Navigating based on data: $data');
 
     final type = data['type']?.toString();
+    final externalUrl = data['url']?.toString();
+
+    if ((type == 'PROMOTIONAL' || type == 'BROADCAST') &&
+        externalUrl != null &&
+        externalUrl.isNotEmpty) {
+      _openExternalUrl(externalUrl);
+      return;
+    }
 
     // Auction Group Logic
     if (type == 'AUCTION_STARTED' ||
@@ -448,6 +467,9 @@ class FCMService {
 
 /// Singleton instance available across the app.
 final fcmService = FCMService();
+
+
+
 
 
 

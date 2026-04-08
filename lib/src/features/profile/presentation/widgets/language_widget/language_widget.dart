@@ -6,10 +6,33 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../core/helper/cache/cache_helper.dart';
 import '../../../../../core/helper/cache/cached_keys.dart';
 import '../../../../../core/helper/cache/cached_variables.dart';
+import '../../../../authintication/presentation/auth_controller.dart';
+import '../../../data/profile_repository.dart';
 import '../../../controller/language_controller.dart';
 
 class LanguageWidget extends ConsumerWidget {
   const LanguageWidget({super.key});
+
+  Future<void> _persistLanguagePreference(
+    WidgetRef ref,
+    String languageCode,
+  ) async {
+    final user = ref.read(authControllerProvider).valueOrNull;
+    final userId = user?.id ?? CachedVariables.userId;
+    if (userId == null) return;
+
+    final preferredLanguage = languageCode == 'ar' ? 'AR' : 'EN';
+    final success = await ProfileRepository.updateUser(
+      userId: userId,
+      preferredLanguage: preferredLanguage,
+    );
+
+    if (success && user != null) {
+      ref.read(authControllerProvider.notifier).updateUser(
+        user.copyWith(preferredLanguage: preferredLanguage),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,6 +55,7 @@ class LanguageWidget extends ConsumerWidget {
                 context.setLocale(const Locale("en", ""));
                 await CacheHelper.setData(key: CachedKeys.lang, value: "en");
                 CachedVariables.lang = await CacheHelper.getData(key: "lang");
+                await _persistLanguagePreference(ref, 'en');
               }
             },
             isSelected:
@@ -47,6 +71,7 @@ class LanguageWidget extends ConsumerWidget {
                 context.setLocale(const Locale("ar", ""));
                 await CacheHelper.setData(key: CachedKeys.lang, value: "ar");
                 CachedVariables.lang = await CacheHelper.getData(key: "lang");
+                await _persistLanguagePreference(ref, 'ar');
               }
             },
             isSelected:

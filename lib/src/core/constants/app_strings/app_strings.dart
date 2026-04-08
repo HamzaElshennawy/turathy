@@ -238,6 +238,7 @@ class AppStrings {
   static const String noNotifications = "noNotifications";
   static const String notificationsWillAppearHere = "notificationsWillAppearHere";
   static const String errorLoadingNotifications = "errorLoadingNotifications";
+  static const String openLink = "openLink";
 
   // ── Notification Types ─────────────────────────────────────────────────────
   
@@ -247,6 +248,8 @@ class AppStrings {
   static const String notificationAuctionWon = "notificationAuctionWon";
   static const String notificationAuctionEndingSoon = "notificationAuctionEndingSoon";
   static const String notificationOrderStatus = "notificationOrderStatus";
+  static const String notificationAuctionAccessApproved = "notificationAuctionAccessApproved";
+  static const String notificationSpecialOffer = "notificationSpecialOffer";
 
   // ── Time Formatting ────────────────────────────────────────────────────────
   

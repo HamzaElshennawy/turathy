@@ -8,6 +8,10 @@ class NotificationModel {
   final int userId;
   final String title;
   final String body;
+  final String? titleAr;
+  final String? titleEn;
+  final String? bodyAr;
+  final String? bodyEn;
   final String? type;
   final Map<String, dynamic>? data;
   final bool isRead;
@@ -18,6 +22,10 @@ class NotificationModel {
     required this.userId,
     required this.title,
     required this.body,
+    this.titleAr,
+    this.titleEn,
+    this.bodyAr,
+    this.bodyEn,
     this.type,
     this.data,
     required this.isRead,
@@ -33,6 +41,10 @@ class NotificationModel {
           userId == other.userId &&
           title == other.title &&
           body == other.body &&
+          titleAr == other.titleAr &&
+          titleEn == other.titleEn &&
+          bodyAr == other.bodyAr &&
+          bodyEn == other.bodyEn &&
           type == other.type &&
           isRead == other.isRead &&
           createdAt == other.createdAt);
@@ -43,6 +55,10 @@ class NotificationModel {
       userId.hashCode ^
       title.hashCode ^
       body.hashCode ^
+      titleAr.hashCode ^
+      titleEn.hashCode ^
+      bodyAr.hashCode ^
+      bodyEn.hashCode ^
       type.hashCode ^
       isRead.hashCode ^
       createdAt.hashCode;
@@ -52,6 +68,10 @@ class NotificationModel {
     int? userId,
     String? title,
     String? body,
+    String? titleAr,
+    String? titleEn,
+    String? bodyAr,
+    String? bodyEn,
     String? type,
     Map<String, dynamic>? data,
     bool? isRead,
@@ -62,6 +82,10 @@ class NotificationModel {
       userId: userId ?? this.userId,
       title: title ?? this.title,
       body: body ?? this.body,
+      titleAr: titleAr ?? this.titleAr,
+      titleEn: titleEn ?? this.titleEn,
+      bodyAr: bodyAr ?? this.bodyAr,
+      bodyEn: bodyEn ?? this.bodyEn,
       type: type ?? this.type,
       data: data ?? this.data,
       isRead: isRead ?? this.isRead,
@@ -75,6 +99,10 @@ class NotificationModel {
       'user_id': userId,
       'title': title,
       'body': body,
+      'title_ar': titleAr,
+      'title_en': titleEn,
+      'body_ar': bodyAr,
+      'body_en': bodyEn,
       'type': type,
       'data': data,
       'is_read': isRead,
@@ -145,6 +173,10 @@ class NotificationModel {
       userId: json['user_id'] as int,
       title: json['title'] as String? ?? '',
       body: json['body'] as String? ?? '',
+      titleAr: json['title_ar'] as String? ?? parsedData?['title_ar']?.toString(),
+      titleEn: json['title_en'] as String? ?? parsedData?['title_en']?.toString(),
+      bodyAr: json['body_ar'] as String? ?? parsedData?['body_ar']?.toString(),
+      bodyEn: json['body_en'] as String? ?? parsedData?['body_en']?.toString(),
       type: json['type'] as String?,
       data: parsedData,
       isRead: json['isRead'] as bool? ?? false,
@@ -172,9 +204,35 @@ class NotificationModel {
     }
   }
 
+  String localizedTitleFor(String languageCode) {
+    if (languageCode.toLowerCase().startsWith('ar')) {
+      return titleAr?.isNotEmpty == true ? titleAr! : title;
+    }
+
+    return titleEn?.isNotEmpty == true ? titleEn! : title;
+  }
+
+  String localizedBodyFor(String languageCode) {
+    if (languageCode.toLowerCase().startsWith('ar')) {
+      return bodyAr?.isNotEmpty == true ? bodyAr! : body;
+    }
+
+    return bodyEn?.isNotEmpty == true ? bodyEn! : body;
+  }
+
+  String get localizedTitle => localizedTitleFor(Intl.getCurrentLocale());
+
+  String get localizedBody => localizedBodyFor(Intl.getCurrentLocale());
+
   /// Get formatted title based on notification type or return raw title
   String get formattedTitle {
-    if (type == null) return title;
+    return formattedTitleFor(Intl.getCurrentLocale());
+  }
+
+  String formattedTitleFor(String languageCode) {
+    if (type == null) {
+      return _localizedTitleFallback(localizedTitleFor(languageCode));
+    }
 
     switch (type) {
       case 'AUCTION_STARTED':
@@ -190,8 +248,23 @@ class NotificationModel {
       case 'ORDER_STATUS':
       case 'PAYMENT_APPROVED':
         return AppStrings.notificationOrderStatus.tr();
+      case 'PROMOTIONAL':
+        return AppStrings.notificationSpecialOffer.tr();
+      case 'AUCTION_ACCESS_APPROVED':
+        return AppStrings.notificationAuctionAccessApproved.tr();
       default:
-        return title;
+        return _localizedTitleFallback(localizedTitleFor(languageCode));
+    }
+  }
+
+  String _localizedTitleFallback(String rawTitle) {
+    switch (rawTitle.trim().toLowerCase()) {
+      case 'auction access approved':
+        return AppStrings.notificationAuctionAccessApproved.tr();
+      case 'special offer':
+        return AppStrings.notificationSpecialOffer.tr();
+      default:
+        return rawTitle;
     }
   }
 }

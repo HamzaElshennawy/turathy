@@ -15,6 +15,7 @@ class ProfileRepository {
     String? email,
     String? nickname,
     String? nationality,
+    String? preferredLanguage,
   }) async {
     final data = <String, dynamic>{'user_id': userId};
     if (name != null) data['name'] = name;
@@ -22,6 +23,7 @@ class ProfileRepository {
     if (email != null) data['email'] = email;
     if (nickname != null) data['nickname'] = nickname;
     if (nationality != null) data['nationality'] = nationality;
+    if (preferredLanguage != null) data['preferredLanguage'] = preferredLanguage;
 
     final result = await DioHelper.putData(
       url: EndPoints.updateUser,

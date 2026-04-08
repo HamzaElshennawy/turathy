@@ -12,6 +12,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/helper/analytics/analytics_service.dart';
 import '../../core/common_widgets/responsive_center.dart';
@@ -38,10 +39,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   double logoScale = 0;
   double loadingTurns = 0;
   bool loadingVisibility = false;
+  String appVersion = '';
 
   @override
   void initState() {
     super.initState();
+    _loadAppVersion();
     // Auto-detect country code for the phone input fields early.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(countryCodeProvider.notifier).autoDetectCountry();
@@ -51,6 +54,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       setState(() {
         logoScale = 1;
       });
+    });
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() {
+      appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
     });
   }
 
@@ -264,7 +275,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       ),
                       TextSpan(
                         text:
-                            '\n${AppStrings.allRightsReserved.tr()} © ${DateTime.now().year}\n${AppStrings.version.tr()} 0.1.0',
+                            '\n${AppStrings.allRightsReserved.tr()} © ${DateTime.now().year}\n${AppStrings.version.tr()} ${appVersion.isEmpty ? '...' : appVersion}',
                       ),
                     ],
                   ),
