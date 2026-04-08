@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 import 'socket_connection_state.dart';
@@ -402,6 +403,11 @@ class SocketActions {
     int productId,
   ) async {
     await _ensureConnected();
+    await AnalyticsService.logBidPlaced(
+      auctionId: auctionId,
+      productId: productId,
+      amount: amount,
+    );
     _service.emitPlaceBid(auctionId, userId, amount, productId);
   }
 
@@ -455,4 +461,3 @@ class SocketActions {
     }
   }
 }
-

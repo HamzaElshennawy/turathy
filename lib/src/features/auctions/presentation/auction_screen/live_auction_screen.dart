@@ -17,6 +17,7 @@ import 'package:turathy/src/features/orders/data/order_repository.dart';
 
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
@@ -87,6 +88,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AnalyticsService.logScreenView(
+        screenName: 'live_auction',
+        screenClass: 'LiveAuctionScreen',
+      );
+      AnalyticsService.logAuctionJoined(auctionId: widget.auctionId);
+    });
     _checkAccess();
 
     // Listen to socket errors (e.g., "Max bid limit exceeded")
@@ -182,6 +190,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     final status = await service.requestAccess(
       auctionId: widget.auctionId,
     );
+    await AnalyticsService.logAuctionAccessRequested(auctionId: widget.auctionId);
     if (mounted) {
       setState(() {
         _accessStatus = status;

@@ -8,6 +8,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
@@ -38,6 +39,12 @@ class SignInScreen extends ConsumerStatefulWidget {
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'sign_in_screen');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -309,3 +316,4 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     );
   }
 }
+

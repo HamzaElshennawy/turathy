@@ -41,6 +41,7 @@ import 'home/data/category_repository.dart';
 import 'home/presentation/home_screen/home_screen.dart';
 import 'store/presentation/store_screen.dart';
 import '../core/helper/dio/end_points.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 
 /// The main scaffold of the app containing the navigation logic.
 class MainScreen extends ConsumerStatefulWidget {
@@ -52,6 +53,13 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen>
     with TickerProviderStateMixin {
+  static const _tabScreenNames = <String>[
+    'home_tab',
+    'auctions_tab',
+    'store_tab',
+    'orders_tab',
+    'more_tab',
+  ];
   /// Currently active navigation index based on [mainScreenTabIndexProvider].
   int _selectedIndex = 0;
 
@@ -83,6 +91,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
     _auctionsScrollController = ScrollController();
     _auctionsScrollController.addListener(_handleAuctionsScroll);
+
+    AnalyticsService.logScreenView(screenName: _tabScreenNames[initialPage]);
   }
 
   /// Updates local state when the [PageView] settles on a new page.
@@ -93,6 +103,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       setState(() {
         _selectedIndex = page;
       });
+      AnalyticsService.logScreenView(screenName: _tabScreenNames[page]);
     }
   }
 
@@ -524,3 +535,4 @@ final connectionProvider = StreamProvider<List<ConnectivityResult>>((ref) {
   final connectivity = Connectivity();
   return connectivity.onConnectivityChanged;
 });
+

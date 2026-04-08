@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
@@ -10,11 +11,22 @@ import 'package:turathy/src/features/notifications/presentation/notifications_co
 import 'package:turathy/src/features/notifications/presentation/widgets/notification_item_widget.dart';
 import 'package:turathy/src/routing/rout_constants.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'notifications_screen');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(notificationsNotifierProvider);
 
     return Scaffold(
@@ -368,3 +380,4 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 }
+

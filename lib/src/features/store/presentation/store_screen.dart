@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/common_widgets/product_card.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/features/home/data/category_repository.dart';
+import 'package:turathy/src/features/home/domain/category_model.dart';
 import 'package:turathy/src/features/products/data/products_repository.dart';
+
 import '../../search/presentation/widgets/filter_widget/filter_widget.dart';
 import '../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
-import 'package:turathy/src/features/home/domain/category_model.dart';
 
 class StoreScreen extends ConsumerStatefulWidget {
   const StoreScreen({super.key});
@@ -19,6 +21,12 @@ class StoreScreen extends ConsumerStatefulWidget {
 
 class _StoreScreenState extends ConsumerState<StoreScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'store_screen');
+  }
 
   @override
   void dispose() {
@@ -43,7 +51,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Search Bar
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -94,8 +101,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                 ),
               ),
             ),
-
-            // Categories Filter
             SliverToBoxAdapter(
               child: SizedBox(
                 height: 50,
@@ -124,11 +129,18 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                               ref
                                   .read(filterWidgetControllerProvider.notifier)
                                   .selectCategory(index);
+                              if (selected &&
+                                  category.id != null &&
+                                  category.name?.isNotEmpty == true) {
+                                AnalyticsService.logCategorySelected(
+                                  categoryId: category.id!,
+                                  categoryName: category.name!,
+                                  source: 'store_screen',
+                                );
+                              }
                             },
                             backgroundColor: Colors.grey.shade200,
-                            selectedColor: const Color(
-                              0xFF1B5E20,
-                            ), // TODO: Use theme color
+                            selectedColor: const Color(0xFF1B5E20),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide.none,
@@ -145,22 +157,16 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                 ),
               ),
             ),
-
             const SliverToBoxAdapter(child: gapH16),
-
-            // Product Grid
             productsAsyncValue.when(
               data: (products) {
-                // Filter products
                 final filteredProducts = products.where((product) {
-                  // 1. Search Text
                   final searchText = filterState.searchText ?? '';
                   final matchesSearch = product.title
                           ?.toLowerCase()
                           .contains(searchText.toLowerCase()) ??
                       false;
 
-                  // 2. Category
                   final matchesCategory =
                       filterState.selectedCategoryID == null ||
                           filterState.selectedCategoryID == -1 ||
@@ -173,7 +179,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                                   )
                                   .name;
 
-                  // 3. Price Range
                   final matchesMinPrice = filterState.minPrice == null ||
                       (product.price != null &&
                           product.price! >= filterState.minPrice!);
@@ -181,12 +186,10 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                       (product.price != null &&
                           product.price! <= filterState.maxPrice!);
 
-                  // 4. Country
                   final matchesCountry = filterState.country == null ||
                       filterState.country!.isEmpty ||
                       product.country == filterState.country;
 
-                  // 5. Date Range
                   final matchesDateFrom = filterState.dateFrom == null ||
                       filterState.dateFrom == -1 ||
                       (product.date != null &&
@@ -196,7 +199,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                       (product.date != null &&
                           product.date! <= filterState.dateTo!);
 
-                  // 6. Denomination
                   final matchesDenom = filterState.denomination == null ||
                       filterState.denomination!.isEmpty ||
                       product.denomination
@@ -204,17 +206,14 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                               .contains(filterState.denomination!.toLowerCase()) ==
                           true;
 
-                  // 7. Is Graded
                   final matchesGraded = filterState.isGraded == null ||
                       product.isGraded == filterState.isGraded;
 
-                  // 8. Grading Company
                   final matchesGradingCompany =
                       filterState.gradingCompany == null ||
                           filterState.gradingCompany!.isEmpty ||
                           product.gradingCompany == filterState.gradingCompany;
 
-                  // 9. Grade Range
                   final matchesGradeFrom = filterState.gradeFrom == null ||
                       filterState.gradeFrom == -1 ||
                       (product.grade != null &&
@@ -224,7 +223,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                       (product.grade != null &&
                           product.grade! <= filterState.gradeTo!);
 
-                  // 10. Metal Type
                   final matchesMetalType = filterState.metalType == null ||
                       filterState.metalType!.isEmpty ||
                       product.metalType
@@ -232,7 +230,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                               .contains(filterState.metalType!.toLowerCase()) ==
                           true;
 
-                  // 11. Metal Fineness
                   final matchesMetalFineness =
                       filterState.metalFineness == null ||
                           filterState.metalFineness!.isEmpty ||
@@ -285,8 +282,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                 child: Center(child: Text('Error: $error')),
               ),
             ),
-
-            // Bottom padding for navigation bar
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),

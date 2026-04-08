@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 
 import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -11,8 +12,19 @@ import 'widgets/filter_widget/filter_widget.dart';
 import 'widgets/filter_widget/filter_widget_controller.dart';
 import 'widgets/search_list_widget.dart';
 
-class SearchScreen extends StatelessWidget {
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
+
+  @override
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends ConsumerState<SearchScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'search_screen');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,3 +169,5 @@ class SearchScreen extends StatelessWidget {
     );
   }
 }
+
+

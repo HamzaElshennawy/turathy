@@ -20,6 +20,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../../features/notifications/data/notifications_repository.dart';
 import '../cache/cached_variables.dart';
+import '../analytics/analytics_service.dart';
 import 'package:turathy/src/routing/app_router.dart';
 import 'package:turathy/src/routing/rout_constants.dart';
 import 'dart:convert';
@@ -259,7 +260,8 @@ class FCMService {
   /// Callback for when a Firebase notification is tapped while the app is 
   /// in background or terminated state.
   void _handleMessageOpenedApp(RemoteMessage message) {
-    log('Message opened app: ${message.messageId}');
+    log('Message opened app: ' + (message.messageId ?? 'unknown')); 
+    _logNotificationOpened(message.data);
     _navigateBasedOnData(message.data);
   }
 
@@ -294,9 +296,20 @@ class FCMService {
       }
 
       if (data.isNotEmpty) {
+        _logNotificationOpened(data);
         _navigateBasedOnData(data);
       }
     }
+  }
+
+
+  void _logNotificationOpened(Map<String, dynamic> data) {
+    AnalyticsService.logNotificationOpened(
+      type: data['type']?.toString(),
+      auctionId: (data['auction_id'] ?? data['auctionId'])?.toString(),
+      productId: data['product_id']?.toString(),
+      orderId: (data['order_id'] ?? data['orderId'])?.toString(),
+    );
   }
 
   /// The routing engine for push notifications.
@@ -435,3 +448,8 @@ class FCMService {
 
 /// Singleton instance available across the app.
 final fcmService = FCMService();
+
+
+
+
+

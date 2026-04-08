@@ -11,6 +11,7 @@ import 'package:turathy/src/features/auctions/data/auction_payments_repository.d
 
 import '../../../core/common_widgets/custom_card.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../addresses/domain/user_address_model.dart';
 import '../../addresses/presentation/address_selection_screen.dart';
@@ -51,6 +52,17 @@ class _OrderConfirmationScreenState
   void initState() {
     super.initState();
     _selectedAddress = widget.preselectedAddress;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AnalyticsService.logScreenView(
+        screenName: 'order_confirmation',
+        screenClass: 'OrderConfirmationScreen',
+      );
+      AnalyticsService.logBeginCheckout(
+        value: widget.order.total,
+        itemCount: widget.order.items.isNotEmpty ? widget.order.items.length : 1,
+        hasAuctionItems: widget.order.auctionId != 0,
+      );
+    });
   }
 
   Future<void> _pickAddress() async {
@@ -165,6 +177,11 @@ class _OrderConfirmationScreenState
         }
 
         if (mounted) {
+          await AnalyticsService.logPaymentSubmitted(
+            orderId: finalizedOrder.id,
+            amount: finalizedOrder.total,
+            method: 'bank_transfer',
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(AppStrings.orderSubmittedSuccessfully.tr()),
@@ -205,6 +222,14 @@ class _OrderConfirmationScreenState
               paymentId: result.id,
             );
             await ref.read(orderRepositoryProvider).updateOrder(updatedOrder);
+            await AnalyticsService.logPurchase(
+              orderId: updatedOrder.id.toString(),
+              value: updatedOrder.total,
+              itemCount: updatedOrder.items.isNotEmpty
+                  ? updatedOrder.items.length
+                  : 1,
+              hasAuctionItems: updatedOrder.auctionId != 0,
+            );
           }
         } catch (e) {
           if (mounted) {

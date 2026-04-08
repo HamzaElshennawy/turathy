@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/constants/app_sizes.dart';
@@ -10,11 +11,22 @@ import '../../profile/presentation/widgets/language_widget/language_widget.dart'
 import 'terms_and_conditions_screen.dart';
 import 'privacy_policy_screen.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'settings_screen');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -249,5 +261,10 @@ class SettingsScreen extends ConsumerWidget {
 
 final settingsVersionProvider = FutureProvider<String>((ref) async {
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
-  return packageInfo.version;
+  return '${packageInfo.version} (${packageInfo.buildNumber})';
 });
+
+
+
+
+

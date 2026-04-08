@@ -14,6 +14,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
 import 'package:turathy/src/features/main_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -52,6 +53,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logScreenView(screenName: 'complete_profile_screen');
     final user = ref.read(authControllerProvider).valueOrNull;
 
     // Split raw phone string into dial code and local number for the UI fields.
@@ -604,4 +606,5 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     );
   }
 }
+
 

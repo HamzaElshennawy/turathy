@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/common_widgets/auction_card.dart';
 import 'package:turathy/src/core/common_widgets/shimmer_widget/shimmer_widget.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
@@ -22,6 +23,7 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logScreenView(screenName: 'all_auctions_screen');
     widget.scrollController?.addListener(_onScroll);
   }
 
@@ -222,3 +224,5 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
     );
   }
 }
+
+

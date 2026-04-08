@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../../cart/data/cart_repository.dart';
@@ -51,6 +52,17 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AnalyticsService.logScreenView(
+        screenName: 'product_detail',
+        screenClass: 'ProductScreen',
+      );
+      AnalyticsService.logProductViewed(
+        productId: widget.product.id,
+        category: widget.product.category,
+        price: widget.product.price,
+      );
+    });
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/dio/dio_helper.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../../../core/helper/cache/cached_variables.dart';
@@ -30,6 +31,10 @@ class CartRepository {
       data: {'user_id': userId, 'product_id': productId, 'quantity': quantity},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
+      await AnalyticsService.logAddToCart(
+        productId: productId,
+        quantity: quantity,
+      );
       return CartItemModel.fromJson(
         result.data['data'] as Map<String, dynamic>,
       );

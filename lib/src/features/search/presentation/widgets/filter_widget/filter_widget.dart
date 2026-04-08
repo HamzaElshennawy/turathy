@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/constants/app_locations/app_locations.dart';
 import '../../../../../core/constants/app_sizes.dart';
 import '../../../../../core/constants/app_strings/app_strings.dart';
+import '../../../../../core/helper/analytics/analytics_service.dart';
 import '../../../../../core/helper/socket/socket_models.dart';
 import '../../../../auctions/data/auctions_repository.dart';
 import '../filter_chip_widget.dart';
@@ -15,8 +16,9 @@ class FilterWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final minPrice = ref.watch(filterWidgetControllerProvider).minPrice;
-    final maxPrice = ref.watch(filterWidgetControllerProvider).maxPrice;
+    final filterState = ref.watch(filterWidgetControllerProvider);
+    final minPrice = filterState.minPrice;
+    final maxPrice = filterState.maxPrice;
 
     return Expanded(
       child: Padding(
@@ -28,7 +30,6 @@ class FilterWidget extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 0. Categories
                     _displayFilters(
                       AppStrings.categories.tr(),
                       ref
@@ -49,13 +50,11 @@ class FilterWidget extends ConsumerWidget {
                       },
                     ),
                     gapH16,
-
-                    // Price Range
                     _RangeSliderWidget(
                       title: AppStrings.priceRange.tr(),
                       min: 0,
                       max: 10000,
-                      divisions: 1000, // 10000 / 1000   = steps of 10
+                      divisions: 1000,
                       initialMinValue: minPrice,
                       initialMaxValue: maxPrice,
                       labelFormatter: (val) => val.toInt().toString(),
@@ -69,9 +68,7 @@ class FilterWidget extends ConsumerWidget {
                       },
                     ),
                     gapH16,
-
                     gapH16,
-                    // 1. Country
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -85,16 +82,9 @@ class FilterWidget extends ConsumerWidget {
                         ),
                         gapH8,
                         DropdownButtonFormField<String>(
-                          value:
-                              ref
-                                      .watch(filterWidgetControllerProvider)
-                                      .country
-                                      ?.isEmpty ==
-                                  true
+                          value: filterState.country?.isEmpty == true
                               ? null
-                              : ref
-                                    .watch(filterWidgetControllerProvider)
-                                    .country,
+                              : filterState.country,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
@@ -111,8 +101,7 @@ class FilterWidget extends ConsumerWidget {
                               final isAr = context.locale.languageCode == 'ar';
                               final name = isAr ? c.nameAr : c.nameEn;
                               return DropdownMenuItem<String>(
-                                value:
-                                    name, // Using name as the filter value, not code
+                                value: name,
                                 child: Text('$flag  $name'),
                               );
                             }),
@@ -126,27 +115,17 @@ class FilterWidget extends ConsumerWidget {
                       ],
                     ),
                     gapH16,
-                    // 2. Date Range
                     _RangeSliderWidget(
                       title: AppStrings.dateRange.tr(),
                       min: 1700,
                       max: DateTime.now().year.toDouble(),
                       divisions: DateTime.now().year - 1700,
-                      initialMinValue:
-                          ref.watch(filterWidgetControllerProvider).dateFrom ==
-                              -1
+                      initialMinValue: filterState.dateFrom == -1
                           ? null
-                          : ref
-                                .watch(filterWidgetControllerProvider)
-                                .dateFrom
-                                ?.toDouble(),
-                      initialMaxValue:
-                          ref.watch(filterWidgetControllerProvider).dateTo == -1
+                          : filterState.dateFrom?.toDouble(),
+                      initialMaxValue: filterState.dateTo == -1
                           ? null
-                          : ref
-                                .watch(filterWidgetControllerProvider)
-                                .dateTo
-                                ?.toDouble(),
+                          : filterState.dateTo?.toDouble(),
                       labelFormatter: (val) => val.toInt().toString(),
                       onChanged: (min, max) {
                         ref
@@ -158,12 +137,9 @@ class FilterWidget extends ConsumerWidget {
                       },
                     ),
                     gapH16,
-                    // 3. Denomination
                     _FilterTextFieldWidget(
                       label: AppStrings.denomination.tr(),
-                      initialValue: ref
-                          .watch(filterWidgetControllerProvider)
-                          .denomination,
+                      initialValue: filterState.denomination,
                       onChanged: (val) {
                         ref
                             .read(filterWidgetControllerProvider.notifier)
@@ -171,24 +147,16 @@ class FilterWidget extends ConsumerWidget {
                       },
                     ),
                     gapH16,
-                    // 4. Graded Status
                     _displayFilters(
                       AppStrings.gradedStatus.tr(),
                       [AppStrings.graded.tr(), AppStrings.notGraded.tr()],
-                      ref.watch(filterWidgetControllerProvider).isGraded == true
+                      filterState.isGraded == true
                           ? [0]
-                          : (ref
-                                        .watch(filterWidgetControllerProvider)
-                                        .isGraded ==
-                                    false
-                                ? [1]
-                                : []),
+                          : (filterState.isGraded == false ? [1] : []),
                       context,
                       (index) {
-                        bool? currentValue = ref
-                            .watch(filterWidgetControllerProvider)
-                            .isGraded;
-                        bool newValue = index == 0 ? true : false;
+                        final currentValue = filterState.isGraded;
+                        final newValue = index == 0;
                         if (currentValue == newValue) {
                           ref
                               .read(filterWidgetControllerProvider.notifier)
@@ -200,9 +168,7 @@ class FilterWidget extends ConsumerWidget {
                         }
                       },
                     ),
-                    // 5 & 6. Grading Company & Grade Range (Conditional)
-                    if (ref.watch(filterWidgetControllerProvider).isGraded ==
-                        true) ...[
+                    if (filterState.isGraded == true) ...[
                       gapH16,
                       _displayFilters(
                         AppStrings.gradingCompany.tr(),
@@ -227,23 +193,9 @@ class FilterWidget extends ConsumerWidget {
                         label1: AppStrings.gradeFrom.tr(),
                         label2: AppStrings.gradeTo.tr(),
                         initialValue1:
-                            ref
-                                    .watch(filterWidgetControllerProvider)
-                                    .gradeFrom ==
-                                -1
-                            ? ''
-                            : ref
-                                  .watch(filterWidgetControllerProvider)
-                                  .gradeFrom
-                                  ?.toString(),
+                            filterState.gradeFrom == -1 ? '' : filterState.gradeFrom?.toString(),
                         initialValue2:
-                            ref.watch(filterWidgetControllerProvider).gradeTo ==
-                                -1
-                            ? ''
-                            : ref
-                                  .watch(filterWidgetControllerProvider)
-                                  .gradeTo
-                                  ?.toString(),
+                            filterState.gradeTo == -1 ? '' : filterState.gradeTo?.toString(),
                         keyboardType: TextInputType.number,
                         onChanged1: (val) {
                           ref
@@ -258,12 +210,9 @@ class FilterWidget extends ConsumerWidget {
                       ),
                     ],
                     gapH16,
-                    // 7. Metal Type
                     _FilterTextFieldWidget(
                       label: AppStrings.metalType_.tr(),
-                      initialValue: ref
-                          .watch(filterWidgetControllerProvider)
-                          .metalType,
+                      initialValue: filterState.metalType,
                       onChanged: (val) {
                         ref
                             .read(filterWidgetControllerProvider.notifier)
@@ -271,12 +220,9 @@ class FilterWidget extends ConsumerWidget {
                       },
                     ),
                     gapH16,
-                    // 8. Metal Fineness
                     _FilterTextFieldWidget(
                       label: AppStrings.metalFineness.tr(),
-                      initialValue: ref
-                          .watch(filterWidgetControllerProvider)
-                          .metalFineness,
+                      initialValue: filterState.metalFineness,
                       onChanged: (val) {
                         ref
                             .read(filterWidgetControllerProvider.notifier)
@@ -292,6 +238,44 @@ class FilterWidget extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 16.0),
               child: FilledButton(
                 onPressed: () {
+                  String? selectedCategoryName;
+                  for (final category
+                      in ref.read(filterWidgetControllerProvider.notifier).categories) {
+                    if (category.id == filterState.selectedCategoryID) {
+                      selectedCategoryName = category.name;
+                      break;
+                    }
+                  }
+
+                  final activeFilterCount = [
+                    filterState.selectedCategoryID != null &&
+                        filterState.selectedCategoryID != -1,
+                    minPrice != null,
+                    maxPrice != null,
+                    filterState.country != null && filterState.country!.isNotEmpty,
+                    filterState.dateFrom != null && filterState.dateFrom != -1,
+                    filterState.dateTo != null && filterState.dateTo != -1,
+                    filterState.denomination != null &&
+                        filterState.denomination!.isNotEmpty,
+                    filterState.isGraded != null,
+                    filterState.gradingCompany != null &&
+                        filterState.gradingCompany!.isNotEmpty,
+                    filterState.gradeFrom != null && filterState.gradeFrom != -1,
+                    filterState.gradeTo != null && filterState.gradeTo != -1,
+                    filterState.metalType != null &&
+                        filterState.metalType!.isNotEmpty,
+                    filterState.metalFineness != null &&
+                        filterState.metalFineness!.isNotEmpty,
+                  ].where((isActive) => isActive).length;
+
+                  AnalyticsService.logFilterApplied(
+                    category: selectedCategoryName,
+                    minPrice: minPrice,
+                    maxPrice: maxPrice,
+                    country: filterState.country,
+                    isGraded: filterState.isGraded,
+                    activeFilterCount: activeFilterCount,
+                  );
                   ref.invalidate(searchProductsProvider);
                   Navigator.of(context).pop();
                 },
@@ -308,7 +292,6 @@ class FilterWidget extends ConsumerWidget {
                 ),
               ),
             ),
-            // clear filters
             gapH8,
             SizedBox(
               width: double.infinity,
@@ -361,8 +344,8 @@ Widget _displayFilters(
         spacing: 8,
         runSpacing: 8,
         children: filters.map((e) {
-          bool isSelected = selectedFilters.contains(filters.indexOf(e));
-          int index = filters.indexOf(e);
+          final isSelected = selectedFilters.contains(filters.indexOf(e));
+          final index = filters.indexOf(e);
           return IntrinsicWidth(
             child: FilterChipWidget(
               text: e,

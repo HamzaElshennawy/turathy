@@ -4,6 +4,8 @@
 /// 
 /// Currently supports Google Sign-In and provides a layout for Apple Sign-In.
 /// These buttons are typically used on both the Sign-In and Sign-Up screens.
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -32,21 +34,23 @@ class SocialLoginButtons extends ConsumerWidget {
             ref.read(authControllerProvider.notifier).signInWithGoogle();
           },
         ),
-        gapW16,
-        
-        // Apple Authentication (Placeholder)
-        _SocialButton(
-          label: 'Apple',
-          icon: SvgPicture.asset(
-            'assets/icons/apple.svg',
-            width: 24,
-            height: 24,
-            colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        if (Platform.isIOS) ...[
+          gapW16,
+
+          // Apple Authentication (Placeholder)
+          _SocialButton(
+            label: 'Apple',
+            icon: SvgPicture.asset(
+              'assets/icons/apple.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+            ),
+            onTap: () {
+              // TODO: Implement Apple Sign In
+            },
           ),
-          onTap: () {
-            // TODO: Implement Apple Sign In
-          },
-        ),
+        ],
       ],
     );
   }

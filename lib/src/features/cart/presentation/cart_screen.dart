@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
@@ -27,6 +28,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logScreenView(screenName: 'cart_screen');
     Future.microtask(() async {
       final userId = CachedVariables.userId;
       if (userId != null) {
@@ -458,3 +460,4 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 }
+

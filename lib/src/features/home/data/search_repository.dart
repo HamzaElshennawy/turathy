@@ -1,6 +1,7 @@
 import 'dart:developer' show log;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/helper/dio/dio_helper.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
@@ -49,6 +50,10 @@ class SearchRepository {
         }
       }
 
+      await AnalyticsService.logSearch(
+        term: query,
+        resultCount: results.length,
+      );
       return results;
     } catch (e) {
       // In a real app, we might want to return an empty list or rethrow custom exception

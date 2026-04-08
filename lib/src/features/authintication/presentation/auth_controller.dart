@@ -7,12 +7,13 @@
 /// Firebase Cloud Messaging (FCM) token registration.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/fcm/fcm_service.dart';
 import '../../notifications/presentation/notifications_controller.dart';
 import '../data/auth_repository.dart';
+import '../data/google_sign_in_client.dart';
 import '../domain/user_model.dart';
 import 'country_code_provider.dart';
 
@@ -98,6 +99,8 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       final result = await AuthRepository.signIn(fullphone_number, password);
       final user = result['user'] as UserModel;
       state = AsyncValue.data(user);
+      await AnalyticsService.setUser(user, authMethod: 'phone');
+      await AnalyticsService.logLogin(method: 'phone');
       
       // Post-login side effects
       await FCMService().registerAfterLogin();
@@ -124,6 +127,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       try {
         final result = await AuthRepository.createUser(user);
         state = const AsyncValue.data(null);
+        await AnalyticsService.logSignUp(method: 'phone');
         return result;
       } catch (e, st) {
         state = AsyncValue.error(e.toString(), st);
@@ -138,7 +142,15 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   /// Wipes the local session and invalidates relevant providers.
   Future<bool> signOut() async {
     state = const AsyncValue.loading();
+    await FCMService().unregisterDevice();
+    if (CachedVariables.isGoogleSignIn) {
+      try {
+        final googleSignIn = buildGoogleSignInClient();
+        await googleSignIn.signOut();
+      } catch (_) {}
+    }
     await AuthRepository.clearLocalDetails();
+    await AnalyticsService.clearUser();
     state = const AsyncValue.data(null);
     ref.invalidate(notificationsNotifierProvider);
     return true;
@@ -151,9 +163,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     state = const AsyncValue.loading();
     isGoogleSignInProcessing = true;
     try {
-      final googleSignIn = GoogleSignIn(
-        serverClientId: '214584571316-0e25d07432f64jo817isd9hkusq87ppd.apps.googleusercontent.com',
-      );
+      final googleSignIn = buildGoogleSignInClient();
       final googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
@@ -179,6 +189,8 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       );
 
       if (state.hasValue && !state.hasError) {
+        await AnalyticsService.setUser(state.valueOrNull, authMethod: 'google');
+        await AnalyticsService.logLogin(method: 'google');
         await FCMService().registerAfterLogin();
         ref.invalidate(notificationsNotifierProvider);
       } else {

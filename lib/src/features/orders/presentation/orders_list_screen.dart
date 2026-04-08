@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/common_widgets/async_value_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
@@ -26,6 +27,12 @@ class OrdersListScreen extends ConsumerStatefulWidget {
 
 class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
   int _selectedTab = 0; // 0: Store Orders, 1: Auctions
+
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'orders_list_screen');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -456,3 +463,4 @@ class _OrderItemWidget extends ConsumerWidget {
     );
   }
 }
+

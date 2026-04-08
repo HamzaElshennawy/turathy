@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
@@ -124,6 +125,18 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     super.initState();
     _currentAuction = widget.auction;
     _filteredProducts = _currentAuction.auctionProducts ?? [];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_currentAuction.id != null) {
+        AnalyticsService.logScreenView(
+          screenName: 'auction_detail',
+          screenClass: 'AuctionScreen',
+        );
+        AnalyticsService.logAuctionViewed(
+          auctionId: _currentAuction.id!,
+          category: _currentAuction.category?.name,
+        );
+      }
+    });
     _calculateTimeLeft();
     _startTimer();
     _checkAccess();

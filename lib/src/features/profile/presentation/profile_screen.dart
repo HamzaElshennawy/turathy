@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
@@ -17,11 +18,22 @@ import 'package:image_picker/image_picker.dart';
 import '../controller/theme_controller.dart';
 // import 'widgets/language_widget/language_widget.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logScreenView(screenName: 'profile_screen');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).valueOrNull;
     final theme = ref.watch(themeControllerProvider);
     final bool isSignedIn = user != null;
@@ -488,3 +500,5 @@ class _ProfileAvatarState extends ConsumerState<ProfileAvatar> {
     );
   }
 }
+
+

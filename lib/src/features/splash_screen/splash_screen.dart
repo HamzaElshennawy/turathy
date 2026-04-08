@@ -12,8 +12,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../core/helper/analytics/analytics_service.dart';
 import '../../core/common_widgets/responsive_center.dart';
 import '../../core/constants/app_images/app_images.dart';
 import '../../core/constants/app_strings/app_strings.dart';
@@ -21,6 +21,7 @@ import '../../core/helper/cache/cached_variables.dart';
 import '../../core/helper/fcm/fcm_service.dart';
 import '../../routing/rout_constants.dart';
 import '../authintication/data/auth_repository.dart';
+import '../authintication/data/google_sign_in_client.dart';
 import '../authintication/presentation/auth_controller.dart';
 import '../authintication/presentation/country_code_provider.dart';
 
@@ -87,6 +88,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         );
                         if (!mounted) return;
 
+                        await AnalyticsService.setUser(
+                          user,
+                          authMethod: CachedVariables.isGoogleSignIn
+                              ? 'google'
+                              : 'phone',
+                        );
                         ref
                             .read(authControllerProvider.notifier)
                             .updateUser(user);
@@ -108,7 +115,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         // Fallback 1: Silent Google Re-authentication
                         if (CachedVariables.isGoogleSignIn) {
                           try {
-                            final googleSignIn = GoogleSignIn();
+                            final googleSignIn = buildGoogleSignInClient();
                             final googleUser = await googleSignIn
                                 .signInSilently();
                             if (googleUser != null) {
@@ -120,6 +127,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                                   idToken,
                                 );
                                 if (!mounted) return;
+                                await AnalyticsService.setUser(
+                                  user,
+                                  authMethod: 'google',
+                                );
                                 ref
                                     .read(authControllerProvider.notifier)
                                     .updateUser(user);
@@ -162,7 +173,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     else if (CachedVariables.isGoogleSignIn &&
                         CachedVariables.userId != null) {
                       try {
-                        final googleSignIn = GoogleSignIn();
+                        final googleSignIn = buildGoogleSignInClient();
                         final googleUser = await googleSignIn.signInSilently();
                         if (googleUser != null) {
                           final googleAuth = await googleUser.authentication;
@@ -172,6 +183,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                               idToken,
                             );
                             if (!mounted) return;
+                            await AnalyticsService.setUser(
+                              user,
+                              authMethod: 'google',
+                            );
                             ref
                                 .read(authControllerProvider.notifier)
                                 .updateUser(user);

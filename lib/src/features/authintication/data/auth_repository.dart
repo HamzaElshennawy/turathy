@@ -8,6 +8,7 @@
 /// - **Third-Party Auth**: Direct integration with Google Sign-In.
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 
@@ -34,6 +35,12 @@ Map<String, dynamic> _ensureMap(dynamic data) {
   return {};
 }
 
+String _currentPlatformLabel() {
+  if (Platform.isAndroid) return 'ANDROID';
+  if (Platform.isIOS) return 'IOS';
+  return 'UNKNOWN';
+}
+
 /// Manages authentication state and persistence.
 class AuthRepository {
   /// Authenticates a user using phone and password.
@@ -50,7 +57,11 @@ class AuthRepository {
   ) async {
     final result = await DioHelper.postData(
       url: EndPoints.login,
-      data: {'phone_number': phone, 'password': password},
+      data: {
+        'phone_number': phone,
+        'password': password,
+        'platform': _currentPlatformLabel(),
+      },
     );
     final body = _ensureMap(result.data);
     
@@ -89,7 +100,10 @@ class AuthRepository {
   static Future<UserModel> googleSignIn(String token) async {
     final result = await DioHelper.postData(
       url: 'auth/google-login',
-      data: {'token': token},
+      data: {
+        'token': token,
+        'platform': _currentPlatformLabel(),
+      },
     );
 
     final body = _ensureMap(result.data);
@@ -368,4 +382,5 @@ class AuthException implements Exception {
     return message + (code != null ? ' (error: $code)' : '');
   }
 }
+
 
