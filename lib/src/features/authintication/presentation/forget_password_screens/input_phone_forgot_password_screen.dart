@@ -6,30 +6,30 @@
 /// (currently limited to KSA +966) to receive a password reset code.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart' as ui;
-
 import '../../../../core/common_widgets/primary_button.dart';
 import '../../../../core/common_widgets/responsive_center.dart';
-import '../../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../../core/constants/app_images/app_images.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../utils/validators.dart';
+import '../../../../core/common_widgets/phone_number_field.dart';
+import '../country_code_provider.dart';
+import '../auth_controller.dart';
 import 'reset_password_screen.dart';
 import 'forgot_password_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Screen for entering the phone number to initiate password reset.
-class InputEmailForgotPasswordScreen extends ConsumerStatefulWidget {
-  const InputEmailForgotPasswordScreen({super.key});
+class InputPhoneForgotPasswordScreen extends ConsumerStatefulWidget {
+  const InputPhoneForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<InputEmailForgotPasswordScreen> createState() =>
-      _InputEmailForgotPasswordScreenState();
+  ConsumerState<InputPhoneForgotPasswordScreen> createState() =>
+      _InputPhoneForgotPasswordScreenState();
 }
 
-class _InputEmailForgotPasswordScreenState
-    extends ConsumerState<InputEmailForgotPasswordScreen> {
+class _InputPhoneForgotPasswordScreenState
+    extends ConsumerState<InputPhoneForgotPasswordScreen> {
   final TextEditingController _phoneLocalController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -41,6 +41,8 @@ class _InputEmailForgotPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
+    final countryCode = ref.watch(countryCodeProvider);
+
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.resetPassword.tr())),
       body: CustomScrollView(
@@ -71,19 +73,17 @@ class _InputEmailForgotPasswordScreenState
                           ),
                           const SizedBox(height: 10),
                           
-                          // Phone Input with fixed KSA prefix.
-                          // Using LTR directionality for the number field.
-                          Directionality(
-                            textDirection: ui.TextDirection.ltr,
-                            child: WhiteRoundedTextFormField(
-                              hintText: '5XXXXXXXX',
-                              prefixIcon: const Icon(Icons.phone),
-                              controller: _phoneLocalController,
-                              validator: Validators.ksaLocalPhoneValidator,
-                              inputFormatters: Validators.ksaLocalPhoneInputFormatters,
-                              keyboardType: TextInputType.phone,
-                              prefix: '+966',
-                            ),
+                          PhoneNumberField(
+                            controller: _phoneLocalController,
+                            initialCountryCode: countryCode,
+                            onCountryChanged: (country) {
+                              if (country.dialCode != null) {
+                                ref.read(countryCodeProvider.notifier).setCountryCode(country.dialCode!);
+                              }
+                            },
+                            validator: Validators.required,
+                            hintText: '5XXXXXXXXXX',
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
                           const SizedBox(height: 10),
                           
@@ -91,7 +91,7 @@ class _InputEmailForgotPasswordScreenState
                           PrimaryButton(
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
-                                final e164 = '+966${_phoneLocalController.text.trim()}';
+                                final e164 = '$countryCode${_phoneLocalController.text.trim()}';
                                 
                                 // Request the verification code.
                                 final ok = await ref
@@ -101,6 +101,9 @@ class _InputEmailForgotPasswordScreenState
                                 if (!mounted) return;
                                 
                                 if (ok) {
+                                  // Pass the phone number back to the login state for continuity
+                                  ref.read(authControllerProvider.notifier).phoneController.text = _phoneLocalController.text.trim();
+
                                   // Navigate to OTP verification & password reset screen.
                                   Navigator.of(context).push(
                                     MaterialPageRoute(

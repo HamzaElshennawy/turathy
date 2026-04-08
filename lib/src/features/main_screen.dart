@@ -40,6 +40,7 @@ import 'authintication/presentation/auth_controller.dart';
 import 'home/data/category_repository.dart';
 import 'home/presentation/home_screen/home_screen.dart';
 import 'store/presentation/store_screen.dart';
+import '../core/helper/dio/end_points.dart';
 
 /// The main scaffold of the app containing the navigation logic.
 class MainScreen extends ConsumerStatefulWidget {
@@ -251,6 +252,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
                       _UserAvatar(
                         radius: avatarRadius,
                         name: authController.valueOrNull?.name,
+                        image: authController.valueOrNull?.profilePicUrl,
                       ),
                       const SizedBox(width: 8),
                       Column(
@@ -459,11 +461,15 @@ class _UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String? imageUrl = image;
+    if (imageUrl != null && !imageUrl.startsWith('http')) {
+      imageUrl = '${EndPoints.baseUrl}$imageUrl';
+    }
+
     return CircleAvatar(
       radius: radius,
       backgroundColor: Colors.grey.shade200,
-      backgroundImage: image != null ? NetworkImage(image!) : null,
-      child: image == null
+      child: imageUrl == null
           ? Text(
               name?.isNotEmpty == true ? name![0].toUpperCase() : 'U',
               style: const TextStyle(
@@ -471,13 +477,17 @@ class _UserAvatar extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             )
-          : CachedNetworkImage(
-              imageUrl: image!,
-              memCacheHeight: 150,
-              fit: BoxFit.cover,
-              placeholder: (context, url) =>
-                  const Center(child: CircularProgressIndicator()),
-              errorWidget: (context, url, error) => const Icon(Icons.error),
+          : ClipOval(
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: radius * 2,
+                height: radius * 2,
+                memCacheHeight: 150,
+                fit: BoxFit.cover,
+                placeholder: (context, url) =>
+                    const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
+              ),
             ),
     );
   }

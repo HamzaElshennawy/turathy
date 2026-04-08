@@ -151,7 +151,9 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     state = const AsyncValue.loading();
     isGoogleSignInProcessing = true;
     try {
-      final googleSignIn = GoogleSignIn();
+      final googleSignIn = GoogleSignIn(
+        serverClientId: '214584571316-0e25d07432f64jo817isd9hkusq87ppd.apps.googleusercontent.com',
+      );
       final googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {

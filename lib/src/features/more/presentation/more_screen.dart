@@ -8,6 +8,8 @@ import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
 import 'package:turathy/src/features/profile/presentation/profile_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 import 'package:turathy/src/features/settings/presentation/settings_screen.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -68,12 +70,32 @@ class MoreScreen extends ConsumerWidget {
   List<Widget> _buildProfileSection(BuildContext context, dynamic user) {
     if (user != null) {
       return [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 50,
-          backgroundImage: NetworkImage(
-            'https://placehold.co/200',
-          ), // Placeholder or user image
-          // child: user.image == null ? Icon(Icons.person, size: 50) : null,
+          backgroundColor: Colors.grey.shade200,
+          child: user.profilePicUrl == null
+              ? Text(
+                  user.name?.isNotEmpty == true ? user.name![0].toUpperCase() : 'U',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: user.profilePicUrl!.startsWith('http')
+                        ? user.profilePicUrl!
+                        : '${EndPoints.baseUrl}${user.profilePicUrl}',
+                    width: 100,
+                    height: 100,
+                    memCacheHeight: 300,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) =>
+                        const Center(child: CircularProgressIndicator()),
+                    errorWidget: (context, url, error) => const Icon(Icons.error),
+                  ),
+                ),
         ),
         const SizedBox(height: 10),
         Text(

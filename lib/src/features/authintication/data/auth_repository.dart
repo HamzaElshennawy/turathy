@@ -9,6 +9,8 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:dio/dio.dart';
+
 import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/cache/cache_helper.dart';
 import '../../../core/helper/cache/cached_keys.dart';
@@ -258,6 +260,10 @@ class AuthRepository {
         await CacheHelper.setData(key: CachedKeys.password, value: user.password!);
         CachedVariables.password = user.password;
       }
+      if (user.profilePicUrl != null) {
+        await CacheHelper.setData(key: CachedKeys.profilePicUrl, value: user.profilePicUrl!);
+        CachedVariables.profilePicUrl = user.profilePicUrl;
+      }
     }
   }
 
@@ -269,6 +275,7 @@ class AuthRepository {
     CachedVariables.userName = await CacheHelper.getData(key: CachedKeys.userName);
     CachedVariables.phone_number = await CacheHelper.getData(key: CachedKeys.phone_number);
     CachedVariables.password = await CacheHelper.getData(key: CachedKeys.password);
+    CachedVariables.profilePicUrl = await CacheHelper.getData(key: CachedKeys.profilePicUrl);
     CachedVariables.onBoard = await CacheHelper.getData(key: CachedKeys.onBoard);
     CachedVariables.token = await CacheHelper.getData(key: CachedKeys.authToken);
 
@@ -298,6 +305,7 @@ class AuthRepository {
     CachedVariables.phone_number = null;
     CachedVariables.password = null;
     CachedVariables.isGoogleSignIn = false;
+    CachedVariables.profilePicUrl = null;
 
     await CacheHelper.deleteData(key: CachedKeys.userId);
     await CacheHelper.deleteData(key: CachedKeys.userName);
@@ -306,8 +314,45 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.onBoard);
     await CacheHelper.deleteData(key: CachedKeys.authToken);
     await CacheHelper.deleteData(key: CachedKeys.isGoogleSignIn);
+    await CacheHelper.deleteData(key: CachedKeys.profilePicUrl);
+  }
+
+  /// Uploads a new profile picture to the backend.
+  ///
+  /// Requires the [userId] and the local [filePath] of the selected image.
+  /// Returns the network URL of the uploaded image.
+  static Future<String> uploadProfilePicture({
+    required int userId,
+    required String filePath,
+  }) async {
+    final fileName = filePath.split('/').last;
+    final formData = FormData.fromMap({
+      'picture': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+
+    final result = await DioHelper.putData(
+      url: EndPoints.uploadProfilePicture(userId),
+      data: formData,
+      token: CachedVariables.token,
+      isMultipart: true,
+    );
+
+    final body = _ensureMap(result.data);
+    if (result.statusCode == 200 || result.statusCode == 201) {
+      final data = _ensureMap(body['data']);
+      final profilePicUrl = data['profilePicUrl'] as String;
+      
+      await CacheHelper.setData(key: CachedKeys.profilePicUrl, value: profilePicUrl);
+      CachedVariables.profilePicUrl = profilePicUrl;
+      
+      return profilePicUrl;
+    } else {
+      final message = body['message']?.toString() ?? 'Failed to upload profile picture';
+      throw AuthException(message, result.statusCode);
+    }
   }
 }
+
 
 /// Custom exception for authentication-related failures.
 /// 

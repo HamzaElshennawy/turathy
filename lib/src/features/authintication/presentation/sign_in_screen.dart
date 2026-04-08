@@ -1,8 +1,8 @@
 /// {@category Presentation}
 ///
 /// Authentication screen for returning users.
-/// 
-/// This screen provides a form for phone/password login, integrated 
+///
+/// This screen provides a form for phone/password login, integrated
 /// social login options (Google), and navigation to registration.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +22,7 @@ import 'auth_controller.dart';
 import 'complete_profile_screen.dart';
 import 'otp_screen.dart';
 import 'sign_up_screen.dart';
+import 'forget_password_screens/input_phone_forgot_password_screen.dart';
 import 'widgets/social_login_buttons.dart';
 import 'country_code_provider.dart';
 import '../../main_screen.dart';
@@ -52,12 +53,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           _errorMessage = err is AuthException ? err.message : err.toString();
         });
       } else if (next.value != null) {
-        final isGoogle = ref.read(authControllerProvider.notifier).isGoogleSignInProcessing;
-        
+        final isGoogle = ref
+            .read(authControllerProvider.notifier)
+            .isGoogleSignInProcessing;
+
         if (isGoogle) {
           // Google Sign-In: Check if the user needs to complete their profile.
-          if (next.value!.missingFields != null && next.value!.missingFields!.isNotEmpty) {
-             Navigator.of(context).pushAndRemoveUntil(
+          if (next.value!.missingFields != null &&
+              next.value!.missingFields!.isNotEmpty) {
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
               (route) => false,
             );
@@ -69,7 +73,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           }
         } else {
           // Standard Sign-In: Navigate to OTP verification for security.
-          final phone = ref.read(authControllerProvider.notifier).phoneController.text.trim();
+          final phone = ref
+              .read(authControllerProvider.notifier)
+              .phoneController
+              .text
+              .trim();
           final e164 = '$countryCode$phone';
 
           Navigator.of(context).pushReplacement(
@@ -88,22 +96,24 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               hasScrollBody: false,
               child: ResponsiveCenter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 20),
                       // App Identity
-                      Center(
-                        child: Image.asset(AppImages.logo, height: 100),
-                      ),
+                      Center(child: Image.asset(AppImages.logo, height: 100)),
                       const SizedBox(height: 40),
 
                       // Welcome Texts (RTL prioritized)
                       Text(
                         AppStrings.signIn.tr(),
                         textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
                             ),
@@ -112,7 +122,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       Text(
                         AppStrings.welcomeBackMessage.tr(),
                         textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
 
@@ -122,7 +134,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -144,12 +160,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               initialCountryCode: countryCode,
                               onCountryChanged: (country) {
                                 if (country.dialCode != null) {
-                                  ref.read(countryCodeProvider.notifier).setCountryCode(country.dialCode!);
+                                  ref
+                                      .read(countryCodeProvider.notifier)
+                                      .setCountryCode(country.dialCode!);
                                 }
                               },
                               validator: Validators.required,
                               hintText: '5XXXXXXXXXX',
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
 
                             const SizedBox(height: 24),
@@ -161,10 +181,42 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                               validator: Validators.passwordValidator,
                               hintText: AppStrings.password,
                               prefixIcon: const Icon(Icons.lock),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
 
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 8),
+
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const InputPhoneForgotPasswordScreen(),
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(50, 30),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  AppStrings.forgotPassword.tr(),
+                                  style: TextStyle(
+                                    color: Theme.of(context).primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
 
                             // Primary Action
                             SizedBox(
@@ -176,8 +228,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 onPressed: () async {
                                   setState(() => _errorMessage = null);
                                   if (_formKey.currentState!.validate()) {
-                                    final local = controller.phoneController.text.trim();
-                                    await ref.read(authControllerProvider.notifier).signIn(
+                                    final local = controller
+                                        .phoneController
+                                        .text
+                                        .trim();
+                                    await ref
+                                        .read(authControllerProvider.notifier)
+                                        .signIn(
                                           '$countryCode$local',
                                           controller.passwordController.text,
                                         );
@@ -221,7 +278,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             onPressed: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                                MaterialPageRoute(
+                                  builder: (context) => const SignUpScreen(),
+                                ),
                               );
                             },
                             child: Text(
@@ -250,4 +309,3 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     );
   }
 }
-

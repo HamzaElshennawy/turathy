@@ -8,6 +8,11 @@ import '../../authintication/presentation/auth_controller.dart';
 import '../../authintication/presentation/complete_profile_screen.dart';
 import '../../authintication/presentation/sign_in_screen.dart';
 import '../../auctions/presentation/auction_screen/my_auction_requests_screen.dart';
+import '../../authintication/domain/user_model.dart';
+import '../../authintication/data/auth_repository.dart';
+import '../../../core/helper/dio/end_points.dart';
+import '../../../core/constants/app_functions/app_functions.dart';
+import 'package:image_picker/image_picker.dart';
 // import '../../main_screen.dart';
 import '../controller/theme_controller.dart';
 // import 'widgets/language_widget/language_widget.dart';
@@ -106,7 +111,7 @@ class ProfileScreen extends ConsumerWidget {
 
   Widget _buildHeaderSection(
     BuildContext context,
-    dynamic user,
+    UserModel? user,
     bool isSignedIn,
     Color themeColor,
   ) {
@@ -115,33 +120,21 @@ class ProfileScreen extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: themeColor.withOpacity(0.1),
-            child: isSignedIn
-                ? Text(
-                    user.name?.isNotEmpty == true
-                        ? user.name!.substring(0, 1).toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: themeColor,
-                    ),
-                  )
-                : Icon(Icons.person, size: 50, color: themeColor),
+          ProfileAvatar(
+            user: user,
+            themeColor: themeColor,
           ),
           gapH16,
           if (isSignedIn) ...[
             Text(
-              user.name ?? AppStrings.name.tr(),
+              user?.name ?? AppStrings.name.tr(),
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             gapH4,
             Text(
-              user.phone_number ?? '',
+              user?.phone_number ?? '',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
@@ -384,4 +377,114 @@ class ProfileScreen extends ConsumerWidget {
   //}
 }
 
+class ProfileAvatar extends ConsumerStatefulWidget {
+  final UserModel? user;
+  final Color themeColor;
 
+  const ProfileAvatar({super.key, this.user, required this.themeColor});
+
+  @override
+  ConsumerState<ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends ConsumerState<ProfileAvatar> {
+  bool _isUploading = false;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickAndUploadImage() async {
+    if (widget.user == null) return;
+
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+      if (image == null) return;
+
+      setState(() => _isUploading = true);
+
+      final newUrl = await AuthRepository.uploadProfilePicture(
+        userId: widget.user!.id!,
+        filePath: image.path,
+      );
+
+      ref.read(authControllerProvider.notifier).updateUser(widget.user!.copyWith(profilePicUrl: newUrl));
+    } catch (e) {
+      if (mounted) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: 'Failed to upload image: $e',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isSignedIn = widget.user != null;
+    
+    // Determine the profile picture URL. Handle if backend returns relative path.
+    String? imageUrl = widget.user?.profilePicUrl;
+    if (imageUrl != null && !imageUrl.startsWith('http')) {
+      imageUrl = '${EndPoints.baseUrl}$imageUrl';
+    }
+
+    Widget childWidget;
+    if (_isUploading) {
+      childWidget = const CircularProgressIndicator();
+    } else if (isSignedIn && imageUrl != null && imageUrl.isNotEmpty) {
+      childWidget = ClipOval(
+        child: Image.network(
+          imageUrl,
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Icon(Icons.error, color: widget.themeColor),
+        ),
+      );
+    } else if (isSignedIn) {
+      childWidget = Text(
+        widget.user!.name?.isNotEmpty == true
+            ? widget.user!.name!.substring(0, 1).toUpperCase()
+            : '?',
+        style: TextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.bold,
+          color: widget.themeColor,
+        ),
+      );
+    } else {
+      childWidget = Icon(Icons.person, size: 50, color: widget.themeColor);
+    }
+
+    return GestureDetector(
+      onTap: isSignedIn ? _pickAndUploadImage : null,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: widget.themeColor.withOpacity(0.1),
+            child: childWidget,
+          ),
+          if (isSignedIn && !_isUploading)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade200, width: 1),
+                ),
+                child: Icon(Icons.camera_alt, size: 20, color: widget.themeColor),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

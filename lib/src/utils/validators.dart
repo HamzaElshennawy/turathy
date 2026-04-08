@@ -26,16 +26,12 @@ class Validators {
     return null;
   }
 
-  /// Validates a password's length and presence.
+  /// Validates a password's presence.
   /// 
-  /// Currently enforces a minimum length of 8 characters (matching the logic in
-  /// [passwordValidator]). Returns a localized error message if empty.
+  /// Returns a localized error message if empty.
   static String? passwordValidator(String? value) {
     if (value == null || value.isEmpty) {
       return AppStrings.password.tr();
-    }
-    if (value.length < 8) {
-      return 'Password must be at least 8 characters long';
     }
     return null;
   }

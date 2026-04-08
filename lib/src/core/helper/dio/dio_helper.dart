@@ -202,17 +202,23 @@ class DioHelper {
     dynamic data,
     Map<String, dynamic>? query,
     String? token,
+    bool isMultipart = false,
   }) async {
     try {
       dio.options.headers = {
         'Authorization': 'Bearer $token',
         "Accept": "application/json",
-        "Content-Type": "application/json",
+        if (!isMultipart) "Content-Type": "application/json",
       };
       return await dio.put(
         url,
         data: data,
         queryParameters: query,
+        options: Options(
+          validateStatus: (_) => true,
+          contentType: isMultipart ? null : Headers.jsonContentType,
+          responseType: ResponseType.json,
+        ),
       );
     } catch (error) {
       log('DioHelper (PUT): $error');

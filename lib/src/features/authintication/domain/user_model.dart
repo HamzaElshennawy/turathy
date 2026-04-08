@@ -23,6 +23,9 @@ class UserModel {
   /// Primary email address.
   final String? email;
 
+  /// URL of the user's profile picture, if any.
+  final String? profilePicUrl;
+
   /// Unique username or display alias.
   final String? nickname;
 
@@ -60,6 +63,7 @@ class UserModel {
     this.passwordHashed,
     this.phone_number,
     this.email,
+    this.profilePicUrl,
     this.nickname,
     this.nationality,
     this.isAdmin,
@@ -82,6 +86,7 @@ class UserModel {
           passwordHashed == other.passwordHashed &&
           phone_number == other.phone_number &&
           email == other.email &&
+          profilePicUrl == other.profilePicUrl &&
           nickname == other.nickname &&
           nationality == other.nationality &&
           isAdmin == other.isAdmin &&
@@ -99,6 +104,7 @@ class UserModel {
       passwordHashed.hashCode ^
       phone_number.hashCode ^
       email.hashCode ^
+      profilePicUrl.hashCode ^
       nickname.hashCode ^
       nationality.hashCode ^
       isAdmin.hashCode ^
@@ -115,6 +121,7 @@ class UserModel {
         ' name: $name,'
         ' phone_number: $phone_number,'
         ' email: $email,'
+        ' profilePicUrl: $profilePicUrl,'
         ' nickname: $nickname,'
         ' nationality: $nationality,'
         ' isAdmin: $isAdmin,'
@@ -134,6 +141,7 @@ class UserModel {
     String? passwordHashed,
     String? phone_number,
     String? email,
+    String? profilePicUrl,
     String? nickname,
     String? nationality,
     bool? isAdmin,
@@ -151,6 +159,7 @@ class UserModel {
       passwordHashed: passwordHashed ?? this.passwordHashed,
       phone_number: phone_number ?? this.phone_number,
       email: email ?? this.email,
+      profilePicUrl: profilePicUrl ?? this.profilePicUrl,
       nickname: nickname ?? this.nickname,
       nationality: nationality ?? this.nationality,
       isAdmin: isAdmin ?? this.isAdmin,
@@ -171,6 +180,7 @@ class UserModel {
       'passwordHashed': passwordHashed,
       'phone_number': phone_number,
       'email': email,
+      'profilePicUrl': profilePicUrl,
       'nickname': nickname,
       'nationality': nationality,
       'isAdmin': isAdmin,
@@ -192,6 +202,7 @@ class UserModel {
       // API sometimes returns 'number' instead of 'phone_number' in certain response structures.
       phone_number: (map['phone_number'] ?? map['number']) as String?,
       email: map['email'] as String?,
+      profilePicUrl: map['profilePicUrl'] as String?,
       nickname: map['nickname'] as String?,
       nationality: map['nationality'] as String?,
       isAdmin: map['isAdmin'] as bool?,

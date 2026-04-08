@@ -38,7 +38,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   easy_localization: ^3.0.7
   flutter_svg: ^2.0.16
-  image_picker: ^1.1.2
+  image_picker: ^1.2.1
   photo_view: ^0.15.0
   url_launcher: ^6.3.1
   flutter_secure_storage: ^9.2.2
@@ -67,6 +67,7 @@ dependencies:
   geocoding: ^4.0.0
   google_sign_in: ^6.2.1
   file_picker: ^10.3.10
+  firebase_analytics: ^11.6.0
 
 dev_dependencies:
   flutter_test:

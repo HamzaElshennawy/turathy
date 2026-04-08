@@ -36,6 +36,9 @@ abstract class CachedVariables {
   
   /// Indicates if the user is authenticated via Google Sign-In.
   static bool isGoogleSignIn = false;
+  
+  /// The user's profile picture URL
+  static String? profilePicUrl;
 }
 
 

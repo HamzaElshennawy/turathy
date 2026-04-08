@@ -38,6 +38,9 @@ abstract class EndPoints {
   /// Endpoint for updating user profile details.
   static const String updateUser = "users/update-user";
 
+  /// Returns the path to upload a user profile picture based on [id].
+  static String uploadProfilePicture(int id) => "users/profile-picture?user_id=$id";
+
   // ── Auctions ────────────────────────────────────────────────────────────────
   
   /// Endpoint to submit a new auction (Host feature).

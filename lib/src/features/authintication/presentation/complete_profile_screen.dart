@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
 import 'package:turathy/src/features/main_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:turathy/src/core/helper/dio/end_points.dart';
 
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
@@ -242,10 +244,26 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: themeColor.withOpacity(0.1),
-                      child: Text(
-                        user?.name?.isNotEmpty == true ? user!.name!.substring(0, 1).toUpperCase() : '?',
-                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: themeColor),
-                      ),
+                      child: user?.profilePicUrl == null
+                          ? Text(
+                              user?.name?.isNotEmpty == true ? user!.name!.substring(0, 1).toUpperCase() : '?',
+                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: themeColor),
+                            )
+                          : ClipOval(
+                              child: CachedNetworkImage(
+                                imageUrl: user!.profilePicUrl!.startsWith('http')
+                                    ? user.profilePicUrl!
+                                    : '${EndPoints.baseUrl}${user.profilePicUrl}',
+                                width: 100,
+                                height: 100,
+                                memCacheHeight: 300,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    const Center(child: CircularProgressIndicator()),
+                                errorWidget: (context, url, error) =>
+                                    Icon(Icons.error, color: themeColor),
+                              ),
+                            ),
                     ),
                     gapH16,
                     Text(

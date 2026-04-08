@@ -35,6 +35,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>7</string>
+	<key>GIDServerClientID</key>
+	<string>214584571316-0e25d07432f64jo817isd9hkusq87ppd.apps.googleusercontent.com</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
