@@ -75,28 +75,35 @@ jobs:
 
   ios:
     runs-on: macos-latest
-    # needs: build
-
+  
     steps:
       - uses: actions/checkout@v3
-
+  
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1.7
+        with:
+          xcode-version: '26.5'
+  
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.5'
-
+  
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.1'
           bundler-cache: true
           working-directory: ios
-
+  
       - name: Install dependencies
         working-directory: ios
         run: bundle install
-
+  
       - run: flutter pub get
-
+  
+      - name: Verify Xcode
+        run: xcodebuild -version
+  
       - name: Run Fastlane
         working-directory: ios
         run: bundle exec fastlane ios beta --verbose
@@ -105,3 +112,4 @@ jobs:
           MATCH_GIT_URL: https://x-access-token:${{ secrets.MATCH_GIT_TOKEN }}@github.com/HamzaElshennawy/ios-certificates
           FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+  
