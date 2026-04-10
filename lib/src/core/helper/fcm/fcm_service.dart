@@ -56,6 +56,8 @@ class FCMService {
   /// The most recently retrieved FCM registration token.
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
+  String? _apnsToken;
+  String? get apnsToken => _apnsToken;
 
   /// Internal broadcast controller for exposing incoming foreground messages.
   final StreamController<RemoteMessage> _messageController =
@@ -161,14 +163,13 @@ class FCMService {
         // iOS requires a valid APNs token before Firebase can generate an FCM token.
         // We retry for up to 10 seconds to account for network/handshake delay.
         int retries = 0;
-        String? apnsToken;
         while (retries < 5) {
-          apnsToken = await _messaging.getAPNSToken();
-          if (apnsToken != null) break;
+          _apnsToken = await _messaging.getAPNSToken();
+          if (_apnsToken != null) break;
           await Future.delayed(const Duration(seconds: 2));
           retries++;
         }
-        if (apnsToken == null) {
+        if (_apnsToken == null) {
           log('APNs token not set. Token generation skipped.');
           return;
         }
@@ -204,6 +205,7 @@ class FCMService {
         userId: userId,
         token: token,
         platform: platformToSend,
+        apnsToken: Platform.isIOS ? _apnsToken : null,
       );
       log('FCM token registered with backend successfully');
     } catch (e, stack) {

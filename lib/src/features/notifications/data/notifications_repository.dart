@@ -105,14 +105,20 @@ class NotificationsRepository {
     required int userId,
     required String token,
     required String platform,
+    String? apnsToken,
   }) async {
     log(
-      'Registering device with backend: User=$userId, Token=$token, Platform=$platform',
+      'Registering device with backend: User=$userId, Token=$token, Platform=$platform, APNs=${apnsToken != null && apnsToken.isNotEmpty ? 'present' : 'absent'}',
       name: 'NotificationsRepository',
     );
     final result = await DioHelper.postData(
       url: EndPoints.registerDevice,
-      data: {'user_id': userId, 'token': token, 'platform': platform},
+      data: {
+        'user_id': userId,
+        'token': token,
+        'platform': platform,
+        if (apnsToken != null && apnsToken.isNotEmpty) 'apnsToken': apnsToken,
+      },
       token: CachedVariables.token,
     );
     log(
