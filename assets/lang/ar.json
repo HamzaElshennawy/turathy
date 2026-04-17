@@ -311,6 +311,23 @@
   "orderSubmittedSuccessfully": "تم تقديم الطلب بنجاح",
   "completeYourOrder": "إكمال الطلب",
   "viewReceipt": "عرض الإيصال",
+  "paymentSuccessful": "تم الدفع بنجاح",
+  "paymentFailed": "فشلت عملية الدفع",
+  "paymentVerificationPending": "ما زلنا نتحقق من عملية الدفع. سنحدث حالة الطلب فور وصول التأكيد.",
+  "geideaSessionReady": "تم إنشاء جلسة جيديا بنجاح",
+  "geideaCheckoutComingSoon": "سيتم فتح الدفع الآمن عبر جيديا هنا قريبًا.",
+  "geideaCheckoutPreparing": "جاري تجهيز الدفع الآمن عبر جيديا",
+  "geideaCheckoutCanceled": "تم إلغاء عملية الدفع قبل الاكتمال.",
+  "geideaSdkNotConfigured": "لم يتم إعداد الدفع عبر Geidea بعد. وفّر GEIDEA_PUBLIC_KEY وGEIDEA_API_PASSWORD وGEIDEA_BASE_URL لتفعيل الدفع بالبطاقة.",
+  "geideaSaveCardNotSupported": "إصدار Geidea SDK الحالي لا يدعم جلسات حفظ البطاقة المستقلة بعد.",
+  "savedPaymentMethods": "البطاقات المحفوظة",
+  "noSavedPaymentMethods": "لا توجد بطاقات محفوظة بعد",
+  "addCard": "إضافة بطاقة",
+  "removeCard": "حذف البطاقة",
+  "saveCardForFutureUse": "حفظ هذه البطاقة للمدفوعات القادمة",
+  "defaultCard": "الافتراضية",
+  "cardSavedSuccessfully": "تم حفظ البطاقة بنجاح",
+  "savedPaymentMethodsRefreshed": "تم تحديث البطاقات المحفوظة",
   "shipped": "تم الشحن",
   "delivered": "تم التوصيل",
   "confirmed": "مؤكد",
@@ -452,4 +469,26 @@
   "privacy9Content": "إذا كان لديك أي أسئلة أو استفسارات تتعلق بخصوصيتك أو هذه السياسة، يرجى الاتصال بفريق الدعم عبر التطبيق.",
   "whatsApp": "واتساب",
   "call": "اتصال"
+,
+  "noItemsFound": "لا توجد عناصر"
+,
+  "orderNotAvailable": "هذا الطلب غير متاح الآن."
+,
+  "couldNotLoadOrders": "تعذر تحميل الطلبات حالياً."
+,
+  "couldNotLoadCart": "تعذر تحميل السلة حالياً."
+,
+  "couldNotUpdateCart": "تعذر تحديث السلة حالياً."
+,
+  "couldNotUploadReceipt": "تعذر رفع الإيصال حالياً. يرجى المحاولة مرة أخرى."
+,
+  "couldNotUpdateAddress": "تعذر تحديث عنوان الشحن حالياً. يرجى المحاولة مرة أخرى."
+,
+  "couldNotStartPayment": "تعذر بدء عملية الدفع حالياً. يرجى المحاولة مرة أخرى."
+,
+  "couldNotCheckPaymentStatus": "تعذر تأكيد حالة الدفع حالياً. يرجى التحقق بعد قليل."
+,
+  "couldNotLoadSavedCards": "تعذر تحميل البطاقات المحفوظة حالياً."
+,
+  "couldNotUpdateSavedCards": "تعذر تحديث البطاقات المحفوظة حالياً."
 }

@@ -5,13 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../data/cart_repository.dart';
 import '../domain/cart_model.dart';
 import '../../addresses/domain/user_address_model.dart';
 import '../../addresses/presentation/address_selection_screen.dart';
-import '../../orders/presentation/order_confirmation_screen.dart';
+import '../../orders/presentation/order_details_screen.dart';
 import '../../orders/domain/order_model.dart';
 import '../../orders/domain/order_item_model.dart';
 
@@ -140,11 +141,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Error: $error'),
+              Text(
+                AppStrings.couldNotLoadCart.tr(),
+                textAlign: TextAlign.center,
+              ),
               gapH16,
               ElevatedButton(
                 onPressed: () => ref.refresh(cartProvider(userId)),
-                child: const Text('Retry'),
+                child: Text(AppStrings.retry.tr()),
               ),
             ],
           ),
@@ -369,8 +373,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       ref.invalidate(cartProvider(userId));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.couldNotUpdateCart.tr(),
+          isError: true,
         );
       }
     }
@@ -389,8 +395,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       ref.invalidate(cartProvider(userId));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.couldNotUpdateCart.tr(),
+          isError: true,
         );
       }
     } finally {
@@ -420,7 +428,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         return;
       }
 
-      // Step 2: Navigate to OrderConfirmationScreen with selected address
+      // Step 2: Navigate to OrderDetailsScreen with selected address
       final tempOrder = OrderModel(
         id: 0,
         userId: CachedVariables.userId!,
@@ -449,7 +457,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => OrderConfirmationScreen(
+          builder: (context) => OrderDetailsScreen(
             order: tempOrder,
             preselectedAddress: selectedAddress,
           ),

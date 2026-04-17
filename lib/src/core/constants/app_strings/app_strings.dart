@@ -407,6 +407,26 @@ class AppStrings {
   static const String orderSubmittedSuccessfully = 'orderSubmittedSuccessfully';
   static const String completeYourOrder = 'completeYourOrder';
   static const String viewReceipt = 'viewReceipt';
+  static const String paymentSuccessful = 'paymentSuccessful';
+  static const String paymentFailed = 'paymentFailed';
+  static const String paymentVerificationPending =
+      'paymentVerificationPending';
+  static const String geideaSessionReady = 'geideaSessionReady';
+  static const String geideaCheckoutComingSoon = 'geideaCheckoutComingSoon';
+  static const String geideaCheckoutPreparing = 'geideaCheckoutPreparing';
+  static const String geideaCheckoutCanceled = 'geideaCheckoutCanceled';
+  static const String geideaSdkNotConfigured = 'geideaSdkNotConfigured';
+  static const String geideaSaveCardNotSupported =
+      'geideaSaveCardNotSupported';
+  static const String savedPaymentMethods = 'savedPaymentMethods';
+  static const String noSavedPaymentMethods = 'noSavedPaymentMethods';
+  static const String addCard = 'addCard';
+  static const String removeCard = 'removeCard';
+  static const String saveCardForFutureUse = 'saveCardForFutureUse';
+  static const String defaultCard = 'defaultCard';
+  static const String cardSavedSuccessfully = 'cardSavedSuccessfully';
+  static const String savedPaymentMethodsRefreshed =
+      'savedPaymentMethodsRefreshed';
 
   // ── Order Tracking ────────────────────────────────────────────────────────
   
@@ -420,11 +440,22 @@ class AppStrings {
   static const String itemOnItsWay = 'itemOnItsWay';
   static const String itemDeliveredSuccessfully = 'itemDeliveredSuccessfully';
   static const String checkOrder = 'checkOrder';
+  static const String noItemsFound = 'noItemsFound';
 
   // ── Errors & Connectivity ─────────────────────────────────────────────────
   
   static const String noInternetConnection = 'noInternetConnection';
   static const String checkInternetConnection = 'checkInternetConnection';
+  static const String orderNotAvailable = 'orderNotAvailable';
+  static const String couldNotLoadOrders = 'couldNotLoadOrders';
+  static const String couldNotLoadCart = 'couldNotLoadCart';
+  static const String couldNotUpdateCart = 'couldNotUpdateCart';
+  static const String couldNotUploadReceipt = 'couldNotUploadReceipt';
+  static const String couldNotUpdateAddress = 'couldNotUpdateAddress';
+  static const String couldNotStartPayment = 'couldNotStartPayment';
+  static const String couldNotCheckPaymentStatus = 'couldNotCheckPaymentStatus';
+  static const String couldNotLoadSavedCards = 'couldNotLoadSavedCards';
+  static const String couldNotUpdateSavedCards = 'couldNotUpdateSavedCards';
 
   // ── Address Book ──────────────────────────────────────────────────────────
   

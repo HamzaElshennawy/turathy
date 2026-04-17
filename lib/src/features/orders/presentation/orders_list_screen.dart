@@ -7,15 +7,14 @@ import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
+import 'package:turathy/src/features/orders/domain/order_flow_state.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/presentation/widgets/order_card.dart';
-import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
 import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/winning_auction_model.dart';
 import 'package:turathy/src/features/auctions/data/auction_payments_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_payment_model.dart';
-import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 import '../../cart/presentation/cart_screen.dart';
 
 class OrdersListScreen extends ConsumerStatefulWidget {
@@ -139,15 +138,15 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Center(child: Text('Error: $e')),
+                error: (e, st) => _buildLoadErrorState(),
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Error: $e')),
+            error: (e, st) => _buildLoadErrorState(),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),
+        error: (e, st) => _buildLoadErrorState(),
       );
     } else {
       return AsyncValueWidget(
@@ -184,7 +183,7 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No items found',
+                    AppStrings.noItemsFound.tr(),
                     style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
                 ],
@@ -208,26 +207,8 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
             if (winning.id != 0 && p.winningId == winning.id) return true;
             return p.productId == (winning.productId ?? 0);
           }).firstOrNull;
-
-          Color statusColor = Colors.orange;
-          String statusStr = AppStrings.waitingForPayment.tr();
-          if (payment != null) {
-            if (payment.isApproved) {
-              statusStr = AppStrings.alreadyPaid.tr();
-              statusColor = Colors.green;
-            } else if (payment.isRejected) {
-              statusStr = AppStrings.paymentRejected.tr();
-              statusColor = Colors.red;
-            } else {
-              statusStr = AppStrings.paymentPending.tr();
-              statusColor = Colors.orange;
-            }
-          }
-
-          if (winning.sold) {
-            statusStr = AppStrings.alreadyPaid.tr();
-            statusColor = Colors.green;
-          }
+          final previewOrder = _buildAuctionPreviewOrder(winning, payment);
+          final previewStage = OrderFlowState.stage(previewOrder);
 
           return OrderCard(
             title: winning.localizedAuctionTitle(context.locale.languageCode),
@@ -235,27 +216,30 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
               context.locale.languageCode,
             ),
             price: winning.formattedPrice,
-            status: statusStr,
-            statusColor: statusColor,
+            status: _getOrderStatusText(previewStage),
+            statusColor: _getOrderStatusColor(previewStage),
             imageUrl: _getWinningImage(winning),
             onTap: () {
               if (payment == null || payment.isRejected) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => OrderConfirmationScreen(
-                      order: OrderModel.fromWinningAuction(winning),
-                    ),
+                    builder: (context) =>
+                        OrderDetailsScreen(order: previewOrder),
                   ),
                 );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyPaymentsScreen(),
-                  ),
-                );
+                return;
               }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OrderDetailsScreen(
+                    order: previewOrder,
+                    productImage: _getWinningImage(winning),
+                  ),
+                ),
+              );
             },
           );
         } else {
@@ -309,6 +293,123 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
           .where((order) => order.auctionId == 0 && order.auction == null)
           .toList();
     }
+  }
+
+  OrderModel _buildAuctionPreviewOrder(
+    WinningAuctionModel winning,
+    AuctionPaymentModel? payment,
+  ) {
+    String? paymentStatus;
+
+    if (payment != null) {
+      if (payment.isApproved) {
+        paymentStatus = 'approved';
+      } else if (payment.isRejected) {
+        paymentStatus = 'rejected';
+      } else if (payment.isPending) {
+        paymentStatus = 'initiated';
+      }
+    } else if (winning.sold) {
+      paymentStatus = 'approved';
+    }
+
+    return OrderModel.fromWinningAuction(winning).copyWith(
+      paymentStatus: paymentStatus,
+      paymentId: payment?.id.toString(),
+      createdAt: payment?.createdAt,
+      updatedAt: payment?.updatedAt,
+      auction: {
+        'title': winning.auctionTitle,
+        'title_ar': winning.auctionTitleAr,
+        'title_en': winning.auctionTitleEn,
+        'description_ar': winning.auctionDescriptionAr,
+        'description_en': winning.auctionDescriptionEn,
+        'image_url': winning.auctionImage,
+      },
+    );
+  }
+
+  String _getOrderStatusText(OrderFlowStage stage) {
+    switch (stage) {
+      case OrderFlowStage.confirmed:
+        return AppStrings.completed.tr();
+      case OrderFlowStage.paymentApprovedAwaitingOrderApproval:
+        return AppStrings.paymentApproved.tr();
+      case OrderFlowStage.shipped:
+        return AppStrings.shipped.tr();
+      case OrderFlowStage.delivered:
+        return AppStrings.delivered.tr();
+      case OrderFlowStage.cancelled:
+      case OrderFlowStage.paymentRejected:
+        return AppStrings.orderCanceled.tr();
+      case OrderFlowStage.paymentReview:
+        return AppStrings.paymentPending.tr();
+      case OrderFlowStage.pending:
+        return AppStrings.pending.tr();
+    }
+  }
+
+  Color _getOrderStatusColor(OrderFlowStage stage) {
+    switch (stage) {
+      case OrderFlowStage.confirmed:
+      case OrderFlowStage.paymentApprovedAwaitingOrderApproval:
+        return Colors.green;
+      case OrderFlowStage.shipped:
+        return Colors.blue;
+      case OrderFlowStage.delivered:
+        return const Color(0xFF2D4739);
+      case OrderFlowStage.cancelled:
+      case OrderFlowStage.paymentRejected:
+        return Colors.red;
+      case OrderFlowStage.paymentReview:
+      case OrderFlowStage.pending:
+        return Colors.orange;
+    }
+  }
+
+  Widget _buildLoadErrorState() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    AppStrings.couldNotLoadOrders.tr(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.invalidate(getUserOrdersProvider);
+                      ref.invalidate(userWinningAuctionsProvider);
+                      ref.invalidate(myPaymentsProvider);
+                    },
+                    child: Text(AppStrings.retry.tr()),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   String? _getWinningImage(WinningAuctionModel winning) {
@@ -390,47 +491,40 @@ class _OrderItemWidget extends ConsumerWidget {
     return '';
   }
 
-  String _getOrderStatusText(String? status) {
-    status = status?.toLowerCase() ?? 'pending';
-    switch (status) {
-      case 'confirmed':
+  String _getOrderStatusText(OrderFlowStage stage) {
+    switch (stage) {
+      case OrderFlowStage.confirmed:
         return AppStrings.completed.tr();
-      case 'pending_approval':
-        return AppStrings.waitingForApproval.tr();
-      case 'shipped':
-        return AppStrings.shipped.tr();
-      case 'delivered':
-        return AppStrings.delivered.tr();
-      case 'cancelled':
-      case 'rejected':
-        return AppStrings.orderCanceled.tr();
-      case 'initiated':
-      case 'pending':
-        return AppStrings.paymentPending.tr();
-      case 'approved':
+      case OrderFlowStage.paymentApprovedAwaitingOrderApproval:
         return AppStrings.paymentApproved.tr();
-      default:
+      case OrderFlowStage.shipped:
+        return AppStrings.shipped.tr();
+      case OrderFlowStage.delivered:
+        return AppStrings.delivered.tr();
+      case OrderFlowStage.cancelled:
+      case OrderFlowStage.paymentRejected:
+        return AppStrings.orderCanceled.tr();
+      case OrderFlowStage.paymentReview:
+        return AppStrings.paymentPending.tr();
+      case OrderFlowStage.pending:
         return AppStrings.pending.tr();
     }
   }
 
-  Color _getOrderStatusColor(String? status) {
-    status = status?.toLowerCase() ?? 'pending';
-    switch (status) {
-      case 'confirmed':
-      case 'approved':
+  Color _getOrderStatusColor(OrderFlowStage stage) {
+    switch (stage) {
+      case OrderFlowStage.confirmed:
+      case OrderFlowStage.paymentApprovedAwaitingOrderApproval:
         return Colors.green;
-      case 'shipped':
+      case OrderFlowStage.shipped:
         return Colors.blue;
-      case 'delivered':
+      case OrderFlowStage.delivered:
         return const Color(0xFF2D4739);
-      case 'cancelled':
-      case 'rejected':
+      case OrderFlowStage.cancelled:
+      case OrderFlowStage.paymentRejected:
         return Colors.red;
-      case 'pending_approval':
-      case 'initiated':
-      case 'pending':
-      default:
+      case OrderFlowStage.paymentReview:
+      case OrderFlowStage.pending:
         return Colors.orange;
     }
   }
@@ -439,15 +533,14 @@ class _OrderItemWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final firstItem = order.items.firstOrNull;
     final String finalImageUrl = firstItem?.fullImageUrl ?? '';
+    final displayStage = OrderFlowState.stage(order);
 
     return OrderCard(
       title: _getOrderTitle(context, order),
       description: _getOrderDescription(context, order),
       price: '${order.total} ${AppStrings.currency.tr()}',
-      status: _getOrderStatusText(order.orderStatus ?? order.paymentStatus),
-      statusColor: _getOrderStatusColor(
-        order.orderStatus ?? order.paymentStatus,
-      ),
+      status: _getOrderStatusText(displayStage),
+      statusColor: _getOrderStatusColor(displayStage),
       imageUrl: finalImageUrl.isNotEmpty ? finalImageUrl : null,
       onTap: () {
         Navigator.push(
@@ -463,4 +556,3 @@ class _OrderItemWidget extends ConsumerWidget {
     );
   }
 }
-

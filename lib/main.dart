@@ -12,6 +12,7 @@ import 'src/core/helper/cache/cached_keys.dart';
 import 'src/core/helper/cache/cached_variables.dart';
 import 'src/core/helper/dio/dio_helper.dart';
 import 'src/core/helper/fcm/fcm_service.dart';
+import 'src/features/orders/utils/payment_debug_logger.dart';
 import 'src/features/profile/data/shared_preference_theme_repo.dart';
 
 void main() async {
@@ -35,6 +36,10 @@ void main() async {
 
   // Initialize FCM service
   fcmService.initialize();
+
+  PaymentDebugLogger.info('Payment debug logging initialized', data: {
+    'enabled': PaymentDebugLogger.enabled,
+  });
 
   registerErrorHandler();
   runApp(

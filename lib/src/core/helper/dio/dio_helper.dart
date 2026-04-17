@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import '../../../features/authintication/data/auth_repository.dart';
+import '../../../features/orders/utils/payment_debug_logger.dart';
 import '../../../routing/app_router.dart';
 import '../../../routing/rout_constants.dart';
 import '../../common_widgets/no_internet_dialog.dart';
@@ -31,6 +32,26 @@ class DioHelper {
 
   /// Track whether the "No Internet" dialog is currently visible to prevent multiple overlays.
   static bool _isShowingNoInternetDialog = false;
+
+  static bool _isPaymentUrl(String url) {
+    return url.contains('payments/') ||
+        url.contains('order/upload-receipt') ||
+        url.contains('auction-payments/') ||
+        url.contains('order/add-order') ||
+        url.contains('order/add-product-order') ||
+        url.contains('order/update-order');
+  }
+
+  static Map<String, Object?> _responseSnapshot(Response response) {
+    final data = response.data;
+    if (data is Map) {
+      return Map<String, Object?>.from(data);
+    }
+    if (data is List) {
+      return {'listLength': data.length, 'data': data};
+    }
+    return {'data': data?.toString()};
+  }
 
   /// Initializes the [Dio] instance with base configuration and interceptors.
   ///
@@ -67,18 +88,20 @@ class DioHelper {
       };
     }
 
-    // Add interceptor for pretty-printing network logs in the console
-    dio.interceptors.add(
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-        compact: true,
-        maxWidth: 90,
-      ),
-    );
+    // Keep network logging minimal and debug-only to avoid leaking tokens or payment payloads.
+    if (kDebugMode) {
+      dio.interceptors.add(
+        PrettyDioLogger(
+          requestHeader: false,
+          requestBody: false,
+          responseBody: false,
+          responseHeader: false,
+          error: true,
+          compact: true,
+          maxWidth: 90,
+        ),
+      );
+    }
 
     // Standard interceptor for global response and error handling
     dio.interceptors.add(
@@ -142,7 +165,14 @@ class DioHelper {
         "Accept": "application/json",
         "lang": lang,
       };
-      return await dio.get(
+      if (_isPaymentUrl(url)) {
+        PaymentDebugLogger.info('DioHelper.GET:request', data: {
+          'url': url,
+          'query': query,
+          'lang': lang,
+        });
+      }
+      final response = await dio.get(
         url,
         queryParameters: query,
         options: Options(
@@ -151,7 +181,25 @@ class DioHelper {
           responseType: ResponseType.json,
         ),
       );
+      if (_isPaymentUrl(url)) {
+        PaymentDebugLogger.info('DioHelper.GET:response', data: {
+          'url': url,
+          'statusCode': response.statusCode,
+          'response': _responseSnapshot(response),
+        });
+      }
+      return response;
     } catch (error) {
+      if (_isPaymentUrl(url)) {
+        PaymentDebugLogger.error(
+          'DioHelper.GET:error',
+          error: error,
+          data: {
+            'url': url,
+            'query': query,
+          },
+        );
+      }
       log('DioHelper (GET): $error');
       rethrow;
     }
@@ -178,7 +226,18 @@ class DioHelper {
         "lang": lang,
         if (!isMultipart) "Content-Type": "application/json",
       };
-      return await dio.post(
+      if (_isPaymentUrl(url)) {
+        PaymentDebugLogger.info('DioHelper.POST:request', data: {
+          'url': url,
+          'query': query,
+          'lang': lang,
+          'isMultipart': isMultipart,
+          'data': isMultipart ? {'multipart': true} : data is Map
+              ? Map<String, Object?>.from(data as Map)
+              : {'data': data?.toString()},
+        });
+      }
+      final response = await dio.post(
         url,
         queryParameters: query,
         data: data,
@@ -188,7 +247,26 @@ class DioHelper {
           responseType: ResponseType.json,
         ),
       );
+      if (_isPaymentUrl(url)) {
+        PaymentDebugLogger.info('DioHelper.POST:response', data: {
+          'url': url,
+          'statusCode': response.statusCode,
+          'response': _responseSnapshot(response),
+        });
+      }
+      return response;
     } catch (error) {
+      if (_isPaymentUrl(url)) {
+        PaymentDebugLogger.error(
+          'DioHelper.POST:error',
+          error: error,
+          data: {
+            'url': url,
+            'query': query,
+            'isMultipart': isMultipart,
+          },
+        );
+      }
       log('DioHelper (POST): $error');
       rethrow;
     }

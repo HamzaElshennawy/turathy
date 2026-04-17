@@ -6,6 +6,7 @@ import '../../../core/helper/dio/dio_helper.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../../authintication/data/auth_repository.dart';
 import '../domain/auction_payment_model.dart';
+import '../../orders/utils/payment_debug_logger.dart';
 
 class AuctionPaymentsRepository {
   Future<AuctionPaymentModel> uploadReceipt({
@@ -17,6 +18,15 @@ class AuctionPaymentsRepository {
     required String filePath,
   }) async {
     final String fileName = filePath.split('/').last.split('\\').last;
+    PaymentDebugLogger.info('uploadAuctionReceipt:request', data: {
+      'userId': userId,
+      'auctionId': auctionId,
+      'productId': productId,
+      'orderId': orderId,
+      'amount': amount,
+      'fileName': fileName,
+      'filePath': filePath,
+    });
 
     final formData = FormData.fromMap({
       'user_id': userId,
@@ -35,10 +45,26 @@ class AuctionPaymentsRepository {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
+      PaymentDebugLogger.info('uploadAuctionReceipt:success', data: {
+        'statusCode': response.statusCode,
+        'response': response.data is Map
+            ? Map<String, Object?>.from(response.data as Map)
+            : {'response': response.data.toString()},
+      });
       return AuctionPaymentModel.fromJson(response.data['data']);
     } else {
       String message =
           response.data['error'] ?? 'An error occurred while uploading receipt';
+      PaymentDebugLogger.error(
+        'uploadAuctionReceipt:failure',
+        error: message,
+        data: {
+          'statusCode': response.statusCode,
+          'response': response.data is Map
+              ? Map<String, Object?>.from(response.data as Map)
+              : {'response': response.data.toString()},
+        },
+      );
       throw AuthException(message, response.statusCode);
     }
   }

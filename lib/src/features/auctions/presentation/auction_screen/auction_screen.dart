@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
@@ -562,11 +563,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         _isAccessLoading = false;
       });
       if (status == 'PENDING') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.accessPending.tr()),
-            backgroundColor: Colors.blue,
-          ),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.accessPending.tr(),
+          icon: Icons.info_outline,
         );
       }
     }
@@ -1438,11 +1438,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         final wasNotGranted = _accessStatus != 'GRANTED';
         _checkAccess().then((_) {
           if (mounted && wasNotGranted && _accessStatus == 'GRANTED') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(AppStrings.accessGranted.tr()),
-                backgroundColor: Colors.green,
-              ),
+            AppFunctions.showSnackBar(
+              context: context,
+              message: AppStrings.accessGranted.tr(),
             );
           }
         });

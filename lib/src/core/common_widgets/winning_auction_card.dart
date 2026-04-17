@@ -4,8 +4,7 @@
 /// 
 /// This widget serves as a summary and gateway for post-auction fulfillment:
 /// - **Visual Status Tracking**: Uses distinct color-coded badges to indicate if payment is 'Already Paid' or 'Waiting'.
-/// - **Fulfillment Bridge**: For unpaid wins, provides a direct CTA to [OrderConfirmationScreen].
-/// - **Transaction History**: Offers a quick shortcut to [MyPaymentsScreen] to view receipts.
+/// - **Fulfillment Bridge**: For unpaid wins, provides a direct CTA to [OrderDetailsScreen].
 /// - **Data Presentation**: Displays bid price, product name, and auction timing in a clean, structured table.
 library;
 
@@ -13,9 +12,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../features/auctions/domain/winning_auction_model.dart';
-import '../../features/auctions/presentation/auction_screen/my_payments_screen.dart';
 import '../../features/orders/domain/order_model.dart';
-import '../../features/orders/presentation/order_confirmation_screen.dart';
+import '../../features/orders/presentation/order_details_screen.dart';
 import '../constants/app_strings/app_strings.dart';
 import 'custom_card.dart';
 import 'primary_button.dart';
@@ -76,8 +74,6 @@ class WinningAuctionCard extends StatelessWidget {
           if (!winningAuction.sold) ...[
             const SizedBox(height: 24),
             _buildOrderButton(context),
-            const SizedBox(height: 8),
-            _buildViewPaymentsLink(context, theme),
           ],
         ],
       ),
@@ -123,7 +119,7 @@ class WinningAuctionCard extends StatelessWidget {
       onPressed: () async {
         await Navigator.of(context).push<bool>(
           MaterialPageRoute(
-            builder: (context) => OrderConfirmationScreen(
+            builder: (context) => OrderDetailsScreen(
               order: OrderModel.fromWinningAuction(winningAuction),
             ),
           ),
@@ -131,24 +127,6 @@ class WinningAuctionCard extends StatelessWidget {
       },
       text: AppStrings.continueToOrder.tr(),
       isLoading: false,
-    );
-  }
-
-  /// Internal: Builds the contextual shortcut to view general payments.
-  Widget _buildViewPaymentsLink(BuildContext context, ThemeData theme) {
-    return Center(
-      child: TextButton.icon(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const MyPaymentsScreen()),
-          );
-        },
-        icon: Icon(Icons.receipt_long, size: 18, color: theme.colorScheme.primary),
-        label: Text(
-          AppStrings.viewPayments.tr(),
-          style: TextStyle(color: theme.colorScheme.primary),
-        ),
-      ),
     );
   }
 

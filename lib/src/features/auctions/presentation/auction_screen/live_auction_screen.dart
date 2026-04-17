@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/common_widgets/async_value_widget.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
@@ -24,7 +25,6 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
-import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
 import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bids_history_widget.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
@@ -111,19 +111,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             if (message.toString().toLowerCase().contains(
               'max bid limit exceeded',
             )) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppStrings.bidLimitExceeded.tr()),
-                  backgroundColor: Colors.red,
-                ),
+              AppFunctions.showSnackBar(
+                context: context,
+                message: AppStrings.bidLimitExceeded.tr(),
+                isError: true,
               );
             } else {
               // Display other errors generic or as they come
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(message.toString()),
-                  backgroundColor: Colors.red,
-                ),
+              AppFunctions.showSnackBar(
+                context: context,
+                message: message.toString(),
+                isError: true,
               );
             }
           }
@@ -144,12 +142,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             });
           }
           final hint = minBid != null ? ' (min: $minBid)' : '';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${'priceUpdatedRetry'.tr()}$hint'),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-            ),
+          AppFunctions.showSnackBar(
+            context: context,
+            message: '${'priceUpdatedRetry'.tr()}$hint',
+            icon: Icons.info_outline,
           );
         });
   }
@@ -197,11 +193,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         _isAccessLoading = false;
       });
       if (status == 'PENDING') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.accessPending.tr()),
-            backgroundColor: Colors.blue,
-          ),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.accessPending.tr(),
+          icon: Icons.info_outline,
         );
       }
     }
@@ -341,12 +336,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             _scheduleFailSafeTimer(event.liveStartDate!);
           }
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('preAuctionPhase'.tr()),
-            backgroundColor: Colors.blueAccent,
-            duration: const Duration(seconds: 2),
-          ),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: 'preAuctionPhase'.tr(),
+          icon: Icons.info_outline,
         );
       }
     });
@@ -1392,7 +1385,7 @@ class AuctionResultDialog extends ConsumerWidget {
 
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => OrderConfirmationScreen(
+                            builder: (context) => OrderDetailsScreen(
                               order: OrderModel.fromWinningAuction(
                                 winningModel,
                               ),

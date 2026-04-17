@@ -119,6 +119,26 @@ abstract class EndPoints {
   /// Endpoint to upload proof of payment for store orders.
   static const String uploadStoreReceipt = 'order/upload-receipt';
 
+  /// Returns the path to fetch trusted payment/order status for a specific order.
+  static String getOrderPaymentStatus(int orderId) => 'payments/orders/$orderId/status';
+
+  /// Endpoint to create a Geidea checkout session for a store order.
+  static const String createGeideaSession = 'payments/geidea/session';
+
+  /// Endpoint to create a Geidea standalone save-card session.
+  static const String createGeideaSaveCardSession = 'payments/geidea/save-card/session';
+
+  /// Endpoint to fetch the current user's saved payment methods.
+  static const String savedPaymentMethods = 'payments/saved-methods';
+
+  /// Endpoint to deactivate a saved payment method.
+  static String deactivateSavedPaymentMethod(int methodId) =>
+      'payments/saved-methods/$methodId/deactivate';
+
+  /// Endpoint to set a saved payment method as default.
+  static String setDefaultSavedPaymentMethod(int methodId) =>
+      'payments/saved-methods/$methodId/default';
+
   // ── Notifications ───────────────────────────────────────────────────────────
   
   /// Returns the path to fetch notification history for user [userId].
@@ -223,4 +243,3 @@ abstract class EndPoints {
   /// Endpoint to fetch the user's pending or approved auction access requests.
   static const String getMyAuctionRequests = 'auction-access/get-my-requests';
 }
-

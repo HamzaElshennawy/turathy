@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element_parameter
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -192,10 +194,12 @@ class FilterWidget extends ConsumerWidget {
                         title: AppStrings.gradeRange.tr(),
                         label1: AppStrings.gradeFrom.tr(),
                         label2: AppStrings.gradeTo.tr(),
-                        initialValue1:
-                            filterState.gradeFrom == -1 ? '' : filterState.gradeFrom?.toString(),
-                        initialValue2:
-                            filterState.gradeTo == -1 ? '' : filterState.gradeTo?.toString(),
+                        initialValue1: filterState.gradeFrom == -1
+                            ? ''
+                            : filterState.gradeFrom?.toString(),
+                        initialValue2: filterState.gradeTo == -1
+                            ? ''
+                            : filterState.gradeTo?.toString(),
                         keyboardType: TextInputType.number,
                         onChanged1: (val) {
                           ref
@@ -240,7 +244,9 @@ class FilterWidget extends ConsumerWidget {
                 onPressed: () {
                   String? selectedCategoryName;
                   for (final category
-                      in ref.read(filterWidgetControllerProvider.notifier).categories) {
+                      in ref
+                          .read(filterWidgetControllerProvider.notifier)
+                          .categories) {
                     if (category.id == filterState.selectedCategoryID) {
                       selectedCategoryName = category.name;
                       break;
@@ -252,7 +258,8 @@ class FilterWidget extends ConsumerWidget {
                         filterState.selectedCategoryID != -1,
                     minPrice != null,
                     maxPrice != null,
-                    filterState.country != null && filterState.country!.isNotEmpty,
+                    filterState.country != null &&
+                        filterState.country!.isNotEmpty,
                     filterState.dateFrom != null && filterState.dateFrom != -1,
                     filterState.dateTo != null && filterState.dateTo != -1,
                     filterState.denomination != null &&
@@ -260,7 +267,8 @@ class FilterWidget extends ConsumerWidget {
                     filterState.isGraded != null,
                     filterState.gradingCompany != null &&
                         filterState.gradingCompany!.isNotEmpty,
-                    filterState.gradeFrom != null && filterState.gradeFrom != -1,
+                    filterState.gradeFrom != null &&
+                        filterState.gradeFrom != -1,
                     filterState.gradeTo != null && filterState.gradeTo != -1,
                     filterState.metalType != null &&
                         filterState.metalType!.isNotEmpty,

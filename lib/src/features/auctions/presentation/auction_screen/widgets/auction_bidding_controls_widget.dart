@@ -10,8 +10,8 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/auctions/domain/winning_auction_model.dart';
-import 'package:turathy/src/features/orders/presentation/order_confirmation_screen.dart';
 import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
+import 'package:turathy/src/features/orders/domain/order_flow_state.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
 
@@ -620,8 +620,7 @@ class _AuctionBiddingControlsWidgetState
 
                       final bool showCheckOrder =
                           existingOrder != null &&
-                          (existingOrder.orderStatus == 'confirmed' ||
-                              existingOrder.orderStatus == 'pending_approval');
+                          OrderFlowState.canOpenOrderFromAuction(existingOrder);
 
                       return Column(
                         children: [
@@ -714,7 +713,7 @@ class _AuctionBiddingControlsWidgetState
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        OrderConfirmationScreen(
+                                        OrderDetailsScreen(
                                           order: OrderModel.fromWinningAuction(
                                             winningModel,
                                           ),
@@ -1120,8 +1119,7 @@ class _AuctionBiddingControlsWidgetState
 
       final bool showCheckOrder =
           existingOrder != null &&
-          (existingOrder.orderStatus == 'confirmed' ||
-              existingOrder.orderStatus == 'pending_approval');
+          OrderFlowState.canOpenOrderFromAuction(existingOrder);
 
       if (isWinner) {
         return Column(
@@ -1210,7 +1208,7 @@ class _AuctionBiddingControlsWidgetState
                   );
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => OrderConfirmationScreen(
+                      builder: (context) => OrderDetailsScreen(
                         order: OrderModel.fromWinningAuction(winningModel),
                       ),
                     ),

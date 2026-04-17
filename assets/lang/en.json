@@ -311,6 +311,23 @@
   "orderSubmittedSuccessfully": "Order submitted successfully",
   "completeYourOrder": "Complete Your Order",
   "viewReceipt": "View Receipt",
+  "paymentSuccessful": "Payment successful",
+  "paymentFailed": "Payment failed",
+  "paymentVerificationPending": "Your payment is still being verified. We will update your order once confirmation arrives.",
+  "geideaSessionReady": "Geidea session created successfully",
+  "geideaCheckoutComingSoon": "Secure Geidea checkout will open here soon.",
+  "geideaCheckoutPreparing": "Preparing secure Geidea checkout",
+  "geideaCheckoutCanceled": "Payment was canceled before completion.",
+  "geideaSdkNotConfigured": "Geidea checkout is not configured yet. Provide GEIDEA_PUBLIC_KEY, GEIDEA_API_PASSWORD, and GEIDEA_BASE_URL to enable card payments.",
+  "geideaSaveCardNotSupported": "This Geidea SDK build does not support standalone save-card sessions yet.",
+  "savedPaymentMethods": "Saved payment methods",
+  "noSavedPaymentMethods": "No saved cards yet",
+  "addCard": "Add card",
+  "removeCard": "Remove card",
+  "saveCardForFutureUse": "Save this card for future payments",
+  "defaultCard": "Default",
+  "cardSavedSuccessfully": "Card saved successfully",
+  "savedPaymentMethodsRefreshed": "Saved cards refreshed",
   "shipped": "Shipped",
   "delivered": "Delivered",
   "confirmed": "Confirmed",
@@ -452,4 +469,26 @@
   "privacy9Content": "If you have any questions or concerns regarding your privacy or this policy, please contact our support team through the application.",
   "whatsApp": "WhatsApp",
   "call": "Call"
+,
+  "noItemsFound": "No items found"
+,
+  "orderNotAvailable": "This order is no longer available."
+,
+  "couldNotLoadOrders": "We could not load your orders right now."
+,
+  "couldNotLoadCart": "We could not load your cart right now."
+,
+  "couldNotUpdateCart": "We could not update your cart right now."
+,
+  "couldNotUploadReceipt": "We could not upload the receipt. Please try again."
+,
+  "couldNotUpdateAddress": "We could not update the shipping address. Please try again."
+,
+  "couldNotStartPayment": "We could not start the payment flow. Please try again."
+,
+  "couldNotCheckPaymentStatus": "We could not confirm the payment status yet. Please check again shortly."
+,
+  "couldNotLoadSavedCards": "We could not load your saved cards right now."
+,
+  "couldNotUpdateSavedCards": "We could not update your saved cards right now."
 }
