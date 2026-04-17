@@ -1,0 +1,186 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.2.1 (swiftlang-6.2.1.4.8 clang-1700.4.4.1)
+// swift-module-flags: -target arm64-apple-ios15.0 -enable-objc-interop -enable-library-evolution -swift-version 6 -enforce-exclusivity=checked -O -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -module-name GeideaPaymentSDK
+// swift-module-flags-ignorable:  -formal-cxx-interoperability-mode=off -interface-compiler-version 6.2.1
+import AVFoundation
+import CardScan
+import Combine
+import CoreGraphics
+import CoreImage
+import CryptoKit
+import DeveloperToolsSupport
+import Foundation
+import PassKit
+import Swift
+import SwiftUI
+import SystemConfiguration
+import UIKit
+import Vision
+import WebKit
+import _Concurrency
+import _PassKit_SwiftUI
+import _StringProcessing
+import _SwiftConcurrencyShims
+import _WebKit_SwiftUI
+public struct ApplePayConfigurations {
+  public init(merchantId: Swift.String)
+}
+public struct GDPaymentResult {
+  public var orderId: Swift.String
+  public var agreementId: Swift.String?
+  public var tokenId: Swift.String?
+  public var paymentMethod: GeideaPaymentSDK.PayPaymentMethod?
+}
+final public class GDPaymentSDKConfiguration {
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init(sessionId: Swift.String, applePayConfig: GeideaPaymentSDK.ApplePayConfigurations? = nil, language: GeideaPaymentSDK.AppLanguage, region: GeideaPaymentSDK.Region, theme: GeideaPaymentSDK.SDKTheme? = nil)
+  #endif
+  @objc deinit
+}
+public struct GDSDKError {
+  public var code: Swift.String
+  public var message: Swift.String
+  public var details: Swift.String?
+}
+@_Concurrency.MainActor public protocol GDSDKProtocol : AnyObject {
+  @_Concurrency.MainActor func onPaymentCompleted(result: GeideaPaymentSDK.GDPaymentResult)
+  @_Concurrency.MainActor func onPaymentFailed(error: GeideaPaymentSDK.GDSDKError)
+  @_Concurrency.MainActor func onPaymentCanceled()
+}
+public enum ThemeStyle : Swift.String {
+  case light
+  case dark
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init?(rawValue: Swift.String)
+  #endif
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct SDKTheme {
+  public init(style: GeideaPaymentSDK.ThemeStyle = .light, primaryColor: Swift.String = "#0036FF", secondaryColor: Swift.String = "#F5F5F6", merchantLogo: UIKit.UIImage)
+}
+public enum AppLanguage : Swift.String {
+  case english
+  case arabic
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init?(rawValue: Swift.String)
+  #endif
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+
+
+
+
+
+public struct PayPaymentMethod : Swift.Sendable {
+  public struct ExpiryDate : Swift.Sendable {
+    public var month: Swift.Int
+    public var year: Swift.Int
+  }
+  public var brand: Swift.String?
+  public var type: Swift.String?
+  public var cardholderName: Swift.String?
+  public var maskedCardNumber: Swift.String?
+  public var expiryDate: GeideaPaymentSDK.PayPaymentMethod.ExpiryDate?
+}
+public struct DefaultHeadersBuilder {
+  #if compiler(>=5.3) && $AsyncExecutionBehaviorAttributes
+  nonisolated(nonsending) public static func build(language: Swift.String) async -> [Swift.String : Swift.String]
+  #endif
+}
+public enum SDKEnvironment : Swift.String, Swift.CaseIterable {
+  case egyptDev
+  case egyptTest
+  case egyptPreprod
+  case egyptProd
+  case ksaDev
+  case ksaTest
+  case ksaPreprod
+  case ksaProd
+  case uaeTest
+  case uaePreprod
+  case uaeProd
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init?(rawValue: Swift.String)
+  #endif
+  public typealias AllCases = [GeideaPaymentSDK.SDKEnvironment]
+  public typealias RawValue = Swift.String
+  nonisolated public static var allCases: [GeideaPaymentSDK.SDKEnvironment] {
+    get
+  }
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public enum Region : Swift.String {
+  case egy
+  case ksa
+  case uae
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init?(rawValue: Swift.String)
+  #endif
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public enum EnvironmentType : Swift.String {
+  case sandbox
+  case production
+  #if compiler(>=5.3) && $NonescapableTypes
+  public init?(rawValue: Swift.String)
+  #endif
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct PaymentConfig : Swift.Sendable {
+}
+@_hasMissingDesignatedInitializers final public class OrderDetailsViewModel {
+  @objc deinit
+}
+public enum SDKPresentationStyle {
+  case push(navigationController: UIKit.UINavigationController)
+  case present(viewController: UIKit.UIViewController? = nil)
+  case bottomSheet(viewController: UIKit.UIViewController? = nil)
+}
+@_hasMissingDesignatedInitializers final public class GDPaymentSDK : @unchecked Swift.Sendable {
+  @_Concurrency.MainActor final public func end()
+  public static func sharedInstance() -> GeideaPaymentSDK.GDPaymentSDK
+  @_Concurrency.MainActor final public func start(configuration: GeideaPaymentSDK.GDPaymentSDKConfiguration, delegate: any GeideaPaymentSDK.GDSDKProtocol) throws
+  @objc deinit
+}
+public enum GDPaymentSDKError : Swift.Error {
+  case configurationNotSet
+  case pushIsOnlySupportInUIKitContext
+  case noPaymentMethodAvailable
+  case jailbreakDetected
+  public static func == (a: GeideaPaymentSDK.GDPaymentSDKError, b: GeideaPaymentSDK.GDPaymentSDKError) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+extension GeideaPaymentSDK.SDKEnvironment : Swift.Equatable {}
+extension GeideaPaymentSDK.SDKEnvironment : Swift.Hashable {}
+extension GeideaPaymentSDK.SDKEnvironment : Swift.RawRepresentable {}
+extension GeideaPaymentSDK.ThemeStyle : Swift.Equatable {}
+extension GeideaPaymentSDK.ThemeStyle : Swift.Hashable {}
+extension GeideaPaymentSDK.ThemeStyle : Swift.RawRepresentable {}
+extension GeideaPaymentSDK.AppLanguage : Swift.Equatable {}
+extension GeideaPaymentSDK.AppLanguage : Swift.Hashable {}
+extension GeideaPaymentSDK.AppLanguage : Swift.RawRepresentable {}
+extension GeideaPaymentSDK.Region : Swift.Equatable {}
+extension GeideaPaymentSDK.Region : Swift.Hashable {}
+extension GeideaPaymentSDK.Region : Swift.RawRepresentable {}
+extension GeideaPaymentSDK.EnvironmentType : Swift.Equatable {}
+extension GeideaPaymentSDK.EnvironmentType : Swift.Hashable {}
+extension GeideaPaymentSDK.EnvironmentType : Swift.RawRepresentable {}
+extension GeideaPaymentSDK.GDPaymentSDKError : Swift.Equatable {}
+extension GeideaPaymentSDK.GDPaymentSDKError : Swift.Hashable {}

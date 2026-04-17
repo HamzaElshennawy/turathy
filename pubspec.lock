@@ -576,7 +576,7 @@ packages:
   gd_payment_sdk:
     dependency: "direct main"
     description:
-      path: "../GD_FLUTTER_SDK/GD_FLUTTER_SDK"
+      path: gd_payment_sdk
       relative: true
     source: path
     version: "1.1.0"
