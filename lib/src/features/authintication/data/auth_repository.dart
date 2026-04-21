@@ -138,7 +138,7 @@ class AuthRepository {
   /// the Google SDK.
   static Future<UserModel> googleSignIn(String token) async {
     final result = await DioHelper.postData(
-      url: 'auth/google-login',
+      url: EndPoints.googleLogin,
       data: {
         'token': token,
         'platform': _currentPlatformLabel(),
@@ -167,10 +167,63 @@ class AuthRepository {
       // Mark as Google account to trigger silent re-auth instead of password login.
       await CacheHelper.setData(key: CachedKeys.isGoogleSignIn, value: 'true');
       CachedVariables.isGoogleSignIn = true;
+      await CacheHelper.setData(key: CachedKeys.isAppleSignIn, value: 'false');
+      CachedVariables.isAppleSignIn = false;
       return user;
     } else {
       String message = body['error']?.toString() ??
           'An error occurred while signing in with Google';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
+  /// Verifies an Apple identity token with the backend.
+  static Future<UserModel> appleSignIn({
+    required String identityToken,
+    required String authorizationCode,
+    String? email,
+    String? givenName,
+    String? familyName,
+  }) async {
+    final result = await DioHelper.postData(
+      url: EndPoints.appleLogin,
+      data: {
+        'identityToken': identityToken,
+        'authorizationCode': authorizationCode,
+        'email': email,
+        'givenName': givenName,
+        'familyName': familyName,
+        'platform': _currentPlatformLabel(),
+      },
+    );
+
+    final body = _ensureMap(result.data);
+    if (result.statusCode == 200 || result.statusCode == 201) {
+      final data = _extractAuthData(body);
+      final user = UserModel.fromJson(_extractUserData(data));
+      final token = _extractAccessToken(data);
+      final refreshToken = _extractRefreshToken(data);
+      if (token != null) {
+        await CacheHelper.setData(key: CachedKeys.authToken, value: token);
+        CachedVariables.token = token;
+      }
+      if (refreshToken != null) {
+        await CacheHelper.setData(
+          key: CachedKeys.refreshToken,
+          value: refreshToken,
+        );
+        CachedVariables.refreshToken = refreshToken;
+      }
+
+      await cacheData(user);
+      await CacheHelper.setData(key: CachedKeys.isAppleSignIn, value: 'true');
+      CachedVariables.isAppleSignIn = true;
+      await CacheHelper.setData(key: CachedKeys.isGoogleSignIn, value: 'false');
+      CachedVariables.isGoogleSignIn = false;
+      return user;
+    } else {
+      String message = body['error']?.toString() ??
+          'An error occurred while signing in with Apple';
       throw AuthException(message, result.statusCode);
     }
   }
@@ -394,6 +447,8 @@ class AuthRepository {
     
     final isGoogle = await CacheHelper.getData(key: CachedKeys.isGoogleSignIn);
     CachedVariables.isGoogleSignIn = isGoogle == 'true';
+    final isApple = await CacheHelper.getData(key: CachedKeys.isAppleSignIn);
+    CachedVariables.isAppleSignIn = isApple == 'true';
   }
 
   /// Wipes all user data from memory and local storage.
@@ -408,6 +463,7 @@ class AuthRepository {
     CachedVariables.phone_number = null;
     CachedVariables.password = null;
     CachedVariables.isGoogleSignIn = false;
+    CachedVariables.isAppleSignIn = false;
     CachedVariables.profilePicUrl = null;
 
     await CacheHelper.deleteData(key: CachedKeys.userId);
@@ -418,6 +474,7 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.authToken);
     await CacheHelper.deleteData(key: CachedKeys.refreshToken);
     await CacheHelper.deleteData(key: CachedKeys.isGoogleSignIn);
+    await CacheHelper.deleteData(key: CachedKeys.isAppleSignIn);
     await CacheHelper.deleteData(key: CachedKeys.profilePicUrl);
   }
 

@@ -39,6 +39,9 @@ abstract class CachedVariables {
   
   /// Indicates if the user is authenticated via Google Sign-In.
   static bool isGoogleSignIn = false;
+
+  /// Indicates if the user is authenticated via Apple Sign-In.
+  static bool isAppleSignIn = false;
   
   /// The user's profile picture URL
   static String? profilePicUrl;

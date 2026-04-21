@@ -12,5 +12,7 @@ class CachedKeys {
   static const String refreshToken = "refresh_token";
   static const String isGoogleSignIn =
       "is_google_sign_in"; // Flag for Google SSO users
+  static const String isAppleSignIn =
+      "is_apple_sign_in"; // Flag for Apple SSO users
   static const String profilePicUrl = "profile_pic_url";
 }

@@ -7,6 +7,7 @@
 /// Firebase Cloud Messaging (FCM) token registration.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
@@ -78,6 +79,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 
   /// Indicates if a Google Sign-In process is currently active.
   bool isGoogleSignInProcessing = false;
+  bool isAppleSignInProcessing = false;
 
   /// Shortcut to the currently authenticated user (null if guest).
   UserModel? get currentUser => state.value;
@@ -207,12 +209,69 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
         await AnalyticsService.logLogin(method: 'google');
         await FCMService().registerAfterLogin();
         ref.invalidate(notificationsNotifierProvider);
+        isGoogleSignInProcessing = false;
       } else {
         isGoogleSignInProcessing = false;
       }
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       isGoogleSignInProcessing = false;
+    }
+  }
+
+  /// Initiates the Apple Sign-In flow on iOS.
+  Future<void> signInWithApple() async {
+    state = const AsyncValue.loading();
+    isAppleSignInProcessing = true;
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      final authorizationCode = credential.authorizationCode;
+      if (identityToken == null || identityToken.isEmpty) {
+        state = AsyncValue.error(
+          'Failed to get Apple identity token',
+          StackTrace.empty,
+        );
+        isAppleSignInProcessing = false;
+        return;
+      }
+      if (authorizationCode.isEmpty) {
+        state = AsyncValue.error(
+          'Failed to get Apple authorization code',
+          StackTrace.empty,
+        );
+        isAppleSignInProcessing = false;
+        return;
+      }
+
+      state = await AsyncValue.guard(
+        () => AuthRepository.appleSignIn(
+          identityToken: identityToken,
+          authorizationCode: authorizationCode,
+          email: credential.email,
+          givenName: credential.givenName,
+          familyName: credential.familyName,
+        ),
+      );
+
+      if (state.hasValue && !state.hasError) {
+        await AnalyticsService.setUser(state.valueOrNull, authMethod: 'apple');
+        await AnalyticsService.logLogin(method: 'apple');
+        await FCMService().registerAfterLogin();
+        ref.invalidate(notificationsNotifierProvider);
+        isAppleSignInProcessing = false;
+      } else {
+        isAppleSignInProcessing = false;
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      isAppleSignInProcessing = false;
     }
   }
 }

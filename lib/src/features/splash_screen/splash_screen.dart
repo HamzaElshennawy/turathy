@@ -86,6 +86,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       "[DEBUG] isGoogleSignIn: ${CachedVariables.isGoogleSignIn.toString()}",
                     );
                     log(
+                      "[DEBUG] isAppleSignIn: ${CachedVariables.isAppleSignIn.toString()}",
+                    );
+                    log(
                       "[DEBUG] phone_number: ${CachedVariables.phone_number.toString()}",
                     );
                     log(
@@ -103,7 +106,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                           user,
                           authMethod: CachedVariables.isGoogleSignIn
                               ? 'google'
-                              : 'phone',
+                              : CachedVariables.isAppleSignIn
+                                  ? 'apple'
+                                  : 'phone',
                         );
                         ref
                             .read(authControllerProvider.notifier)

@@ -47,7 +47,7 @@ class SocialLoginButtons extends ConsumerWidget {
               colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
             ),
             onTap: () {
-              // TODO: Implement Apple Sign In
+              ref.read(authControllerProvider.notifier).signInWithApple();
             },
           ),
         ],

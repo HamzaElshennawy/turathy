@@ -34,6 +34,8 @@ abstract class EndPoints {
 
   /// Endpoint for refreshing an expired user access token.
   static const String refreshToken = "auth/refresh";
+  static const String googleLogin = "auth/google-login";
+  static const String appleLogin = "auth/apple-login";
   
   /// Returns the path to fetch a specific user's public profile based on [id].
   static String getUser(int id) => "users/get-user?user_id=$id";
