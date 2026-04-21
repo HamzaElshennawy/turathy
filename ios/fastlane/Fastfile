@@ -59,8 +59,8 @@ platform :ios do
     archive_path = lane_context[SharedValues::XCODEBUILD_ARCHIVE]
     app_plist = "#{archive_path}/Products/Applications/Runner.app/Frameworks/App.framework/Info.plist"
     if File.exist?(app_plist)
-      sh("plutil -replace MinimumOSVersion -string '13.0' \"#{app_plist}\" 2>/dev/null || plutil -insert MinimumOSVersion -string '13.0' \"#{app_plist}\"")
-      UI.success("✅ Patched App.framework/Info.plist with MinimumOSVersion=13.0")
+      sh("plutil -replace MinimumOSVersion -string '15.0' \"#{app_plist}\" 2>/dev/null || plutil -insert MinimumOSVersion -string '15.0' \"#{app_plist}\"")
+      UI.success("✅ Patched App.framework/Info.plist with MinimumOSVersion=15.0")
     else
       UI.important("⚠️  App.framework/Info.plist not found at #{app_plist}")
     end
