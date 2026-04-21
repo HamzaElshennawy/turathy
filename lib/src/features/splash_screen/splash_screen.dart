@@ -22,7 +22,6 @@ import '../../core/helper/cache/cached_variables.dart';
 import '../../core/helper/fcm/fcm_service.dart';
 import '../../routing/rout_constants.dart';
 import '../authintication/data/auth_repository.dart';
-import '../authintication/data/google_sign_in_client.dart';
 import '../authintication/presentation/auth_controller.dart';
 import '../authintication/presentation/country_code_provider.dart';
 
@@ -65,6 +64,71 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     });
   }
 
+  String _currentAuthMethod() {
+    if (CachedVariables.isGoogleSignIn) {
+      return 'google';
+    }
+    if (CachedVariables.isAppleSignIn) {
+      return 'apple';
+    }
+    return 'phone';
+  }
+
+  Future<bool> _restoreSessionFromTokens() async {
+    final userId = CachedVariables.userId;
+    if (userId == null) {
+      return false;
+    }
+
+    try {
+      final user = await AuthRepository.getUser(userId);
+      if (!mounted) return true;
+
+      await AnalyticsService.setUser(
+        user,
+        authMethod: _currentAuthMethod(),
+      );
+      ref.read(authControllerProvider.notifier).updateUser(user);
+      await FCMService().registerAfterLogin();
+
+      if (user.missingFields != null && user.missingFields!.isNotEmpty) {
+        GoRouter.of(context).go(RouteConstants.completeProfile);
+      }
+      return true;
+    } catch (error) {
+      log('Direct session restore failed: $error');
+    }
+
+    if (CachedVariables.refreshToken == null || CachedVariables.refreshToken!.isEmpty) {
+      return false;
+    }
+
+    try {
+      final refreshed = await AuthRepository.refreshAccessToken();
+      if (!refreshed) {
+        return false;
+      }
+
+      final user = await AuthRepository.getUser(userId);
+      if (!mounted) return true;
+
+      await AnalyticsService.setUser(
+        user,
+        authMethod: _currentAuthMethod(),
+      );
+      ref.read(authControllerProvider.notifier).updateUser(user);
+      await FCMService().registerAfterLogin();
+
+      if (user.missingFields != null && user.missingFields!.isNotEmpty) {
+        GoRouter.of(context).go(RouteConstants.completeProfile);
+      }
+      return true;
+    } catch (error) {
+      log('Refresh-token session restore failed: $error');
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,149 +158,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     log(
                       "[DEBUG] password: ${CachedVariables.password.toString()}",
                     );
-                    if (CachedVariables.token != null &&
-                        CachedVariables.userId != null) {
-                      try {
-                        final user = await AuthRepository.getUser(
-                          CachedVariables.userId!,
-                        );
-                        if (!mounted) return;
-
-                        await AnalyticsService.setUser(
-                          user,
-                          authMethod: CachedVariables.isGoogleSignIn
-                              ? 'google'
-                              : CachedVariables.isAppleSignIn
-                                  ? 'apple'
-                                  : 'phone',
-                        );
-                        ref
-                            .read(authControllerProvider.notifier)
-                            .updateUser(user);
-
-                        // If user is logged in but has missing required fields, send them to complete profile.
-                        if (user.missingFields != null &&
-                            user.missingFields!.isNotEmpty) {
-                          GoRouter.of(
-                            context,
-                          ).go(RouteConstants.completeProfile);
-                          return;
-                        }
-                      } catch (error) {
-                        log(
-                          "Session restore failed, checking fallback: $error",
-                        );
-                        if (!mounted) return;
-
-                        // Fallback 1: Silent Google Re-authentication
-                        if (CachedVariables.isGoogleSignIn) {
-                          try {
-                            final googleSignIn = buildGoogleSignInClient();
-                            final googleUser = await googleSignIn
-                                .signInSilently();
-                            if (googleUser != null) {
-                              final googleAuth =
-                                  await googleUser.authentication;
-                              final idToken = googleAuth.idToken;
-                              if (idToken != null) {
-                                final user = await AuthRepository.googleSignIn(
-                                  idToken,
-                                );
-                                if (!mounted) return;
-                                await AnalyticsService.setUser(
-                                  user,
-                                  authMethod: 'google',
-                                );
-                                ref
-                                    .read(authControllerProvider.notifier)
-                                    .updateUser(user);
-                                await FCMService().registerAfterLogin();
-                              }
-                            }
-                          } catch (googleError) {
-                            log("Google silent sign-in failed: $googleError");
-                          }
-                        }
-                        // Fallback 2: Stored Credential Re-login
-                        else if (CachedVariables.phone_number != null &&
-                            CachedVariables.password != null) {
-                          final result = await ref
-                              .read(authControllerProvider.notifier)
-                              .signIn(
-                                CachedVariables.phone_number!,
-                                CachedVariables.password!,
-                              );
-
-                          if (result['status'] != 'error') {
-                            final authUser = ref
-                                .read(authControllerProvider)
-                                .valueOrNull;
-                            if (authUser != null &&
-                                authUser.missingFields != null &&
-                                authUser.missingFields!.isNotEmpty) {
-                              if (mounted) {
-                                GoRouter.of(
-                                  context,
-                                ).go(RouteConstants.completeProfile);
-                              }
-                              return;
-                            }
-                          }
-                        }
-                      }
+                    final sessionRestored = await _restoreSessionFromTokens();
+                    if (sessionRestored && !mounted) {
+                      return;
                     }
-                    // Case for Google users whose token might have expired but session remains valid.
-                    else if (CachedVariables.isGoogleSignIn &&
-                        CachedVariables.userId != null) {
-                      try {
-                        final googleSignIn = buildGoogleSignInClient();
-                        final googleUser = await googleSignIn.signInSilently();
-                        if (googleUser != null) {
-                          final googleAuth = await googleUser.authentication;
-                          final idToken = googleAuth.idToken;
-                          if (idToken != null) {
-                            final user = await AuthRepository.googleSignIn(
-                              idToken,
-                            );
-                            if (!mounted) return;
-                            await AnalyticsService.setUser(
-                              user,
-                              authMethod: 'google',
-                            );
-                            ref
-                                .read(authControllerProvider.notifier)
-                                .updateUser(user);
-                            await FCMService().registerAfterLogin();
-                          }
-                        }
-                      } catch (googleError) {
-                        log("Google silent sign-in failed: $googleError");
-                      }
-                    }
-                    // Final attempt: explicit sign-in if credentials exist.
-                    else if (CachedVariables.phone_number != null &&
-                        CachedVariables.password != null) {
-                      final result = await ref
-                          .read(authControllerProvider.notifier)
-                          .signIn(
-                            CachedVariables.phone_number!,
-                            CachedVariables.password!,
-                          );
-
-                      if (result['status'] != 'error') {
-                        final authUser = ref
-                            .read(authControllerProvider)
-                            .valueOrNull;
-                        if (authUser != null &&
-                            authUser.missingFields != null &&
-                            authUser.missingFields!.isNotEmpty) {
-                          if (mounted) {
-                            GoRouter.of(
-                              context,
-                            ).go(RouteConstants.completeProfile);
-                          }
-                          return;
-                        }
+                    if (sessionRestored) {
+                      final authUser = ref.read(authControllerProvider).valueOrNull;
+                      if (authUser != null &&
+                          authUser.missingFields != null &&
+                          authUser.missingFields!.isNotEmpty) {
+                        return;
                       }
                     }
 
