@@ -6,18 +6,20 @@
 /// (currently limited to KSA +966) to receive a password reset code.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/common_widgets/primary_button.dart';
 import '../../../../core/common_widgets/responsive_center.dart';
 import '../../../../core/constants/app_images/app_images.dart';
+import '../../../../core/constants/app_functions/app_functions.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../utils/validators.dart';
 import '../../../../core/common_widgets/phone_number_field.dart';
+import '../../data/auth_repository.dart';
 import '../country_code_provider.dart';
 import '../auth_controller.dart';
 import 'reset_password_screen.dart';
 import 'forgot_password_controller.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Screen for entering the phone number to initiate password reset.
 class InputPhoneForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -42,6 +44,16 @@ class _InputPhoneForgotPasswordScreenState
   @override
   Widget build(BuildContext context) {
     final countryCode = ref.watch(countryCodeProvider);
+
+    ref.listen(forgotPasswordControllerProvider, (previous, next) {
+      if (next.hasError) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: getFriendlyAuthMessage(next.error),
+          isError: true,
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.resetPassword.tr())),
@@ -94,20 +106,32 @@ class _InputPhoneForgotPasswordScreenState
                                 final e164 = '$countryCode${_phoneLocalController.text.trim()}';
                                 
                                 // Request the verification code.
-                                final ok = await ref
+                                final challengeToken = await ref
                                     .read(forgotPasswordControllerProvider.notifier)
                                     .requestOtp(e164Phone: e164);
                                 
                                 if (!mounted) return;
                                 
-                                if (ok) {
+                                if (challengeToken != null) {
+                                  final deliveryMessage = e164.startsWith('+966')
+                                      ? AppStrings.otpWillBeSentBySms.tr()
+                                      : AppStrings
+                                          .otpWillBeSentByWhatsappWithSmsFallback
+                                          .tr();
+                                  AppFunctions.showSnackBar(
+                                    context: context,
+                                    message: deliveryMessage,
+                                  );
                                   // Pass the phone number back to the login state for continuity
                                   ref.read(authControllerProvider.notifier).phoneController.text = _phoneLocalController.text.trim();
 
                                   // Navigate to OTP verification & password reset screen.
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => ResetPasswordScreen(phone_number: e164),
+                                      builder: (_) => ResetPasswordScreen(
+                                        phone_number: e164,
+                                        challengeToken: challengeToken,
+                                      ),
                                     ),
                                   );
                                 }
@@ -129,4 +153,3 @@ class _InputPhoneForgotPasswordScreenState
     );
   }
 }
-

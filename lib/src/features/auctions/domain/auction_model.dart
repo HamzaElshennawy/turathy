@@ -387,9 +387,11 @@ class AuctionProducts {
   String? usage;
   String? country;
   int? date;
+  String? itemType;
   String? denomination;
   bool? isGraded;
   String? gradingCompany;
+  String? gradeDesignation;
   int? grade;
   String? metalWeight;
   String? metalType;
@@ -434,9 +436,11 @@ class AuctionProducts {
     this.usage,
     this.country,
     this.date,
+    this.itemType,
     this.denomination,
     this.isGraded,
     this.gradingCompany,
+    this.gradeDesignation,
     this.grade,
     this.metalWeight,
     this.metalType,
@@ -471,9 +475,11 @@ class AuctionProducts {
           usage == other.usage &&
           country == other.country &&
           date == other.date &&
+          itemType == other.itemType &&
           denomination == other.denomination &&
           isGraded == other.isGraded &&
           gradingCompany == other.gradingCompany &&
+          gradeDesignation == other.gradeDesignation &&
           grade == other.grade &&
           metalWeight == other.metalWeight &&
           metalType == other.metalType &&
@@ -503,9 +509,11 @@ class AuctionProducts {
       usage.hashCode ^
       country.hashCode ^
       date.hashCode ^
+      itemType.hashCode ^
       denomination.hashCode ^
       isGraded.hashCode ^
       gradingCompany.hashCode ^
+      gradeDesignation.hashCode ^
       grade.hashCode ^
       metalWeight.hashCode ^
       metalType.hashCode ^
@@ -534,9 +542,11 @@ class AuctionProducts {
     usage = json['usage'];
     country = json['country'];
     date = json['date'];
+    itemType = json['item_type'];
     denomination = json['denomination'];
     isGraded = json['is_graded'];
     gradingCompany = json['grading_company'];
+    gradeDesignation = json['grade_designation'];
     grade = json['grade'];
     metalWeight = json['metal_weight']?.toString();
     metalType = json['metal_type'];
@@ -584,9 +594,11 @@ class AuctionProducts {
     data['usage'] = usage;
     data['country'] = country;
     data['date'] = date;
+    data['item_type'] = itemType;
     data['denomination'] = denomination;
     data['is_graded'] = isGraded;
     data['grading_company'] = gradingCompany;
+    data['grade_designation'] = gradeDesignation;
     data['grade'] = grade;
     data['metal_weight'] = metalWeight;
     data['metal_type'] = metalType;

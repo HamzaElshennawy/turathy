@@ -58,6 +58,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   bool _isLoadingSavedPaymentMethods = false;
   bool _isSavingCard = false;
   bool _saveCardForFutureUse = false;
+  int? _selectedSavedPaymentMethodId;
   List<SavedPaymentMethodModel> _savedPaymentMethods = const [];
 
   @override
@@ -175,6 +176,18 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       if (!mounted) return;
       setState(() {
         _savedPaymentMethods = methods;
+        final activeSelectionStillExists = methods.any(
+          (method) => method.id == _selectedSavedPaymentMethodId,
+        );
+        if (!activeSelectionStillExists) {
+          _selectedSavedPaymentMethodId = methods
+              .cast<SavedPaymentMethodModel?>()
+              .firstWhere(
+                (method) => method?.isDefault ?? false,
+                orElse: () => methods.isNotEmpty ? methods.first : null,
+              )
+              ?.id;
+        }
       });
       PaymentDebugLogger.info(
         'OrderDetailsScreen:loadSavedPaymentMethods:success',
@@ -380,11 +393,14 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 
   Future<void> _startGeideaCheckout() async {
+    final isUsingSavedPaymentMethod = _selectedSavedPaymentMethodId != null;
     PaymentDebugLogger.info(
       'OrderDetailsScreen:startGeideaCheckout:start',
       data: {
         'orderId': _currentOrder.id,
         'saveCardForFutureUse': _saveCardForFutureUse,
+        'selectedSavedMethodId': _selectedSavedPaymentMethodId,
+        'isUsingSavedPaymentMethod': isUsingSavedPaymentMethod,
         'paymentMethod': _paymentMethod.name,
       },
     );
@@ -397,7 +413,10 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           .read(checkoutFlowCoordinatorProvider)
           .createGeideaCheckoutSession(
             order: syncedOrder,
-            cardOnFile: _saveCardFeatureEnabled && _saveCardForFutureUse,
+            cardOnFile: _saveCardFeatureEnabled &&
+                _saveCardForFutureUse &&
+                !isUsingSavedPaymentMethod,
+            savedMethodId: _selectedSavedPaymentMethodId,
           );
 
       if (!mounted) return;
@@ -542,7 +561,18 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       'OrderDetailsScreen:refreshSavedPaymentMethodsAfterReturn:start',
       data: {'previousCount': previousCount},
     );
-    await _loadSavedPaymentMethods();
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    do {
+      await _loadSavedPaymentMethods();
+      if (!mounted) return;
+      if (_savedPaymentMethods.length > previousCount) {
+        break;
+      }
+      if (DateTime.now().isAfter(deadline)) {
+        break;
+      }
+      await Future.delayed(const Duration(seconds: 2));
+    } while (mounted);
     if (!mounted) return;
 
     AppFunctions.showSnackBar(
@@ -567,9 +597,19 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     );
     setState(() => _isCheckingGeideaStatus = true);
     try {
-      final trustedOrder = await ref
+      OrderModel trustedOrder = await ref
           .read(orderRepositoryProvider)
           .getTrustedOrderStatus(orderId);
+      final deadline = DateTime.now().add(const Duration(seconds: 20));
+      while (mounted &&
+          trustedOrder.paymentStatus != 'paid' &&
+          trustedOrder.paymentStatus != 'failed' &&
+          DateTime.now().isBefore(deadline)) {
+        await Future.delayed(const Duration(seconds: 2));
+        trustedOrder = await ref
+            .read(orderRepositoryProvider)
+            .getTrustedOrderStatus(orderId);
+      }
       if (!mounted) return;
 
       final merged = _mergeTrustedOrder(trustedOrder);
@@ -637,6 +677,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       await ref
           .read(checkoutFlowCoordinatorProvider)
           .setDefaultSavedPaymentMethod(userId: userId, methodId: methodId);
+      if (mounted) {
+        setState(() => _selectedSavedPaymentMethodId = methodId);
+      }
       await _loadSavedPaymentMethods();
     } catch (e) {
       PaymentDebugLogger.error(
@@ -664,6 +707,9 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       await ref
           .read(checkoutFlowCoordinatorProvider)
           .deactivateSavedPaymentMethod(userId: userId, methodId: methodId);
+      if (mounted && _selectedSavedPaymentMethodId == methodId) {
+        setState(() => _selectedSavedPaymentMethodId = null);
+      }
       await _loadSavedPaymentMethods();
     } catch (e) {
       PaymentDebugLogger.error(
@@ -1174,6 +1220,15 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
               onAddCard: _startGeideaSaveCard,
               onSetDefault: _setDefaultSavedPaymentMethod,
               onDeactivate: _deactivateSavedPaymentMethod,
+              selectedSavedMethodId: _selectedSavedPaymentMethodId,
+              onSavedMethodSelected: (methodId) {
+                setState(() {
+                  _selectedSavedPaymentMethodId = methodId;
+                  if (methodId != null) {
+                    _saveCardForFutureUse = false;
+                  }
+                });
+              },
               showSaveCardFeatures: _saveCardFeatureEnabled,
               savedPaymentMethods: _savedPaymentMethods,
               saveCardForFutureUse: _saveCardForFutureUse,

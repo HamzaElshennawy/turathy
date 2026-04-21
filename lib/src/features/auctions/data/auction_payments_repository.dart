@@ -29,7 +29,6 @@ class AuctionPaymentsRepository {
     });
 
     final formData = FormData.fromMap({
-      'user_id': userId,
       'auction_id': auctionId,
       'product_id': productId,
       'order_id': orderId,
@@ -73,7 +72,6 @@ class AuctionPaymentsRepository {
     final response = await DioHelper.getData(
       url: EndPoints.myPayments,
       token: CachedVariables.token,
-      query: {'user_id': CachedVariables.userId.toString()},
     );
 
     if (response.statusCode == 200) {

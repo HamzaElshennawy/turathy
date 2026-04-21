@@ -4,23 +4,46 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../core/constants/app_locations/app_locations.dart';
 import '../../../../../core/constants/app_sizes.dart';
 import '../../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../../core/helper/analytics/analytics_service.dart';
-import '../../../../../core/helper/socket/socket_models.dart';
-import '../../../../auctions/data/auctions_repository.dart';
+import '../../../data/filter_options_repository.dart';
+import '../../../domain/filter_options_model.dart';
 import '../filter_chip_widget.dart';
 import 'filter_widget_controller.dart';
 
+enum FilterContentType { auction, store }
+
 class FilterWidget extends ConsumerWidget {
-  const FilterWidget({super.key});
+  final VoidCallback? onApply;
+  final VoidCallback? onClear;
+  final FilterContentType contentType;
+
+  const FilterWidget({
+    super.key,
+    this.onApply,
+    this.onClear,
+    this.contentType = FilterContentType.auction,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filterState = ref.watch(filterWidgetControllerProvider);
+    final optionsAsync = contentType == FilterContentType.store
+        ? ref.watch(storeFilterOptionsProvider)
+        : ref.watch(auctionFilterOptionsProvider);
+    final options = optionsAsync.valueOrNull ?? const FilterOptionsModel();
+
     final minPrice = filterState.minPrice;
     final maxPrice = filterState.maxPrice;
+    final priceMin = options.minPrice ?? 0;
+    final priceMax =
+        options.maxPrice != null && options.maxPrice! > priceMin ? options.maxPrice! : priceMin + 1000;
+    final yearMin = (options.minYear ?? 1700).toDouble();
+    final yearMax = (options.maxYear ?? DateTime.now().year).toDouble();
+    final gradeMin = (options.minGrade ?? 1).toDouble();
+    final gradeMax =
+        options.maxGrade != null && options.maxGrade! > gradeMin ? options.maxGrade!.toDouble() : gradeMin + 1;
 
     return Expanded(
       child: Padding(
@@ -32,6 +55,11 @@ class FilterWidget extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (optionsAsync.isLoading && optionsAsync.valueOrNull == null)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: LinearProgressIndicator(),
+                      ),
                     _displayFilters(
                       AppStrings.categories.tr(),
                       ref
@@ -54,98 +82,56 @@ class FilterWidget extends ConsumerWidget {
                     gapH16,
                     _RangeSliderWidget(
                       title: AppStrings.priceRange.tr(),
-                      min: 0,
-                      max: 10000,
-                      divisions: 1000,
+                      min: priceMin,
+                      max: priceMax,
+                      divisions: ((priceMax - priceMin).round()).clamp(1, 1000).toInt(),
                       initialMinValue: minPrice,
                       initialMaxValue: maxPrice,
                       labelFormatter: (val) => val.toInt().toString(),
                       onChanged: (min, max) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setMinPrice(min);
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setMaxPrice(max);
+                        ref.read(filterWidgetControllerProvider.notifier).setMinPrice(min);
+                        ref.read(filterWidgetControllerProvider.notifier).setMaxPrice(max);
                       },
                     ),
                     gapH16,
-                    gapH16,
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppStrings.country.tr(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        gapH8,
-                        DropdownButtonFormField<String>(
-                          value: filterState.country?.isEmpty == true
-                              ? null
-                              : filterState.country,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          hint: Text(AppStrings.country.tr()),
-                          items: [
-                            DropdownMenuItem<String>(
-                              value: '',
-                              child: Text('all'.tr()),
-                            ),
-                            ...countries.map((c) {
-                              final flag = SocketUser.getFlagEmoji(c.code);
-                              final isAr = context.locale.languageCode == 'ar';
-                              final name = isAr ? c.nameAr : c.nameEn;
-                              return DropdownMenuItem<String>(
-                                value: name,
-                                child: Text('$flag  $name'),
-                              );
-                            }),
-                          ],
-                          onChanged: (value) {
-                            ref
-                                .read(filterWidgetControllerProvider.notifier)
-                                .setCountry(value ?? '');
-                          },
-                        ),
-                      ],
+                    _DropdownFilterField(
+                      label: AppStrings.country.tr(),
+                      value: filterState.country,
+                      options: options.countries,
+                      onChanged: (value) {
+                        ref.read(filterWidgetControllerProvider.notifier).setCountry(value ?? '');
+                      },
                     ),
                     gapH16,
                     _RangeSliderWidget(
                       title: AppStrings.dateRange.tr(),
-                      min: 1700,
-                      max: DateTime.now().year.toDouble(),
-                      divisions: DateTime.now().year - 1700,
-                      initialMinValue: filterState.dateFrom == -1
-                          ? null
-                          : filterState.dateFrom?.toDouble(),
-                      initialMaxValue: filterState.dateTo == -1
-                          ? null
-                          : filterState.dateTo?.toDouble(),
+                      min: yearMin,
+                      max: yearMax > yearMin ? yearMax : yearMin + 1,
+                      divisions: ((yearMax - yearMin).round()).clamp(1, 300).toInt(),
+                      initialMinValue: filterState.dateFrom?.toDouble(),
+                      initialMaxValue: filterState.dateTo?.toDouble(),
                       labelFormatter: (val) => val.toInt().toString(),
                       onChanged: (min, max) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setDateFrom(min.toInt());
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setDateTo(max.toInt());
+                        ref.read(filterWidgetControllerProvider.notifier).setDateFrom(min.toInt());
+                        ref.read(filterWidgetControllerProvider.notifier).setDateTo(max.toInt());
                       },
                     ),
                     gapH16,
-                    _FilterTextFieldWidget(
+                    _DropdownFilterField(
+                      label: AppStrings.itemType.tr(),
+                      value: filterState.itemType,
+                      options: options.itemTypes,
+                      onChanged: (value) {
+                        ref.read(filterWidgetControllerProvider.notifier).setItemType(value ?? '');
+                      },
+                    ),
+                    gapH16,
+                    _DropdownFilterField(
                       label: AppStrings.denomination.tr(),
-                      initialValue: filterState.denomination,
-                      onChanged: (val) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setDenomination(val);
+                      value: filterState.denomination,
+                      options: options.denominations,
+                      onChanged: (value) {
+                        ref.read(filterWidgetControllerProvider.notifier).setDenomination(value ?? '');
                       },
                     ),
                     gapH16,
@@ -160,13 +146,9 @@ class FilterWidget extends ConsumerWidget {
                         final currentValue = filterState.isGraded;
                         final newValue = index == 0;
                         if (currentValue == newValue) {
-                          ref
-                              .read(filterWidgetControllerProvider.notifier)
-                              .setIsGraded(null);
+                          ref.read(filterWidgetControllerProvider.notifier).setIsGraded(null);
                         } else {
-                          ref
-                              .read(filterWidgetControllerProvider.notifier)
-                              .setIsGraded(newValue);
+                          ref.read(filterWidgetControllerProvider.notifier).setIsGraded(newValue);
                         }
                       },
                     ),
@@ -174,19 +156,27 @@ class FilterWidget extends ConsumerWidget {
                       gapH16,
                       _displayFilters(
                         AppStrings.gradingCompany.tr(),
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .gradingCompanies,
-                        [
-                          ref
-                              .watch(filterWidgetControllerProvider.notifier)
-                              .selectedGradingCompanyIndex,
-                        ],
+                        options.gradingCompanies,
+                        filterState.gradingCompany == null
+                            ? const []
+                            : [
+                                options.gradingCompanies.indexOf(filterState.gradingCompany!)
+                              ].where((index) => index >= 0).toList(),
                         context,
                         (index) {
-                          ref
-                              .read(filterWidgetControllerProvider.notifier)
-                              .selectGradingCompany(index);
+                          final selected = options.gradingCompanies[index];
+                          ref.read(filterWidgetControllerProvider.notifier).setGradingCompany(
+                                filterState.gradingCompany == selected ? '' : selected,
+                              );
+                        },
+                      ),
+                      gapH16,
+                      _DropdownFilterField(
+                        label: AppStrings.gradeDesignation.tr(),
+                        value: filterState.gradeDesignation,
+                        options: options.gradeDesignations,
+                        onChanged: (value) {
+                          ref.read(filterWidgetControllerProvider.notifier).setGradeDesignation(value ?? '');
                         },
                       ),
                       gapH16,
@@ -194,43 +184,34 @@ class FilterWidget extends ConsumerWidget {
                         title: AppStrings.gradeRange.tr(),
                         label1: AppStrings.gradeFrom.tr(),
                         label2: AppStrings.gradeTo.tr(),
-                        initialValue1: filterState.gradeFrom == -1
-                            ? ''
-                            : filterState.gradeFrom?.toString(),
-                        initialValue2: filterState.gradeTo == -1
-                            ? ''
-                            : filterState.gradeTo?.toString(),
+                        initialValue1: filterState.gradeFrom?.toString() ?? '',
+                        initialValue2: filterState.gradeTo?.toString() ?? '',
+                        helperText: '${gradeMin.toInt()} - ${gradeMax.toInt()}',
                         keyboardType: TextInputType.number,
                         onChanged1: (val) {
-                          ref
-                              .read(filterWidgetControllerProvider.notifier)
-                              .setGradeFrom(int.tryParse(val));
+                          ref.read(filterWidgetControllerProvider.notifier).setGradeFrom(int.tryParse(val));
                         },
                         onChanged2: (val) {
-                          ref
-                              .read(filterWidgetControllerProvider.notifier)
-                              .setGradeTo(int.tryParse(val));
+                          ref.read(filterWidgetControllerProvider.notifier).setGradeTo(int.tryParse(val));
                         },
                       ),
                     ],
                     gapH16,
-                    _FilterTextFieldWidget(
+                    _DropdownFilterField(
                       label: AppStrings.metalType_.tr(),
-                      initialValue: filterState.metalType,
-                      onChanged: (val) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setMetalType(val);
+                      value: filterState.metalType,
+                      options: options.metalTypes,
+                      onChanged: (value) {
+                        ref.read(filterWidgetControllerProvider.notifier).setMetalType(value ?? '');
                       },
                     ),
                     gapH16,
-                    _FilterTextFieldWidget(
+                    _DropdownFilterField(
                       label: AppStrings.metalFineness.tr(),
-                      initialValue: filterState.metalFineness,
-                      onChanged: (val) {
-                        ref
-                            .read(filterWidgetControllerProvider.notifier)
-                            .setMetalFineness(val);
+                      value: filterState.metalFineness,
+                      options: options.metalFinenessValues,
+                      onChanged: (value) {
+                        ref.read(filterWidgetControllerProvider.notifier).setMetalFineness(value ?? '');
                       },
                     ),
                   ],
@@ -243,10 +224,7 @@ class FilterWidget extends ConsumerWidget {
               child: FilledButton(
                 onPressed: () {
                   String? selectedCategoryName;
-                  for (final category
-                      in ref
-                          .read(filterWidgetControllerProvider.notifier)
-                          .categories) {
+                  for (final category in ref.read(filterWidgetControllerProvider.notifier).categories) {
                     if (category.id == filterState.selectedCategoryID) {
                       selectedCategoryName = category.name;
                       break;
@@ -254,26 +232,20 @@ class FilterWidget extends ConsumerWidget {
                   }
 
                   final activeFilterCount = [
-                    filterState.selectedCategoryID != null &&
-                        filterState.selectedCategoryID != -1,
+                    filterState.selectedCategoryID != null && filterState.selectedCategoryID != -1,
                     minPrice != null,
                     maxPrice != null,
-                    filterState.country != null &&
-                        filterState.country!.isNotEmpty,
-                    filterState.dateFrom != null && filterState.dateFrom != -1,
-                    filterState.dateTo != null && filterState.dateTo != -1,
-                    filterState.denomination != null &&
-                        filterState.denomination!.isNotEmpty,
+                    filterState.country != null && filterState.country!.isNotEmpty,
+                    filterState.dateFrom != null && filterState.dateTo != null,
+                    filterState.itemType != null && filterState.itemType!.isNotEmpty,
+                    filterState.denomination != null && filterState.denomination!.isNotEmpty,
                     filterState.isGraded != null,
-                    filterState.gradingCompany != null &&
-                        filterState.gradingCompany!.isNotEmpty,
-                    filterState.gradeFrom != null &&
-                        filterState.gradeFrom != -1,
-                    filterState.gradeTo != null && filterState.gradeTo != -1,
-                    filterState.metalType != null &&
-                        filterState.metalType!.isNotEmpty,
-                    filterState.metalFineness != null &&
-                        filterState.metalFineness!.isNotEmpty,
+                    filterState.gradingCompany != null && filterState.gradingCompany!.isNotEmpty,
+                    filterState.gradeDesignation != null && filterState.gradeDesignation!.isNotEmpty,
+                    filterState.gradeFrom != null,
+                    filterState.gradeTo != null,
+                    filterState.metalType != null && filterState.metalType!.isNotEmpty,
+                    filterState.metalFineness != null && filterState.metalFineness!.isNotEmpty,
                   ].where((isActive) => isActive).length;
 
                   AnalyticsService.logFilterApplied(
@@ -284,7 +256,7 @@ class FilterWidget extends ConsumerWidget {
                     isGraded: filterState.isGraded,
                     activeFilterCount: activeFilterCount,
                   );
-                  ref.invalidate(searchProductsProvider);
+                  onApply?.call();
                   Navigator.of(context).pop();
                 },
                 child: Padding(
@@ -305,10 +277,8 @@ class FilterWidget extends ConsumerWidget {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () {
-                  ref
-                      .read(filterWidgetControllerProvider.notifier)
-                      .clearFilters();
-                  ref.invalidate(searchProductsProvider);
+                  ref.read(filterWidgetControllerProvider.notifier).clearFilters();
+                  onClear?.call();
                   Navigator.of(context).pop();
                 },
                 child: Text(
@@ -324,6 +294,60 @@ class FilterWidget extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DropdownFilterField extends StatelessWidget {
+  final String label;
+  final String? value;
+  final List<String> options;
+  final ValueChanged<String?> onChanged;
+
+  const _DropdownFilterField({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        gapH8,
+        DropdownButtonFormField<String>(
+          value: value?.isEmpty == true ? null : value,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          hint: Text(label),
+          items: [
+            DropdownMenuItem<String>(
+              value: '',
+              child: Text('all'.tr()),
+            ),
+            ...options.map(
+              (option) => DropdownMenuItem<String>(
+                value: option,
+                child: Text(option),
+              ),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }
@@ -398,10 +422,38 @@ class _RangeSliderWidgetState extends ConsumerState<_RangeSliderWidget> {
   @override
   void initState() {
     super.initState();
-    _currentRangeValues = RangeValues(
-      widget.initialMinValue ?? widget.min,
-      widget.initialMaxValue ?? widget.max,
+    _currentRangeValues = _sanitizeRangeValues(
+      widget.initialMinValue,
+      widget.initialMaxValue,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant _RangeSliderWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.min != widget.min ||
+        oldWidget.max != widget.max ||
+        oldWidget.initialMinValue != widget.initialMinValue ||
+        oldWidget.initialMaxValue != widget.initialMaxValue) {
+      _currentRangeValues = _sanitizeRangeValues(
+        widget.initialMinValue,
+        widget.initialMaxValue,
+      );
+    }
+  }
+
+  RangeValues _sanitizeRangeValues(double? start, double? end) {
+    final min = widget.min;
+    final max = widget.max;
+
+    final safeStart = (start ?? min).clamp(min, max).toDouble();
+    final safeEnd = (end ?? max).clamp(min, max).toDouble();
+
+    if (safeStart <= safeEnd) {
+      return RangeValues(safeStart, safeEnd);
+    }
+
+    return RangeValues(safeEnd, safeStart);
   }
 
   @override
@@ -431,23 +483,44 @@ class _RangeSliderWidgetState extends ConsumerState<_RangeSliderWidget> {
           ],
         ),
         gapH8,
-        RangeSlider(
-          values: _currentRangeValues,
-          min: widget.min,
-          max: widget.max,
-          divisions: widget.divisions,
-          labels: RangeLabels(
-            widget.labelFormatter(_currentRangeValues.start) ?? '',
-            widget.labelFormatter(_currentRangeValues.end) ?? '',
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 4,
+            rangeThumbShape: const RoundRangeSliderThumbShape(
+              enabledThumbRadius: 10,
+            ),
+            rangeTrackShape: const RoundedRectRangeSliderTrackShape(),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+            activeTrackColor: Theme.of(context).colorScheme.primary,
+            inactiveTrackColor:
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.18),
+            thumbColor: Theme.of(context).colorScheme.primary,
+            overlayColor:
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+            valueIndicatorColor: Theme.of(context).colorScheme.primary,
+            valueIndicatorTextStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          onChanged: (RangeValues values) {
-            setState(() {
-              _currentRangeValues = values;
-            });
-          },
-          onChangeEnd: (RangeValues values) {
-            widget.onChanged(values.start, values.end);
-          },
+          child: RangeSlider(
+            values: _currentRangeValues,
+            min: widget.min,
+            max: widget.max,
+            divisions: widget.divisions,
+            labels: RangeLabels(
+              widget.labelFormatter(_currentRangeValues.start) ?? '',
+              widget.labelFormatter(_currentRangeValues.end) ?? '',
+            ),
+            onChanged: (RangeValues values) {
+              setState(() {
+                _currentRangeValues = values;
+              });
+            },
+            onChangeEnd: (RangeValues values) {
+              widget.onChanged(values.start, values.end);
+            },
+          ),
         ),
       ],
     );
@@ -522,6 +595,7 @@ class _RangeTextFieldWidget extends ConsumerStatefulWidget {
   final String label2;
   final String? initialValue1;
   final String? initialValue2;
+  final String? helperText;
   final void Function(String) onChanged1;
   final void Function(String) onChanged2;
   final TextInputType keyboardType;
@@ -532,6 +606,7 @@ class _RangeTextFieldWidget extends ConsumerStatefulWidget {
     required this.label2,
     required this.initialValue1,
     required this.initialValue2,
+    this.helperText,
     required this.onChanged1,
     required this.onChanged2,
     this.keyboardType = TextInputType.text,
@@ -574,6 +649,16 @@ class _RangeTextFieldWidgetState extends ConsumerState<_RangeTextFieldWidget> {
           ),
         ),
         gapH8,
+        if (widget.helperText != null) ...[
+          Text(
+            widget.helperText!,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          gapH8,
+        ],
         Row(
           children: [
             Expanded(

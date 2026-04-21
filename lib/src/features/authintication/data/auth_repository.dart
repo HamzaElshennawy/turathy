@@ -41,6 +41,25 @@ String _currentPlatformLabel() {
   return 'UNKNOWN';
 }
 
+Map<String, dynamic> _extractAuthData(Map<String, dynamic> body) {
+  return _ensureMap(body['data']);
+}
+
+Map<String, dynamic> _extractUserData(Map<String, dynamic> data) {
+  final nestedUser = _ensureMap(data['user']);
+  return nestedUser.isNotEmpty ? nestedUser : data;
+}
+
+String? _extractAccessToken(Map<String, dynamic> data) {
+  final token = data['accessToken'] ?? data['token'];
+  return token is String && token.isNotEmpty ? token : null;
+}
+
+String? _extractRefreshToken(Map<String, dynamic> data) {
+  final token = data['refreshToken'];
+  return token is String && token.isNotEmpty ? token : null;
+}
+
 /// Manages authentication state and persistence.
 class AuthRepository {
   /// Authenticates a user using phone and password.
@@ -66,13 +85,33 @@ class AuthRepository {
     final body = _ensureMap(result.data);
     
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final data = _ensureMap(body['data']);
-      final user = UserModel.fromJson(data);
-
-      final token = body['token'] ?? data['token'];
+      final data = _extractAuthData(body);
+      if (data['requiresOtp'] == true) {
+        return {
+          'status': body['status'] ?? 'success',
+          'requiresOtp': true,
+          'challengeToken': data['challengeToken'],
+          'maskedDestination': data['maskedDestination'],
+          'purpose': data['purpose'],
+          'deliveryMethod': data['deliveryMethod'],
+          'fallbackMethod': data['fallbackMethod'],
+          'expiresIn': data['expiresIn'],
+        };
+      }
+      final userData = _extractUserData(data);
+      final user = UserModel.fromJson(userData);
+      final token = _extractAccessToken(data);
+      final refreshToken = _extractRefreshToken(data);
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
+      }
+      if (refreshToken != null) {
+        await CacheHelper.setData(
+          key: CachedKeys.refreshToken,
+          value: refreshToken,
+        );
+        CachedVariables.refreshToken = refreshToken;
       }
 
       // Store credentials for auto-login on next app restart.
@@ -81,8 +120,8 @@ class AuthRepository {
       return {
         'user': user,
         'status': body['status'] ?? 'success',
-        'isProfileComplete': data['isProfileComplete'] ?? true,
-        'missingFields': data['missingFields'] ?? [],
+        'isProfileComplete': userData['isProfileComplete'] ?? true,
+        'missingFields': userData['missingFields'] ?? [],
       };
     } else {
       AppFunctions.logPrint(message: 'signIn error: ${result.statusCode}');
@@ -108,13 +147,20 @@ class AuthRepository {
 
     final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final data = _ensureMap(body['data']);
-      final user = UserModel.fromJson(data);
-
-      final token = body['token'] ?? data['token'];
+      final data = _extractAuthData(body);
+      final user = UserModel.fromJson(_extractUserData(data));
+      final token = _extractAccessToken(data);
+      final refreshToken = _extractRefreshToken(data);
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
+      }
+      if (refreshToken != null) {
+        await CacheHelper.setData(
+          key: CachedKeys.refreshToken,
+          value: refreshToken,
+        );
+        CachedVariables.refreshToken = refreshToken;
       }
 
       await cacheData(user);
@@ -162,6 +208,13 @@ class AuthRepository {
       return {
         'status': body['status'] ?? 'success',
         'userId': data['userId'],
+        'requiresOtp': data['requiresOtp'] ?? true,
+        'challengeToken': data['challengeToken'],
+        'maskedDestination': data['maskedDestination'],
+        'purpose': data['purpose'],
+        'deliveryMethod': data['deliveryMethod'],
+        'fallbackMethod': data['fallbackMethod'],
+        'expiresIn': data['expiresIn'],
         'isProfileComplete': data['isProfileComplete'] ?? false,
         'missingFields': data['missingFields'] ?? [],
         'message': data['message'],
@@ -178,25 +231,32 @@ class AuthRepository {
   /// 
   /// If successfully verified, the user session is initialized.
   static Future<UserModel> verifyOtp({
-    required String number,
+    required String challengeToken,
     required String otp,
   }) async {
     final result = await DioHelper.postData(
       url: EndPoints.verifyOTP,
-      data: {'number': number, 'otp': otp},
+      data: {'challengeToken': challengeToken, 'otp': otp},
     );
     final body = _ensureMap(result.data);
     if (result.statusCode == 200 || result.statusCode == 201) {
-      final data = _ensureMap(body['data']);
-      final user = UserModel.fromJson(data);
-
-      final token = body['token'] ?? data['token'];
+      final data = _extractAuthData(body);
+      final user = UserModel.fromJson(_extractUserData(data));
+      final token = _extractAccessToken(data);
+      final refreshToken = _extractRefreshToken(data);
       if (token != null) {
         await CacheHelper.setData(key: CachedKeys.authToken, value: token);
         CachedVariables.token = token;
       }
+      if (refreshToken != null) {
+        await CacheHelper.setData(
+          key: CachedKeys.refreshToken,
+          value: refreshToken,
+        );
+        CachedVariables.refreshToken = refreshToken;
+      }
 
-      await cacheData(user.copyWith(phone_number: number));
+      await cacheData(user);
       return user;
     } else {
       final message = body['message']?.toString() ?? 'OTP verification failed';
@@ -205,13 +265,25 @@ class AuthRepository {
   }
 
   /// Requests a new OTP code to be sent to the user's phone.
-  static Future<bool> resendOtp({required String number}) async {
+  static Future<Map<String, dynamic>> resendOtp({
+    required String challengeToken,
+  }) async {
     final result = await DioHelper.postData(
       url: EndPoints.resendOTP,
-      data: {'number': number},
+      data: {'challengeToken': challengeToken},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
-      return true;
+      final body = _ensureMap(result.data);
+      final data = _extractAuthData(body);
+      return {
+        'status': body['status'] ?? 'success',
+        'challengeToken': data['challengeToken'],
+        'maskedDestination': data['maskedDestination'],
+        'purpose': data['purpose'],
+        'deliveryMethod': data['deliveryMethod'],
+        'fallbackMethod': data['fallbackMethod'],
+        'expiresIn': data['expiresIn'],
+      };
     } else {
       final body = _ensureMap(result.data);
       final message = body['message']?.toString() ?? 'OTP resend failed';
@@ -220,13 +292,23 @@ class AuthRepository {
   }
 
   /// Triggers the OTP flow (e.g. for registration or password reset).
-  static Future<bool> requestOtp({required String number}) async {
+  static Future<Map<String, dynamic>> requestOtp({required String number}) async {
     final result = await DioHelper.postData(
       url: EndPoints.requestOTP,
       data: {'number': number},
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
-      return true;
+      final body = _ensureMap(result.data);
+      final data = _extractAuthData(body);
+      return {
+        'status': body['status'] ?? 'success',
+        'challengeToken': data['challengeToken'],
+        'maskedDestination': data['maskedDestination'],
+        'purpose': data['purpose'],
+        'deliveryMethod': data['deliveryMethod'],
+        'fallbackMethod': data['fallbackMethod'],
+        'expiresIn': data['expiresIn'],
+      };
     } else {
       final body = _ensureMap(result.data);
       final message = body['message']?.toString() ?? 'OTP request failed';
@@ -236,13 +318,17 @@ class AuthRepository {
 
   /// Updates the user's password using a verified OTP.
   static Future<bool> changePassword({
-    required String number,
+    required String challengeToken,
     required String otp,
     required String password,
   }) async {
     final result = await DioHelper.postData(
       url: EndPoints.changePassword,
-      data: {'number': number, 'otp': otp, 'password': password},
+      data: {
+        'challengeToken': challengeToken,
+        'otp': otp,
+        'password': password,
+      },
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       return true;
@@ -292,6 +378,8 @@ class AuthRepository {
     CachedVariables.profilePicUrl = await CacheHelper.getData(key: CachedKeys.profilePicUrl);
     CachedVariables.onBoard = await CacheHelper.getData(key: CachedKeys.onBoard);
     CachedVariables.token = await CacheHelper.getData(key: CachedKeys.authToken);
+    CachedVariables.refreshToken =
+        await CacheHelper.getData(key: CachedKeys.refreshToken);
 
     // Migration logic for old installs (fcmToken -> authToken)
     if (CachedVariables.token == null) {
@@ -313,6 +401,7 @@ class AuthRepository {
   /// Typically called during logout or account deletion.
   static Future<void> clearLocalDetails() async {
     CachedVariables.token = null;
+    CachedVariables.refreshToken = null;
     CachedVariables.userId = null;
     CachedVariables.userName = null;
     CachedVariables.email = null;
@@ -327,8 +416,45 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.password);
     await CacheHelper.deleteData(key: CachedKeys.onBoard);
     await CacheHelper.deleteData(key: CachedKeys.authToken);
+    await CacheHelper.deleteData(key: CachedKeys.refreshToken);
     await CacheHelper.deleteData(key: CachedKeys.isGoogleSignIn);
     await CacheHelper.deleteData(key: CachedKeys.profilePicUrl);
+  }
+
+  static Future<bool> refreshAccessToken() async {
+    final refreshToken = CachedVariables.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return false;
+    }
+
+    final result = await DioHelper.postData(
+      url: EndPoints.refreshToken,
+      data: {'refreshToken': refreshToken},
+    );
+    final body = _ensureMap(result.data);
+    if (result.statusCode != 200 && result.statusCode != 201) {
+      return false;
+    }
+
+    final data = _extractAuthData(body);
+    final accessToken = _extractAccessToken(data);
+    final rotatedRefreshToken = _extractRefreshToken(data);
+    if (accessToken == null || accessToken.isEmpty) {
+      return false;
+    }
+
+    await CacheHelper.setData(key: CachedKeys.authToken, value: accessToken);
+    CachedVariables.token = accessToken;
+
+    if (rotatedRefreshToken != null && rotatedRefreshToken.isNotEmpty) {
+      await CacheHelper.setData(
+        key: CachedKeys.refreshToken,
+        value: rotatedRefreshToken,
+      );
+      CachedVariables.refreshToken = rotatedRefreshToken;
+    }
+
+    return true;
   }
 
   /// Uploads a new profile picture to the backend.
@@ -381,6 +507,57 @@ class AuthException implements Exception {
   String toString() {
     return message + (code != null ? ' (error: $code)' : '');
   }
+}
+
+String getFriendlyAuthMessage(
+  Object? error, {
+  String fallback = 'Something went wrong. Please try again.',
+}) {
+  final rawMessage = error is AuthException
+      ? error.message
+      : error?.toString() ?? fallback;
+  final message = rawMessage.trim();
+  final normalized = message.toLowerCase();
+
+  if (normalized.isEmpty) {
+    return fallback;
+  }
+  if (normalized.contains('please enter a valid otp') ||
+      normalized.contains('otp verification failed')) {
+    return 'The verification code is incorrect. Please try again.';
+  }
+  if (normalized.contains('failed to send otp')) {
+    return 'We could not send the verification code right now. Please try again.';
+  }
+  if (normalized.contains('failed to verify otp')) {
+    return 'We could not verify the code right now. Please try again.';
+  }
+  if (normalized.contains('invalid credentials')) {
+    return 'Incorrect phone number or password.';
+  }
+  if (normalized.contains('user not found')) {
+    return 'We could not find an account with these details.';
+  }
+  if (normalized.contains('there is a user with this number already')) {
+    return 'An account with this phone number already exists.';
+  }
+  if (normalized.contains('phone number is required')) {
+    return 'Please enter your phone number.';
+  }
+  if (normalized.contains('this account does not support password login')) {
+    return 'This account uses social sign-in. Please continue with Google or Apple.';
+  }
+  if (normalized.contains('provider is not configured')) {
+    return 'Verification is temporarily unavailable. Please try again later.';
+  }
+  if (normalized.contains('password changed successfully')) {
+    return 'Your password has been updated successfully.';
+  }
+  if (normalized.contains('something went wrong')) {
+    return fallback;
+  }
+
+  return message;
 }
 
 

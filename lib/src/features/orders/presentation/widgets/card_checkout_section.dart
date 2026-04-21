@@ -13,6 +13,8 @@ class CardCheckoutSection extends StatelessWidget {
     required this.onAddCard,
     required this.onSetDefault,
     required this.onDeactivate,
+    required this.selectedSavedMethodId,
+    required this.onSavedMethodSelected,
     required this.showSaveCardFeatures,
     required this.saveCardForFutureUse,
     required this.onSaveCardForFutureUseChanged,
@@ -26,6 +28,8 @@ class CardCheckoutSection extends StatelessWidget {
   final Future<void> Function() onAddCard;
   final Future<void> Function(int methodId) onSetDefault;
   final Future<void> Function(int methodId) onDeactivate;
+  final int? selectedSavedMethodId;
+  final ValueChanged<int?> onSavedMethodSelected;
   final bool showSaveCardFeatures;
   final List<SavedPaymentMethodModel> savedPaymentMethods;
   final bool saveCardForFutureUse;
@@ -36,6 +40,8 @@ class CardCheckoutSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSelectedSavedMethod = selectedSavedMethodId != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -94,83 +100,105 @@ class CardCheckoutSection extends StatelessWidget {
                   Column(
                     children: savedPaymentMethods.map((method) {
                       final expiryLabel = method.expiryLabel;
+                      final isSelected = selectedSavedMethodId == method.id;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: method.isDefault
-                                ? theme.colorScheme.primary
-                                : theme.dividerColor.withOpacity(0.3),
-                          ),
-                          color: method.isDefault
-                              ? theme.colorScheme.primaryContainer.withOpacity(0.08)
-                              : null,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                          onTap: isLoading
+                              ? null
+                              : () {
+                                  onSavedMethodSelected(isSelected ? null : method.id);
+                                },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected || method.isDefault
+                                    ? theme.colorScheme.primary
+                                    : theme.dividerColor.withOpacity(0.3),
+                                width: isSelected ? 2 : 1,
+                              ),
+                              color: isSelected || method.isDefault
+                                  ? theme.colorScheme.primaryContainer.withOpacity(0.08)
+                                  : null,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.credit_card, size: 18),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    method.maskedLabel,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isSelected
+                                          ? Icons.radio_button_checked
+                                          : Icons.radio_button_off,
+                                      size: 18,
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : Colors.grey,
                                     ),
-                                  ),
-                                ),
-                                if (method.isDefault)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      AppStrings.defaultCard.tr(),
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                        color: theme.colorScheme.onPrimary,
-                                        fontWeight: FontWeight.bold,
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.credit_card, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        method.maskedLabel,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
+                                    if (method.isDefault)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.primary,
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          AppStrings.defaultCard.tr(),
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: theme.colorScheme.onPrimary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (expiryLabel.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${AppStrings.expiryDate.tr()}: $expiryLabel',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey[700],
+                                    ),
                                   ),
+                                ],
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    if (!method.isDefault)
+                                      TextButton(
+                                        onPressed: () async {
+                                          await onSetDefault(method.id);
+                                        },
+                                        child: Text(AppStrings.setAsDefault.tr()),
+                                      ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        await onDeactivate(method.id);
+                                      },
+                                      child: Text(AppStrings.removeCard.tr()),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
-                            if (expiryLabel.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                '${AppStrings.expiryDate.tr()}: $expiryLabel',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                if (!method.isDefault)
-                                  TextButton(
-                                    onPressed: () async {
-                                      await onSetDefault(method.id);
-                                    },
-                                    child: Text(AppStrings.setAsDefault.tr()),
-                                  ),
-                                TextButton(
-                                  onPressed: () async {
-                                    await onDeactivate(method.id);
-                                  },
-                                  child: Text(AppStrings.removeCard.tr()),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       );
                     }).toList(),
@@ -180,8 +208,8 @@ class CardCheckoutSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SwitchListTile.adaptive(
-            value: saveCardForFutureUse,
-            onChanged: isLoading
+            value: hasSelectedSavedMethod ? false : saveCardForFutureUse,
+            onChanged: isLoading || hasSelectedSavedMethod
                 ? null
                 : (value) {
                     onSaveCardForFutureUseChanged(value);

@@ -13,12 +13,11 @@ class ProductDetailsWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productAsyncValue = ref.watch(productDetailsProvider(productId));
 
-    return Scaffold(
-      body: productAsyncValue.when(
-        data: (product) => ProductScreen(product: product),
-        loading: () => _buildShimmerLoading(),
-        error: (error, stack) => Center(child: Text('Error: $error')),
-      ),
+    return productAsyncValue.when(
+      data: (product) => ProductScreen(product: product),
+      loading: () => Scaffold(body: _buildShimmerLoading()),
+      error: (error, stack) =>
+          Scaffold(body: Center(child: Text('Error: $error'))),
     );
   }
 

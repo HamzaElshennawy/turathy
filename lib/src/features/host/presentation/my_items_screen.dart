@@ -7,7 +7,7 @@ import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/auction_screen.dart';
 import 'package:turathy/src/features/products/data/products_repository.dart';
-import 'package:turathy/src/features/products/presentation/product_screen.dart';
+import 'package:turathy/src/features/products/presentation/product_details_wrapper.dart';
 import 'package:turathy/src/features/host/presentation/create_item_screen.dart';
 
 class MyItemsScreen extends ConsumerWidget {
@@ -168,7 +168,8 @@ class _MyProductsList extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ProductScreen(product: product),
+                        builder: (context) =>
+                            ProductDetailsWrapper(productId: product.id),
                       ),
                     );
                   },

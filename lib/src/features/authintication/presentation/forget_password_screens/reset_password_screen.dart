@@ -12,16 +12,23 @@ import '../../../../core/common_widgets/primary_button.dart';
 import '../../../../core/common_widgets/responsive_center.dart';
 import '../../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../../core/constants/app_images/app_images.dart';
+import '../../../../core/constants/app_functions/app_functions.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_strings/app_strings.dart';
+import '../../data/auth_repository.dart';
 import 'forgot_password_controller.dart';
 
 /// Screen where users enter the sent OTP and their new password.
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   /// The phone number in E.164 format to which the code was sent.
   final String phone_number;
+  final String challengeToken;
 
-  const ResetPasswordScreen({super.key, required this.phone_number});
+  const ResetPasswordScreen({
+    super.key,
+    required this.phone_number,
+    required this.challengeToken,
+  });
 
   @override
   ConsumerState<ResetPasswordScreen> createState() =>
@@ -45,6 +52,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(forgotPasswordControllerProvider, (previous, next) {
+      if (next.hasError) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: getFriendlyAuthMessage(next.error),
+          isError: true,
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.resetPassword.tr())),
       body: CustomScrollView(
@@ -126,7 +143,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                                 final ok = await ref
                                     .read(forgotPasswordControllerProvider.notifier)
                                     .changePassword(
-                                      e164Phone: widget.phone_number,
+                                      challengeToken: widget.challengeToken,
                                       otp: _codeController.text.trim(),
                                       password: _newPasswordController.text.trim(),
                                     );
@@ -136,10 +153,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                                 if (ok) {
                                   // Go back to the login screen and show success message.
                                   Navigator.of(context).popUntil((route) => route.isFirst);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(AppStrings.resetPasswordSuccess.tr()),
-                                    ),
+                                  AppFunctions.showSnackBar(
+                                    context: context,
+                                    message: AppStrings.resetPasswordSuccess.tr(),
                                   );
                                 }
                               }
@@ -160,4 +176,3 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     );
   }
 }
-

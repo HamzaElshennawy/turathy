@@ -12,16 +12,15 @@ class OtpController extends StateNotifier<AsyncValue<void>> {
 
   OtpController(this.ref) : super(const AsyncValue.data(null));
 
-  Future<bool> verifyOtp({required String phone_number}) async {
+  Future<bool> verifyOtp({required String challengeToken}) async {
     state = const AsyncValue.loading();
     try {
       final user = await AuthRepository.verifyOtp(
-        number: phone_number,
+        challengeToken: challengeToken,
         otp: otpController.text.trim(),
       );
       
-      // Update global auth state
-      ref.read(authControllerProvider.notifier).updateUser(user);
+      await ref.read(authControllerProvider.notifier).completePhoneAuth(user);
       
       state = const AsyncValue.data(null);
       return true;
@@ -37,10 +36,10 @@ class OtpController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<bool> resendOtp({required String phone_number}) async {
+  Future<Map<String, dynamic>?> resendOtp({required String challengeToken}) async {
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard(
-      () => AuthRepository.resendOtp(number: phone_number),
+      () => AuthRepository.resendOtp(challengeToken: challengeToken),
     );
     if (result.hasError) {
       AppFunctions.logPrint(
@@ -50,10 +49,10 @@ class OtpController extends StateNotifier<AsyncValue<void>> {
         result.error.toString(),
         result.stackTrace ?? StackTrace.empty,
       );
-      return false;
+      return null;
     }
     state = const AsyncValue.data(null);
-    return result.value ?? false;
+    return result.value;
   }
 }
 

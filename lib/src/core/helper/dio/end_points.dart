@@ -31,6 +31,9 @@ abstract class EndPoints {
   
   /// Endpoint for updating the user's password.
   static const String changePassword = "auth/change-password";
+
+  /// Endpoint for refreshing an expired user access token.
+  static const String refreshToken = "auth/refresh";
   
   /// Returns the path to fetch a specific user's public profile based on [id].
   static String getUser(int id) => "users/get-user?user_id=$id";
@@ -51,6 +54,7 @@ abstract class EndPoints {
   
   /// Endpoint to fetch all active and upcoming auctions.
   static const String getAllAuctions = "auctions/get-all-auctions";
+  static const String getAuctionFilterOptions = "auctions/filter-options";
 
   /// Returns path for auctions filtered by a single category [id].
   static String getAuctionsByCategory({required int id}) =>
@@ -169,6 +173,14 @@ abstract class EndPoints {
   
   /// Endpoint to clear all items from the user's cart.
   static const String cartClear = 'cart/clear';
+  static const String preorders = 'preorders';
+  static const String preorderCurrent = 'preorders/current';
+  static const String preorderMyRequests = 'preorders/my-requests';
+  static const String preorderAddItem = 'preorders/items/add';
+  static String preorderUpdateQuantity(int productId, int quantity) =>
+      'preorders/items/$productId/$quantity';
+  static String preorderRemoveItem(int productId) => 'preorders/items/$productId';
+  static const String preorderSubmit = 'preorders/submit';
   
   /// Returns path to synchronize a specific product quantity in the user's cart.
   static String cartUpdateQuantity(int userId, int productId, int quantity) =>
@@ -178,6 +190,7 @@ abstract class EndPoints {
   
   /// Endpoint to fetch a paginated list of catalog products.
   static const String getProducts = 'products/get-products';
+  static const String getProductFilterOptions = 'products/filter-options';
   
   /// Endpoint to fetch full details for a single product.
   static const String getProduct = 'products/get-product';

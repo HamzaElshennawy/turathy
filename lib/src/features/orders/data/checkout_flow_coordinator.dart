@@ -105,16 +105,18 @@ class CheckoutFlowCoordinator {
   Future<GeideaCheckoutSessionModel> createGeideaCheckoutSession({
     required OrderModel order,
     bool cardOnFile = false,
+    int? savedMethodId,
   }) {
     PaymentDebugLogger.info('createGeideaCheckoutSession:start', data: {
       'orderId': order.id,
       'userId': order.userId,
       'cardOnFile': cardOnFile,
+      'savedMethodId': savedMethodId,
     });
     return _paymentsRepository.createGeideaSession(
-      userId: order.userId,
       orderId: order.id,
       cardOnFile: cardOnFile,
+      savedMethodId: savedMethodId,
       language: Intl.getCurrentLocale().toLowerCase().startsWith('ar') ? 'ar' : 'en',
     );
   }
@@ -126,7 +128,6 @@ class CheckoutFlowCoordinator {
       'userId': userId,
     });
     return _paymentsRepository.createGeideaSaveCardSession(
-      userId: userId,
       language: Intl.getCurrentLocale().toLowerCase().startsWith('ar')
           ? 'ar'
           : 'en',

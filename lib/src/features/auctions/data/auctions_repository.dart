@@ -17,7 +17,7 @@ import '../domain/auction_access_model.dart';
 
 class AuctionsRepository {
   Future<List<AuctionModel>> getAllAuctions([FilterState? filters]) async {
-    final lastFilters = (filters?.toMap() ?? {});
+    final lastFilters = (filters?.toAuctionQuery() ?? {});
     lastFilters.addAll({'limit': '50'});
     final result = await DioHelper.getData(
       url: EndPoints.getAllAuctions,
@@ -40,7 +40,7 @@ class AuctionsRepository {
   Future<List<AuctionModel>> getAuctionsByCategory([
     FilterState? filters,
   ]) async {
-    final lastFilters = (filters?.toMap() ?? {});
+    final lastFilters = (filters?.toAuctionQuery() ?? {});
     lastFilters.addAll({'limit': '50'});
     final result = await DioHelper.getData(
       url: (filters == null || filters.selectedCategoryID == null)

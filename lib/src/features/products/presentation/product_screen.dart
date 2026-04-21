@@ -13,6 +13,8 @@ import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../../cart/data/cart_repository.dart';
 import '../../cart/presentation/cart_screen.dart';
+import '../../preorders/data/preorder_repository.dart';
+import '../../preorders/presentation/preorder_screen.dart';
 import '../domain/product_model.dart';
 
 class ProductScreen extends ConsumerStatefulWidget {
@@ -26,7 +28,9 @@ class ProductScreen extends ConsumerStatefulWidget {
 
 class _ProductScreenState extends ConsumerState<ProductScreen> {
   late PageController _pageController;
+  late ScrollController _scrollController;
   int _currentPage = 0;
+  double _purchaseCardProgress = 0.0;
 
   List<String> get _images {
     // Use images list if available, otherwise use imageUrl
@@ -52,6 +56,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    _scrollController = ScrollController()..addListener(_handleScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AnalyticsService.logScreenView(
         screenName: 'product_detail',
@@ -67,8 +72,21 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!mounted) return;
+    final offset = _scrollController.offset;
+    final progress = (offset / 80).clamp(0.0, 1.0);
+    if (_purchaseCardProgress != progress) {
+      setState(() {
+        _purchaseCardProgress = progress;
+      });
+    }
   }
 
   @override
@@ -128,51 +146,65 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Image Carousel
-            _buildImageCarousel(),
-            // Thumbnail Strip
-            if (_images.length > 1) _buildThumbnailStrip(),
-            gapH16,
-            // Product Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                widget.product.title ?? widget.product.name ?? '',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+      body: Stack(
+        children: [
+          ListView(
+            controller: _scrollController,
+            padding: const EdgeInsets.only(bottom: 160),
+            children: [
+              _buildImageCarousel(),
+              if (_images.length > 1) _buildThumbnailStrip(),
+              gapH16,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  widget.product.title ?? widget.product.name ?? '',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
+              ),
+              gapH16,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  widget.product.description ?? '',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    height: 1.6,
+                  ),
+                  textAlign: TextAlign.start,
+                ),
+              ),
+              gapH24,
+              _buildBasicDataSection(),
+              gapH24,
+            ],
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: IgnorePointer(
+              ignoring: _purchaseCardProgress <= 0,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                offset: Offset(0, 1 - _purchaseCardProgress),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  opacity: _purchaseCardProgress,
+                  child: SafeArea(top: false, child: _buildBottomBar()),
+                ),
               ),
             ),
-            gapH16,
-            // Description
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                widget.product.description ?? '',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                  height: 1.6,
-                ),
-                textAlign: TextAlign.start,
-              ),
-            ),
-            gapH24,
-            // Basic Data Section
-            _buildBasicDataSection(),
-            // Bottom padding for the fixed button
-            const SizedBox(height: 100),
-          ],
-        ),
+          ),
+        ],
       ),
-      bottomSheet: _buildBottomBar(),
     );
   }
 
@@ -367,6 +399,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   }
 
   Widget _buildBasicDataSection() {
+    final stockValue = widget.product.isPreorderContact
+        ? ''
+        : widget.product.stock.toString();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -381,29 +417,53 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
             ),
           ),
           gapH16,
-          _buildDataRow(
+          _buildDataRowWithDivider(
             widget.product.category ?? '-',
             AppStrings.productType.tr(),
           ),
-          _buildDataRow(
+          _buildDataRowWithDivider(
+            widget.product.itemType ?? '-',
+            AppStrings.itemType.tr(),
+          ),
+          _buildDataRowWithDivider(
             widget.product.material ?? '-',
             AppStrings.material.tr(),
           ),
-          _buildDataRow(
+          _buildDataRowWithDivider(
             widget.product.approximateAge ?? '-',
             AppStrings.approximateAge.tr(),
           ),
-          _buildDataRow(
+          _buildDataRowWithDivider(
             widget.product.condition ?? '-',
             AppStrings.productCondition.tr(),
           ),
-          _buildDataRow(widget.product.origin ?? '-', AppStrings.origin.tr()),
+          _buildDataRowWithDivider(
+            widget.product.origin ?? '-',
+            AppStrings.origin.tr(),
+          ),
+          _buildDataRowWithDivider(
+            widget.product.country ?? '-',
+            AppStrings.country.tr(),
+          ),
+          _buildDataRowWithDivider(stockValue, AppStrings.stockAvailable.tr()),
+          _buildDataRowWithDivider(
+            widget.product.gradingCompany ?? '-',
+            AppStrings.gradingCompany.tr(),
+          ),
+          _buildDataRow(
+            widget.product.gradeDesignation ?? '-',
+            AppStrings.gradeDesignation.tr(),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildDataRow(String value, String label) {
+    final normalizedValue =
+        value.trim().isEmpty || value.trim().toLowerCase() == 'null'
+        ? '-'
+        : value;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -422,7 +482,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           // Value
           Expanded(
             child: Text(
-              value,
+              normalizedValue,
               style: TextStyle(fontSize: 14, color: Colors.grey[700]),
               textAlign: TextAlign.end,
             ),
@@ -432,13 +492,33 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     );
   }
 
+  Widget _buildDataRowWithDivider(String value, String label) {
+    return Column(
+      children: [
+        _buildDataRow(value, label),
+        Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
   Widget _buildBottomBar() {
     final bool isOwner = widget.product.userId == CachedVariables.userId;
+    final bool isPreorder = widget.product.isPreorderContact;
+    final bool isOutOfStock = !isPreorder && widget.product.stock <= 0;
+    final bool isLowStock =
+        !isPreorder && widget.product.stock > 0 && widget.product.stock <= 3;
+    final Color stockColor = isOutOfStock
+        ? const Color(0xFFC62828)
+        : isLowStock
+        ? const Color(0xFFEF6C00)
+        : const Color(0xFF2E7D32);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -447,92 +527,168 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           ),
         ],
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (isOwner)
-                // Owner info label
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Colors.blue.shade700,
-                          size: 18,
+              Expanded(
+                child: isOwner
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: Colors.blue.shade200),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppStrings.yourProduct.tr(),
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.blue.shade700,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              AppStrings.yourProduct.tr(),
+                              style: TextStyle(
+                                color: Colors.blue.shade700,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: isOutOfStock
+                            ? null
+                            : () {
+                                _handlePrimaryAction();
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isOutOfStock
+                              ? Colors.grey.shade400
+                              : const Color(0xFF1B5E20),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: Text(
+                          isPreorder
+                              ? AppStrings.preorder.tr()
+                              : isOutOfStock
+                              ? AppStrings.outOfStock.tr()
+                              : AppStrings.buyNow.tr(),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
+              ),
+              gapW16,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (isPreorder)
+                    Text(
+                      AppStrings.priceOnRequest.tr(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    )
+                  else
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.product.discountedPrice.toStringAsFixed(0),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SvgPicture.asset('assets/icons/RSA.svg', height: 20),
                       ],
                     ),
-                  ),
-                )
-              else
-                // Buy Now Button
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _handleBuyNow();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B5E20),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                  if (!isPreorder && widget.product.hasDiscount)
+                    Text(
+                      '${widget.product.price?.toStringAsFixed(0) ?? '0'} ${AppStrings.currency.tr()}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        decoration: TextDecoration.lineThrough,
                       ),
                     ),
+                  if (!isPreorder && widget.product.hasDiscount)
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB71C1C),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        AppStrings.discountPercentOff.tr(
+                          args: [widget.product.discount.toStringAsFixed(0)],
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      AppStrings.buyNow.tr(),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      isPreorder
+                          ? AppStrings.availableByPreorder.tr()
+                          : isOutOfStock
+                          ? AppStrings.outOfStock.tr()
+                          : isLowStock
+                          ? AppStrings.onlyLeft.tr(
+                              args: [widget.product.stock.toString()],
+                            )
+                          : AppStrings.inStock.tr(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: stockColor,
                       ),
                     ),
                   ),
-                ),
-
-              gapW16,
-
-              // Price
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${widget.product.price?.toStringAsFixed(0) ?? '0'} ',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SvgPicture.asset('assets/icons/RSA.svg', height: 20),
                 ],
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  void _handleBuyNow() async {
+  Future<void> _handlePrimaryAction() async {
+    if (widget.product.isPreorderContact) {
+      await _handlePreorder();
+      return;
+    }
+
+    await _handleBuyNow();
+  }
+
+  Future<void> _handleBuyNow() async {
     final userId = CachedVariables.userId;
 
     // Check if user is signed in
@@ -563,7 +719,33 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     }
   }
 
-  void _showSignInDialog() {
+  Future<void> _handlePreorder() async {
+    final userId = CachedVariables.userId;
+
+    if (userId == null) {
+      _showSignInDialog(isPreorder: true);
+      return;
+    }
+
+    try {
+      await ref.read(preorderRepositoryProvider).addItem(widget.product.id);
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const PreorderScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showSignInDialog({bool isPreorder = false}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -573,7 +755,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           textAlign: TextAlign.center,
         ),
         content: Text(
-          AppStrings.signInToAddToCart.tr(),
+          isPreorder
+              ? AppStrings.signInToPreorder.tr()
+              : AppStrings.signInToAddToCart.tr(),
           textAlign: TextAlign.center,
         ),
         actions: [

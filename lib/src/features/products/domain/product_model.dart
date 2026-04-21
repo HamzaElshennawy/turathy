@@ -1,16 +1,21 @@
 import '../../../core/helper/dio/end_points.dart';
 
 class ProductModel {
+  static const String saleModeDirectPurchase = 'DIRECT_PURCHASE';
+  static const String saleModePreorderContact = 'PREORDER_CONTACT';
+
   final int id;
   final int? userId;
   final String? title;
   final String? name;
   final String? description;
   final double? price;
+  final String saleMode;
   final String? imageUrl;
   final String? category;
   final String? brand;
   final int stock;
+  final double discount;
   final double rating;
   final int reviews;
   final String? material;
@@ -19,9 +24,11 @@ class ProductModel {
   final String? origin;
   final String? country;
   final int? date;
+  final String? itemType;
   final String? denomination;
   final bool? isGraded;
   final String? gradingCompany;
+  final String? gradeDesignation;
   final int? grade;
   final double? metalWeight;
   final String? metalType;
@@ -45,6 +52,19 @@ class ProductModel {
     return '${EndPoints.baseUrl}$url';
   }
 
+  bool get hasDiscount => discount > 0;
+  bool get isPreorderContact => saleMode == saleModePreorderContact;
+  bool get isDirectPurchase => !isPreorderContact;
+
+  double get discountedPrice {
+    final basePrice = price ?? 0;
+    if (isPreorderContact || !hasDiscount) return basePrice;
+    final normalizedDiscount = discount.clamp(0, 100);
+    return basePrice * (1 - (normalizedDiscount / 100));
+  }
+
+  String get stockLabel => stock <= 0 ? 'out' : stock <= 3 ? 'low' : 'in';
+
   const ProductModel({
     required this.id,
     this.userId,
@@ -52,10 +72,12 @@ class ProductModel {
     required this.name,
     required this.description,
     required this.price,
+    this.saleMode = saleModeDirectPurchase,
     required this.imageUrl,
     required this.category,
     required this.brand,
     required this.stock,
+    required this.discount,
     required this.rating,
     required this.reviews,
     this.material,
@@ -64,9 +86,11 @@ class ProductModel {
     this.origin,
     this.country,
     this.date,
+    this.itemType,
     this.denomination,
     this.isGraded,
     this.gradingCompany,
+    this.gradeDesignation,
     this.grade,
     this.metalWeight,
     this.metalType,
@@ -89,10 +113,12 @@ class ProductModel {
           name == other.name &&
           description == other.description &&
           price == other.price &&
+          saleMode == other.saleMode &&
           imageUrl == other.imageUrl &&
           category == other.category &&
           brand == other.brand &&
           stock == other.stock &&
+          discount == other.discount &&
           rating == other.rating &&
           reviews == other.reviews &&
           material == other.material &&
@@ -101,9 +127,11 @@ class ProductModel {
           origin == other.origin &&
           country == other.country &&
           date == other.date &&
+          itemType == other.itemType &&
           denomination == other.denomination &&
           isGraded == other.isGraded &&
           gradingCompany == other.gradingCompany &&
+          gradeDesignation == other.gradeDesignation &&
           grade == other.grade &&
           metalWeight == other.metalWeight &&
           metalType == other.metalType &&
@@ -121,10 +149,12 @@ class ProductModel {
       name.hashCode ^
       description.hashCode ^
       price.hashCode ^
+      saleMode.hashCode ^
       imageUrl.hashCode ^
       category.hashCode ^
       brand.hashCode ^
       stock.hashCode ^
+      discount.hashCode ^
       rating.hashCode ^
       reviews.hashCode ^
       material.hashCode ^
@@ -133,9 +163,11 @@ class ProductModel {
       origin.hashCode ^
       country.hashCode ^
       date.hashCode ^
+      itemType.hashCode ^
       denomination.hashCode ^
       isGraded.hashCode ^
       gradingCompany.hashCode ^
+      gradeDesignation.hashCode ^
       grade.hashCode ^
       metalWeight.hashCode ^
       metalType.hashCode ^
@@ -152,10 +184,12 @@ class ProductModel {
     String? name,
     String? description,
     double? price,
+    String? saleMode,
     String? imageUrl,
     String? category,
     String? brand,
     int? stock,
+    double? discount,
     double? rating,
     int? reviews,
     String? material,
@@ -164,9 +198,11 @@ class ProductModel {
     String? origin,
     String? country,
     int? date,
+    String? itemType,
     String? denomination,
     bool? isGraded,
     String? gradingCompany,
+    String? gradeDesignation,
     int? grade,
     double? metalWeight,
     String? metalType,
@@ -184,10 +220,12 @@ class ProductModel {
       name: name ?? this.name,
       description: description ?? this.description,
       price: price ?? this.price,
+      saleMode: saleMode ?? this.saleMode,
       imageUrl: imageUrl ?? this.imageUrl,
       category: category ?? this.category,
       brand: brand ?? this.brand,
       stock: stock ?? this.stock,
+      discount: discount ?? this.discount,
       rating: rating ?? this.rating,
       reviews: reviews ?? this.reviews,
       material: material ?? this.material,
@@ -196,9 +234,11 @@ class ProductModel {
       origin: origin ?? this.origin,
       country: country ?? this.country,
       date: date ?? this.date,
+      itemType: itemType ?? this.itemType,
       denomination: denomination ?? this.denomination,
       isGraded: isGraded ?? this.isGraded,
       gradingCompany: gradingCompany ?? this.gradingCompany,
+      gradeDesignation: gradeDesignation ?? this.gradeDesignation,
       grade: grade ?? this.grade,
       metalWeight: metalWeight ?? this.metalWeight,
       metalType: metalType ?? this.metalType,
@@ -219,10 +259,12 @@ class ProductModel {
       'name': name,
       'description': description,
       'price': price,
+      'sale_mode': saleMode,
       'imageUrl': imageUrl,
       'category': category,
       'brand': brand,
       'stock': stock,
+      'discount': discount,
       'rating': rating,
       'reviews': reviews,
       'material': material,
@@ -231,9 +273,11 @@ class ProductModel {
       'origin': origin,
       'country': country,
       'date': date,
+      'item_type': itemType,
       'denomination': denomination,
       'is_graded': isGraded,
       'grading_company': gradingCompany,
+      'grade_designation': gradeDesignation,
       'grade': grade,
       'metal_weight': metalWeight,
       'metal_type': metalType,
@@ -254,10 +298,12 @@ class ProductModel {
       name: json['name'] as String?,
       description: json['description'] as String?,
       price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
+      saleMode: (json['sale_mode'] ?? saleModeDirectPurchase).toString(),
       imageUrl: (json['imageUrl'] ?? json['image']) as String?,
       category: json['category'] as String?,
       brand: json['brand'] as String?,
       stock: json['stock'] != null ? (int.tryParse(json['stock'].toString()) ?? 0) : 0,
+      discount: json['discount'] != null ? (double.tryParse(json['discount'].toString()) ?? 0.0) : 0.0,
       rating: json['rating'] != null ? (double.tryParse(json['rating'].toString()) ?? 0.0) : 0.0,
       reviews: json['reviews'] != null ? (int.tryParse(json['reviews'].toString()) ?? 0) : 0,
       material: json['material'] as String?,
@@ -266,6 +312,7 @@ class ProductModel {
       origin: json['origin'] as String?,
       country: json['country'] as String?,
       date: json['date'] != null ? int.tryParse(json['date'].toString()) : null,
+      itemType: (json['item_type'] ?? json['itemType']) as String?,
       denomination: json['denomination'] as String?,
       isGraded: () {
         final val = json['is_graded'] ?? json['isGraded'];
@@ -274,6 +321,7 @@ class ProductModel {
         return val.toString() == 'true' || val.toString() == '1';
       }(),
       gradingCompany: (json['grading_company'] ?? json['gradingCompany']) as String?,
+      gradeDesignation: (json['grade_designation'] ?? json['gradeDesignation']) as String?,
       grade: json['grade'] != null ? int.tryParse(json['grade'].toString()) : null,
       metalWeight: json['metal_weight'] != null ? double.tryParse(json['metal_weight'].toString()) : null,
       metalType: json['metal_type'] as String?,

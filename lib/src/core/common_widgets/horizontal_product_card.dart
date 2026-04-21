@@ -18,7 +18,7 @@ import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
-import 'package:turathy/src/features/products/presentation/product_screen.dart';
+import 'package:turathy/src/features/products/presentation/product_details_wrapper.dart';
 
 import '../../features/products/domain/product_model.dart';
 import '../constants/app_strings/app_strings.dart';
@@ -193,7 +193,9 @@ class HorizontalProductCard extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          "${product.price ?? 0} ${AppStrings.currency.tr()}",
+          product.isPreorderContact
+              ? AppStrings.priceOnRequest.tr()
+              : "${product.price ?? 0} ${AppStrings.currency.tr()}",
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -204,11 +206,13 @@ class HorizontalProductCard extends ConsumerWidget {
     );
   }
 
-  /// Internal: Routes the context to the full [ProductScreen] details.
+  /// Internal: Routes the context to the full product details screen.
   void _navigateToDetails(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ProductScreen(product: product)),
+      MaterialPageRoute(
+        builder: (_) => ProductDetailsWrapper(productId: product.id),
+      ),
     );
   }
 }

@@ -9,6 +9,7 @@ class CachedKeys {
   static const String fcmToken = "fcm_token";
   static const String authToken =
       "auth_token"; // Backend JWT - separate from FCM device token
+  static const String refreshToken = "refresh_token";
   static const String isGoogleSignIn =
       "is_google_sign_in"; // Flag for Google SSO users
   static const String profilePicUrl = "profile_pic_url";

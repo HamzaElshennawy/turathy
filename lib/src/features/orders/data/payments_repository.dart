@@ -10,17 +10,17 @@ import '../utils/payment_debug_logger.dart';
 
 class PaymentsRepository {
   Future<GeideaCheckoutSessionModel> createGeideaSession({
-    required int userId,
     required int orderId,
     bool cardOnFile = false,
+    int? savedMethodId,
     String language = 'en',
     String? returnUrl,
   }) async {
     PaymentDebugLogger.info('createGeideaSession:request', data: {
       'url': EndPoints.createGeideaSession,
-      'userId': userId,
       'orderId': orderId,
       'cardOnFile': cardOnFile,
+      'savedMethodId': savedMethodId,
       'language': language,
       'returnUrl': returnUrl,
     });
@@ -28,9 +28,9 @@ class PaymentsRepository {
       url: EndPoints.createGeideaSession,
       token: CachedVariables.token,
       data: {
-        'user_id': userId,
         'order_id': orderId,
         'cardOnFile': cardOnFile,
+        if (savedMethodId != null) 'saved_method_id': savedMethodId,
         'language': language,
         if (returnUrl != null) 'returnUrl': returnUrl,
       },
@@ -64,13 +64,11 @@ class PaymentsRepository {
   }
 
   Future<GeideaCheckoutSessionModel> createGeideaSaveCardSession({
-    required int userId,
     String language = 'en',
     String? returnUrl,
   }) async {
     PaymentDebugLogger.info('createGeideaSaveCardSession:request', data: {
       'url': EndPoints.createGeideaSaveCardSession,
-      'userId': userId,
       'language': language,
       'returnUrl': returnUrl,
     });
@@ -78,7 +76,6 @@ class PaymentsRepository {
       url: EndPoints.createGeideaSaveCardSession,
       token: CachedVariables.token,
       data: {
-        'user_id': userId,
         'language': language,
         if (returnUrl != null) 'returnUrl': returnUrl,
       },
@@ -121,7 +118,6 @@ class PaymentsRepository {
     final response = await DioHelper.getData(
       url: EndPoints.savedPaymentMethods,
       token: CachedVariables.token,
-      query: {'user_id': userId},
     );
 
     if (response.statusCode == 200) {
@@ -167,7 +163,7 @@ class PaymentsRepository {
     final response = await DioHelper.postData(
       url: EndPoints.deactivateSavedPaymentMethod(methodId),
       token: CachedVariables.token,
-      data: {'user_id': userId},
+      data: const {},
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -206,7 +202,7 @@ class PaymentsRepository {
     final response = await DioHelper.postData(
       url: EndPoints.setDefaultSavedPaymentMethod(methodId),
       token: CachedVariables.token,
-      data: {'user_id': userId},
+      data: const {},
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {

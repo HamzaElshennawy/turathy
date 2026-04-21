@@ -141,7 +141,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             context: context,
                             builder: (context) => BottomSheetWidget(
                               title: AppStrings.filters.tr(),
-                              child: const FilterWidget(),
+                              child: FilterWidget(
+                                contentType: FilterContentType.auction,
+                                onApply: () => ref.invalidate(searchProductsProvider),
+                                onClear: () => ref.invalidate(searchProductsProvider),
+                              ),
                             ),
                           );
                         },

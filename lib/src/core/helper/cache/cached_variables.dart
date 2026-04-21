@@ -9,6 +9,9 @@
 abstract class CachedVariables {
   /// The Bearer authentication token for the current session.
   static String? token;
+
+  /// The long-lived refresh token used to renew the access token.
+  static String? refreshToken;
   
   /// The unique ID of the currently logged-in user.
   static int? userId;

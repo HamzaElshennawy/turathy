@@ -18,7 +18,7 @@ import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
-import 'package:turathy/src/features/products/presentation/product_screen.dart';
+import 'package:turathy/src/features/products/presentation/product_details_wrapper.dart';
 
 import '../../features/products/domain/product_model.dart';
 import '../constants/app_functions/app_functions.dart';
@@ -138,6 +138,13 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                     right: 12,
                     child: _buildHeartIcon(isLiked),
                   ),
+                  if (widget.product.hasDiscount &&
+                      !widget.product.isPreorderContact)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: _buildDiscountBadge(),
+                    ),
                 ],
               ),
             ),
@@ -166,6 +173,8 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3),
                   ),
+                  gapH8,
+                  _buildStockChip(),
                   gapH16,
                   // Buy Now Button with integrated price display
                   _buildBuyNowButton(),
@@ -207,6 +216,9 @@ class _ProductCardState extends ConsumerState<ProductCard> {
 
   /// Internal: Builds the primary call-to-action with localized price labels.
   Widget _buildBuyNowButton() {
+    final priceText = widget.product.discountedPrice.toStringAsFixed(0);
+    final originalPrice = widget.product.price ?? 0;
+    final isPreorder = widget.product.isPreorderContact;
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -219,19 +231,125 @@ class _ProductCardState extends ConsumerState<ProductCard> {
           ),
           padding: const EdgeInsets.symmetric(vertical: 4),
         ),
-        child: Text(
-          "${AppStrings.buyNow.tr()} :${widget.product.price ?? 0} ${AppStrings.currency.tr()}",
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isPreorder
+                  ? AppStrings.preorder.tr()
+                  : "${AppStrings.buyNow.tr()} :$priceText ${AppStrings.currency.tr()}",
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            if (isPreorder)
+              Text(
+                AppStrings.priceOnRequest.tr(),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+              )
+            else if (widget.product.hasDiscount)
+              Text(
+                "${originalPrice.toStringAsFixed(0)} ${AppStrings.currency.tr()}",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                  decoration: TextDecoration.lineThrough,
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  /// Internal: Routes the user to the full [ProductScreen] view.
+  Widget _buildDiscountBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFB71C1C),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        AppStrings.discountPercentOff.tr(
+          args: [widget.product.discount.toStringAsFixed(0)],
+        ),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockChip() {
+    if (widget.product.isPreorderContact) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE3F2FD),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            AppStrings.availableByPreorder.tr(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1565C0),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final bool isLowStock = widget.product.stock > 0 && widget.product.stock <= 3;
+    final bool isOutOfStock = widget.product.stock <= 0;
+    final Color backgroundColor = isOutOfStock
+        ? const Color(0xFFFFEBEE)
+        : isLowStock
+            ? const Color(0xFFFFF3E0)
+            : const Color(0xFFE8F5E9);
+    final Color foregroundColor = isOutOfStock
+        ? const Color(0xFFC62828)
+        : isLowStock
+            ? const Color(0xFFEF6C00)
+            : const Color(0xFF2E7D32);
+    final String text = isOutOfStock
+        ? AppStrings.outOfStock.tr()
+        : isLowStock
+            ? AppStrings.onlyLeft.tr(args: [widget.product.stock.toString()])
+            : AppStrings.inStock.tr();
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: foregroundColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Internal: Routes the user to the full product details view.
   void _navigateToDetails() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ProductScreen(product: widget.product)),
+      MaterialPageRoute(
+        builder: (_) => ProductDetailsWrapper(productId: widget.product.id),
+      ),
     );
   }
 }

@@ -60,6 +60,66 @@ class AuctionInfoTableWidget extends StatelessWidget {
               ),
             ),
           ],
+          if (activeProduct != null) ...[
+            gapH16,
+            _InfoRow(
+              label: 'itemType'.tr(),
+              value: activeProduct!.itemType,
+            ),
+            _InfoRow(
+              label: 'country'.tr(),
+              value: activeProduct!.country,
+            ),
+            _InfoRow(
+              label: 'denomination'.tr(),
+              value: activeProduct!.denomination,
+            ),
+            _InfoRow(
+              label: 'gradingCompany'.tr(),
+              value: activeProduct!.gradingCompany,
+            ),
+            _InfoRow(
+              label: 'gradeDesignation'.tr(),
+              value: activeProduct!.gradeDesignation,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String? value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value?.trim();
+    if (displayValue == null || displayValue.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              displayValue,
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );

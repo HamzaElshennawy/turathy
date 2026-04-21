@@ -6,7 +6,7 @@
 /// social login options (Google), and navigation to registration.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 
@@ -15,6 +15,7 @@ import '../../../core/common_widgets/responsive_center.dart';
 import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/common_widgets/phone_number_field.dart';
+import '../../../core/constants/app_functions/app_functions.dart';
 
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../utils/validators.dart';
@@ -51,14 +52,20 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final state = ref.watch(authControllerProvider);
     final controller = ref.read(authControllerProvider.notifier);
     final countryCode = ref.watch(countryCodeProvider);
+    final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
 
     /// Listen to auth state changes to perform navigation or show errors.
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasError) {
         setState(() {
           final err = next.error;
-          _errorMessage = err is AuthException ? err.message : err.toString();
+          _errorMessage = getFriendlyAuthMessage(err);
         });
+        AppFunctions.showSnackBar(
+          context: context,
+          message: _errorMessage!,
+          isError: true,
+        );
       } else if (next.value != null) {
         final isGoogle = ref
             .read(authControllerProvider.notifier)
@@ -78,18 +85,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               (route) => false,
             );
           }
-        } else {
-          // Standard Sign-In: Navigate to OTP verification for security.
-          final phone = ref
-              .read(authControllerProvider.notifier)
-              .phoneController
-              .text
-              .trim();
-          final e164 = '$countryCode$phone';
-
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => OtpScreen(phone_number: e164)),
-          );
         }
       }
     });
@@ -115,10 +110,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       Center(child: Image.asset(AppImages.logo, height: 100)),
                       const SizedBox(height: 40),
 
-                      // Welcome Texts (RTL prioritized)
+                      // Welcome Texts
                       Text(
                         AppStrings.signIn.tr(),
-                        textAlign: TextAlign.end,
+                        textAlign: TextAlign.start,
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               fontWeight: FontWeight.bold,
@@ -128,7 +123,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       const SizedBox(height: 8),
                       Text(
                         AppStrings.welcomeBackMessage.tr(),
-                        textAlign: TextAlign.end,
+                        textAlign: TextAlign.start,
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
@@ -158,7 +153,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           children: [
                             Text(
                               AppStrings.mobileNumber.tr(),
-                              textAlign: TextAlign.end,
+                              textAlign: TextAlign.start,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
@@ -239,12 +234,47 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                         .phoneController
                                         .text
                                         .trim();
-                                    await ref
+                                    final e164 = '$countryCode$local';
+                                    final result = await ref
                                         .read(authControllerProvider.notifier)
                                         .signIn(
-                                          '$countryCode$local',
+                                          e164,
                                           controller.passwordController.text,
                                         );
+                                    if (!context.mounted) return;
+                                    if (result['status'] == 'success' &&
+                                        result['requiresOtp'] == true) {
+                                      final deliveryMethod =
+                                          result['deliveryMethod'] as String?;
+                                      final fallbackMethod =
+                                          result['fallbackMethod'] as String?;
+                                      final deliveryMessage =
+                                          deliveryMethod == 'whatsapp' &&
+                                              fallbackMethod == 'sms'
+                                          ? AppStrings
+                                                .otpWillBeSentByWhatsappWithSmsFallback
+                                                .tr()
+                                          : deliveryMethod == 'whatsapp'
+                                          ? AppStrings.otpWillBeSentByWhatsapp
+                                                .tr()
+                                          : AppStrings.otpWillBeSentBySms.tr();
+                                      AppFunctions.showSnackBar(
+                                        context: context,
+                                        message: deliveryMessage,
+                                      );
+                                      Navigator.of(context).pushReplacement(
+                                        MaterialPageRoute(
+                                          builder: (_) => OtpScreen(
+                                            phone_number: e164,
+                                            challengeToken:
+                                                result['challengeToken']
+                                                    as String,
+                                            deliveryMethod: deliveryMethod,
+                                            fallbackMethod: fallbackMethod,
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   }
                                 },
                               ),
@@ -281,27 +311,51 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SignUpScreen(),
+                          if (isRtl) ...[
+                            Text(
+                              AppStrings.dontHaveAccount.tr(),
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignUpScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                AppStrings.createAccount.tr(),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              );
-                            },
-                            child: Text(
-                              AppStrings.createAccount.tr(),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
-                          Text(
-                            AppStrings.dontHaveAccount.tr(),
-                            style: const TextStyle(color: Colors.grey),
-                          ),
+                          ] else ...[
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignUpScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                AppStrings.createAccount.tr(),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              AppStrings.dontHaveAccount.tr(),
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -316,4 +370,3 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     );
   }
 }
-

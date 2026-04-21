@@ -5,9 +5,8 @@ import 'package:turathy/src/core/common_widgets/product_card.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
-import 'package:turathy/src/features/home/data/category_repository.dart';
-import 'package:turathy/src/features/home/domain/category_model.dart';
 import 'package:turathy/src/features/products/data/products_repository.dart';
+import 'package:turathy/src/features/home/data/category_repository.dart';
 
 import '../../search/presentation/widgets/filter_widget/filter_widget.dart';
 import '../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
@@ -36,16 +35,16 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final productsAsyncValue = ref.watch(productsListProvider);
+    final productsAsyncValue = ref.watch(filteredProductsProvider);
     final categoriesAsyncValue = ref.watch(getAllCategoriesProvider);
     final filterState = ref.watch(filterWidgetControllerProvider);
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(productsListProvider);
+          ref.invalidate(filteredProductsProvider);
           ref.invalidate(getAllCategoriesProvider);
-          await ref.read(productsListProvider.future);
+          await ref.read(filteredProductsProvider.future);
           await ref.read(getAllCategoriesProvider.future);
         },
         child: CustomScrollView(
@@ -68,9 +67,13 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
-                            builder: (context) => const FractionallySizedBox(
+                            builder: (context) => FractionallySizedBox(
                               heightFactor: 0.85,
-                              child: FilterWidget(),
+                              child: FilterWidget(
+                                contentType: FilterContentType.store,
+                                onApply: () => ref.invalidate(filteredProductsProvider),
+                                onClear: () => ref.invalidate(filteredProductsProvider),
+                              ),
                             ),
                           );
                         },
@@ -160,100 +163,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
             const SliverToBoxAdapter(child: gapH16),
             productsAsyncValue.when(
               data: (products) {
-                final filteredProducts = products.where((product) {
-                  final searchText = filterState.searchText ?? '';
-                  final matchesSearch = product.title
-                          ?.toLowerCase()
-                          .contains(searchText.toLowerCase()) ??
-                      false;
-
-                  final matchesCategory =
-                      filterState.selectedCategoryID == null ||
-                          filterState.selectedCategoryID == -1 ||
-                          product.category ==
-                              categoriesAsyncValue.value
-                                  ?.firstWhere(
-                                    (c) =>
-                                        c.id == filterState.selectedCategoryID,
-                                    orElse: () => CategoryModel(id: -1),
-                                  )
-                                  .name;
-
-                  final matchesMinPrice = filterState.minPrice == null ||
-                      (product.price != null &&
-                          product.price! >= filterState.minPrice!);
-                  final matchesMaxPrice = filterState.maxPrice == null ||
-                      (product.price != null &&
-                          product.price! <= filterState.maxPrice!);
-
-                  final matchesCountry = filterState.country == null ||
-                      filterState.country!.isEmpty ||
-                      product.country == filterState.country;
-
-                  final matchesDateFrom = filterState.dateFrom == null ||
-                      filterState.dateFrom == -1 ||
-                      (product.date != null &&
-                          product.date! >= filterState.dateFrom!);
-                  final matchesDateTo = filterState.dateTo == null ||
-                      filterState.dateTo == -1 ||
-                      (product.date != null &&
-                          product.date! <= filterState.dateTo!);
-
-                  final matchesDenom = filterState.denomination == null ||
-                      filterState.denomination!.isEmpty ||
-                      product.denomination
-                              ?.toLowerCase()
-                              .contains(filterState.denomination!.toLowerCase()) ==
-                          true;
-
-                  final matchesGraded = filterState.isGraded == null ||
-                      product.isGraded == filterState.isGraded;
-
-                  final matchesGradingCompany =
-                      filterState.gradingCompany == null ||
-                          filterState.gradingCompany!.isEmpty ||
-                          product.gradingCompany == filterState.gradingCompany;
-
-                  final matchesGradeFrom = filterState.gradeFrom == null ||
-                      filterState.gradeFrom == -1 ||
-                      (product.grade != null &&
-                          product.grade! >= filterState.gradeFrom!);
-                  final matchesGradeTo = filterState.gradeTo == null ||
-                      filterState.gradeTo == -1 ||
-                      (product.grade != null &&
-                          product.grade! <= filterState.gradeTo!);
-
-                  final matchesMetalType = filterState.metalType == null ||
-                      filterState.metalType!.isEmpty ||
-                      product.metalType
-                              ?.toLowerCase()
-                              .contains(filterState.metalType!.toLowerCase()) ==
-                          true;
-
-                  final matchesMetalFineness =
-                      filterState.metalFineness == null ||
-                          filterState.metalFineness!.isEmpty ||
-                          product.metalFineness?.toLowerCase().contains(
-                                  filterState.metalFineness!.toLowerCase()) ==
-                              true;
-
-                  return matchesSearch &&
-                      matchesCategory &&
-                      matchesMinPrice &&
-                      matchesMaxPrice &&
-                      matchesCountry &&
-                      matchesDateFrom &&
-                      matchesDateTo &&
-                      matchesDenom &&
-                      matchesGraded &&
-                      matchesGradingCompany &&
-                      matchesGradeFrom &&
-                      matchesGradeTo &&
-                      matchesMetalType &&
-                      matchesMetalFineness;
-                }).toList();
-
-                if (filteredProducts.isEmpty) {
+                if (products.isEmpty) {
                   return const SliverToBoxAdapter(
                     child: Center(child: Text('No products found')),
                   );
@@ -270,8 +180,8 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                       childAspectRatio: 0.55,
                     ),
                     delegate: SliverChildBuilderDelegate((context, index) {
-                      return ProductCard(product: filteredProducts[index]);
-                    }, childCount: filteredProducts.length),
+                      return ProductCard(product: products[index]);
+                    }, childCount: products.length),
                   ),
                 );
               },

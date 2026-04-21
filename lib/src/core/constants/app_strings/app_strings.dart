@@ -107,7 +107,20 @@ class AppStrings {
   static const String quantity = "quantity";
   static const String successAddedToCart = "successAddedToCart";
   static const String outOfStock = "outOfStock";
+  static const String inStock = "inStock";
+  static const String onlyLeft = "onlyLeft";
+  static const String stockAvailable = "stockAvailable";
+  static const String discountPercentOff = "discountPercentOff";
   static const String addToCart = "addToCart";
+  static const String addToPreorder = "addToPreorder";
+  static const String preorder = "preorder";
+  static const String preorderList = "preorderList";
+  static const String availableByPreorder = "availableByPreorder";
+  static const String priceOnRequest = "priceOnRequest";
+  static const String submitPreorderRequest = "submitPreorderRequest";
+  static const String preorderSubmitted = "preorderSubmitted";
+  static const String preorderEmpty = "preorderEmpty";
+  static const String signInToPreorder = "signInToPreorder";
   static const String offers = "offers";
   static const String allOffers = "allOffers";
   static const String applyFilters = "applyFilters";
@@ -218,6 +231,12 @@ class AppStrings {
   static const String verify = "verify";
   static const String resendCode = "resendCode";
   static const String otpResentSuccessfully = "otpResentSuccessfully";
+  static const String otpCodeExpiresIn = "otpCodeExpiresIn";
+  static const String enter4DigitCode = "enter4DigitCode";
+  static const String otpWillBeSentBySms = "otpWillBeSentBySms";
+  static const String otpWillBeSentByWhatsapp = "otpWillBeSentByWhatsapp";
+  static const String otpWillBeSentByWhatsappWithSmsFallback =
+      "otpWillBeSentByWhatsappWithSmsFallback";
   static const String more = "more";
   static const String settings = "settings";
   static const String account = "account";
@@ -372,11 +391,13 @@ class AppStrings {
   static const String dateRange = 'dateRange';
   static const String yearFrom = 'yearFrom';
   static const String yearTo = 'yearTo';
+  static const String itemType = 'itemType';
   static const String denomination = 'denomination';
   static const String gradedStatus = 'gradedStatus';
   static const String graded = 'graded';
   static const String notGraded = 'notGraded';
   static const String gradingCompany = 'gradingCompany';
+  static const String gradeDesignation = 'gradeDesignation';
   static const String gradeRange = 'gradeRange';
   static const String gradeFrom = 'gradeFrom';
   static const String gradeTo = 'gradeTo';

@@ -6,7 +6,6 @@ import '../../../../home/domain/category_model.dart';
 import '../../../domain/filter_state.dart';
 
 class FilterWidgetController extends StateNotifier<FilterState> {
-  final List<String> gradingCompanies = ['PMG', 'NGC', 'PCGS'];
   final List<CategoryModel> categories;
 
   final TextEditingController searchController = TextEditingController();
@@ -17,10 +16,6 @@ class FilterWidgetController extends StateNotifier<FilterState> {
     return categories.indexWhere(
       (element) => element.id == state.selectedCategoryID,
     );
-  }
-
-  int get selectedGradingCompanyIndex {
-    return gradingCompanies.indexOf(state.gradingCompany ?? '');
   }
 
   void setMinPrice(double? price) {
@@ -64,11 +59,16 @@ class FilterWidgetController extends StateNotifier<FilterState> {
     state = state.copyWith(denomination: text.isEmpty ? '' : text);
   }
 
+  void setItemType(String text) {
+    state = state.copyWith(itemType: text.isEmpty ? '' : text);
+  }
+
   void setIsGraded(bool? value) {
     if (value == false) {
       state = state.copyWith(
         isGraded: value,
         gradingCompany: '',
+        gradeDesignation: '',
         gradeFrom: -1,
         gradeTo: -1,
       );
@@ -76,6 +76,7 @@ class FilterWidgetController extends StateNotifier<FilterState> {
       state = state.copyWith(
         isGraded: null,
         gradingCompany: '',
+        gradeDesignation: '',
         gradeFrom: -1,
         gradeTo: -1,
       );
@@ -84,12 +85,12 @@ class FilterWidgetController extends StateNotifier<FilterState> {
     }
   }
 
-  void selectGradingCompany(int index) {
-    if (gradingCompanies[index] == state.gradingCompany) {
-      state = state.copyWith(gradingCompany: '');
-    } else {
-      state = state.copyWith(gradingCompany: gradingCompanies[index]);
-    }
+  void setGradingCompany(String value) {
+    state = state.copyWith(gradingCompany: value.isEmpty ? '' : value);
+  }
+
+  void setGradeDesignation(String text) {
+    state = state.copyWith(gradeDesignation: text.isEmpty ? '' : text);
   }
 
   void setGradeFrom(int? grade) {

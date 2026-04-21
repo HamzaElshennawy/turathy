@@ -19,8 +19,8 @@ class ForgotPasswordController extends StateNotifier<AsyncValue<void>> {
   /// Requests a password reset OTP for the specified phone number.
   /// 
   /// The [e164Phone] must be in international format (e.g., +9665XXXXXXXX).
-  /// Returns `true` if the request was successful and an OTP was sent.
-  Future<bool> requestOtp({required String e164Phone}) async {
+  /// Returns a challenge token if the request was successful.
+  Future<String?> requestOtp({required String e164Phone}) async {
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard(
         () => AuthRepository.requestOtp(number: e164Phone));
@@ -30,11 +30,11 @@ class ForgotPasswordController extends StateNotifier<AsyncValue<void>> {
           message: 'requestOtp error: ${result.error} ${result.stackTrace}');
       state = AsyncValue.error(
           result.error.toString(), result.stackTrace ?? StackTrace.empty);
-      return false;
+      return null;
     }
     
     state = const AsyncValue.data(null);
-    return result.value ?? false;
+    return result.value?['challengeToken'] as String?;
   }
 
   /// Verifies the [otp] and resets the user's password to [password].
@@ -42,12 +42,12 @@ class ForgotPasswordController extends StateNotifier<AsyncValue<void>> {
   /// Requires the [e164Phone] associated with the account.
   /// Returns `true` if the password was updated successfully.
   Future<bool> changePassword(
-      {required String e164Phone,
+      {required String challengeToken,
       required String otp,
       required String password}) async {
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard(() => AuthRepository.changePassword(
-          number: e164Phone,
+          challengeToken: challengeToken,
           otp: otp,
           password: password,
         ));
@@ -70,4 +70,3 @@ class ForgotPasswordController extends StateNotifier<AsyncValue<void>> {
 final forgotPasswordControllerProvider = StateNotifierProvider.autoDispose<
     ForgotPasswordController,
     AsyncValue<void>>((ref) => ForgotPasswordController());
-

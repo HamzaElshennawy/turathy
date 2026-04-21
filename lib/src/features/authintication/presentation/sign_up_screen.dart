@@ -1,12 +1,12 @@
 /// {@category Presentation}
 ///
 /// Authentication screen for new users to create an account.
-/// 
+///
 /// This screen handles the initial registration step, collecting the user's
 /// name, phone number, and password. It then transitions to OTP verification.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 
@@ -16,6 +16,7 @@ import '../../../core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/common_widgets/phone_number_field.dart';
+import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../utils/validators.dart';
 import 'auth_controller.dart';
 import 'complete_profile_screen.dart';
@@ -24,6 +25,7 @@ import 'sign_in_screen.dart';
 import 'widgets/social_login_buttons.dart';
 import 'country_code_provider.dart';
 import '../../main_screen.dart';
+import '../data/auth_repository.dart';
 
 /// Entry point for the account creation process.
 class SignUpScreen extends ConsumerStatefulWidget {
@@ -39,26 +41,30 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     super.initState();
     AnalyticsService.logScreenView(screenName: 'sign_up_screen');
   }
+
   @override
   Widget build(BuildContext context) {
     var controller = ref.read(authControllerProvider.notifier);
     final state = ref.watch(authControllerProvider);
     final countryCode = ref.watch(countryCodeProvider);
+    final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
 
     /// Listen for side-effects like Google Sign-In completion during registration.
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error.toString()),
-            backgroundColor: Colors.red,
-          ),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: getFriendlyAuthMessage(next.error),
+          isError: true,
         );
       } else if (next.value != null) {
-        final isGoogle = ref.read(authControllerProvider.notifier).isGoogleSignInProcessing;
+        final isGoogle = ref
+            .read(authControllerProvider.notifier)
+            .isGoogleSignInProcessing;
         if (isGoogle) {
           // If Google sign-in returns a user with missing profile data, go to completion screen.
-          if (next.value!.missingFields != null && next.value!.missingFields!.isNotEmpty) {
+          if (next.value!.missingFields != null &&
+              next.value!.missingFields!.isNotEmpty) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
               (route) => false,
@@ -82,7 +88,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               hasScrollBody: false,
               child: ResponsiveCenter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -91,11 +100,12 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       Center(child: Image.asset(AppImages.logo, height: 100)),
                       const SizedBox(height: 40),
 
-                      // Motivational Header (RTL)
+                      // Motivational Header
                       Text(
                         AppStrings.createNewAccount.tr(),
-                        textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        textAlign: TextAlign.start,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
                             ),
@@ -103,8 +113,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       const SizedBox(height: 8),
                       Text(
                         AppStrings.letsWinAuctions.tr(),
-                        textAlign: TextAlign.end,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                        textAlign: TextAlign.start,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
 
@@ -117,7 +129,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             // Full Name Input
                             Text(
                               AppStrings.name.tr(),
-                              textAlign: TextAlign.end,
+                              textAlign: TextAlign.start,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
@@ -127,14 +139,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               validator: Validators.required,
                               hintText: AppStrings.name,
                               prefixIcon: const Icon(Icons.person),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             const SizedBox(height: 16),
 
                             // Mobile Number Input
                             Text(
                               AppStrings.mobileNumber.tr(),
-                              textAlign: TextAlign.end,
+                              textAlign: TextAlign.start,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
@@ -143,19 +157,23 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               initialCountryCode: countryCode,
                               onCountryChanged: (country) {
                                 if (country.dialCode != null) {
-                                  ref.read(countryCodeProvider.notifier).setCountryCode(country.dialCode!);
+                                  ref
+                                      .read(countryCodeProvider.notifier)
+                                      .setCountryCode(country.dialCode!);
                                 }
                               },
                               validator: Validators.required,
                               hintText: '5XXXXXXXX',
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             const SizedBox(height: 16),
 
                             // Security (Password)
                             Text(
                               AppStrings.password.tr(),
-                              textAlign: TextAlign.end,
+                              textAlign: TextAlign.start,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
@@ -165,7 +183,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               validator: Validators.passwordValidator,
                               hintText: AppStrings.password,
                               prefixIcon: const Icon(Icons.lock),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
 
                             const SizedBox(height: 32),
@@ -178,14 +198,46 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 isLoading: state.isLoading,
                                 text: AppStrings.createAccount.tr(),
                                 onPressed: () async {
-                                  final fullphone_number = '$countryCode${controller.phoneController.text}';
-                                  final result = await controller.signUp(fullphone_number);
-                                  
+                                  final fullphone_number =
+                                      '$countryCode${controller.phoneController.text}';
+                                  final result = await controller.signUp(
+                                    fullphone_number,
+                                  );
+
                                   // Navigate to OTP on success to verify the phone number.
-                                  if (result['status'] == 'success' && context.mounted) {
+                                  if (result['status'] == 'success' &&
+                                      context.mounted) {
+                                    final deliveryMethod =
+                                        result['deliveryMethod'] as String?;
+                                    final fallbackMethod =
+                                        result['fallbackMethod'] as String?;
+                                    final deliveryMessage =
+                                        deliveryMethod == 'whatsapp' &&
+                                                fallbackMethod == 'sms'
+                                            ? AppStrings
+                                                .otpWillBeSentByWhatsappWithSmsFallback
+                                                .tr()
+                                            : deliveryMethod == 'whatsapp'
+                                            ? AppStrings
+                                                .otpWillBeSentByWhatsapp
+                                                .tr()
+                                            : AppStrings
+                                                .otpWillBeSentBySms
+                                                .tr();
+                                    AppFunctions.showSnackBar(
+                                      context: context,
+                                      message: deliveryMessage,
+                                    );
                                     Navigator.of(context).pushReplacement(
                                       MaterialPageRoute(
-                                        builder: (context) => OtpScreen(phone_number: fullphone_number),
+                                        builder: (context) => OtpScreen(
+                                          phone_number: fullphone_number,
+                                          challengeToken:
+                                              result['challengeToken']
+                                                  as String,
+                                          deliveryMethod: deliveryMethod,
+                                          fallbackMethod: fallbackMethod,
+                                        ),
                                       ),
                                     );
                                   }
@@ -223,25 +275,55 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(builder: (context) => const SignInScreen()),
-                                (route) => false,
-                              );
-                            },
-                            child: Text(
-                              AppStrings.signIn.tr(context: context),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
+                          if (isRtl) ...[
+                            Text(
+                              AppStrings.alreadyHaveAnAccount.tr(
+                                context: context,
+                              ),
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignInScreen(),
+                                  ),
+                                  (route) => false,
+                                );
+                              },
+                              child: Text(
+                                AppStrings.signIn.tr(context: context),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          Text(
-                            AppStrings.alreadyHaveAnAccount.tr(context: context),
-                            style: const TextStyle(color: Colors.grey),
-                          ),
+                          ] else ...[
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignInScreen(),
+                                  ),
+                                  (route) => false,
+                                );
+                              },
+                              child: Text(
+                                AppStrings.signIn.tr(context: context),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              AppStrings.alreadyHaveAnAccount.tr(
+                                context: context,
+                              ),
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -256,10 +338,3 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     );
   }
 }
-
-
-
-
-
-
-

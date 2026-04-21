@@ -20,7 +20,6 @@ class OrderRepository {
     Map<String, dynamic> data;
     if (isProductOrder) {
       data = {
-        'user_id': order.userId,
         'items': order.items
             .map(
               (item) => {
@@ -32,7 +31,7 @@ class OrderRepository {
         'address_id': order.addressId,
       };
     } else {
-      data = order.toJson();
+      data = Map<String, dynamic>.from(order.toJson())..remove('user_id');
     }
 
     PaymentDebugLogger.info('createOrder:request', data: {
@@ -80,7 +79,6 @@ class OrderRepository {
     final result = await DioHelper.getData(
       url: EndPoints.getUserOrders,
       token: CachedVariables.token,
-      query: {'user_id': userId, 'include': 'user_addresses'},
     );
     if (result.statusCode == 200) {
       List<OrderModel> orders = [];
@@ -150,7 +148,6 @@ class OrderRepository {
     });
 
     final formData = FormData.fromMap({
-      'user_id': userId,
       'order_id': orderId,
       'amount': amount,
       'receipt': await MultipartFile.fromFile(filePath, filename: fileName),

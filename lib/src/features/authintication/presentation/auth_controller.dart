@@ -87,6 +87,13 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     state = AsyncValue.data(user);
   }
 
+  Future<void> completePhoneAuth(UserModel user) async {
+    state = AsyncValue.data(user);
+    await AnalyticsService.setUser(user, authMethod: 'phone');
+    await FCMService().registerAfterLogin();
+    ref.invalidate(notificationsNotifierProvider);
+  }
+
   /// Performs credential-based login.
   /// 
   /// Triggers [FCMService] registration and clears notification state on success.
@@ -97,6 +104,10 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     state = const AsyncValue.loading();
     try {
       final result = await AuthRepository.signIn(fullphone_number, password);
+      if (result['requiresOtp'] == true) {
+        state = const AsyncValue.data(null);
+        return result;
+      }
       final user = result['user'] as UserModel;
       state = AsyncValue.data(user);
       await AnalyticsService.setUser(user, authMethod: 'phone');
@@ -150,6 +161,9 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       } catch (_) {}
     }
     await AuthRepository.clearLocalDetails();
+    phoneController.clear();
+    nameController.clear();
+    passwordController.clear();
     await AnalyticsService.clearUser();
     state = const AsyncValue.data(null);
     ref.invalidate(notificationsNotifierProvider);

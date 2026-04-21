@@ -5,35 +5,64 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
+import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import 'auth_controller.dart';
 import 'complete_profile_screen.dart';
+import '../data/auth_repository.dart';
 import 'otp_controller.dart';
 import '../../main_screen.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String phone_number;
+  final String challengeToken;
+  final String? deliveryMethod;
+  final String? fallbackMethod;
 
-  const OtpScreen({super.key, required this.phone_number});
+  const OtpScreen({
+    super.key,
+    required this.phone_number,
+    required this.challengeToken,
+    this.deliveryMethod,
+    this.fallbackMethod,
+  });
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
-  // We need 6 controllers for the 6 digits if we manage them manually
+  static const int _otpLength = 4;
+
+  // We need one controller per digit if we manage them manually
   // Or one main controller and focus/text logic.
-  // Using 6 controllers for simplicity in UI state management for focus.
+  // Using 4 controllers for simplicity in UI state management for focus.
   late List<TextEditingController> _controllers;
   late List<FocusNode> _focusNodes;
+  late String _challengeToken;
+  late String? _deliveryMethod;
+  late String? _fallbackMethod;
   String? _errorMessage;
+
+  String _buildDeliveryMessage() {
+    if (_deliveryMethod == 'whatsapp' && _fallbackMethod == 'sms') {
+      return AppStrings.otpWillBeSentByWhatsappWithSmsFallback.tr();
+    }
+    if (_deliveryMethod == 'whatsapp') {
+      return AppStrings.otpWillBeSentByWhatsapp.tr();
+    }
+    return AppStrings.otpWillBeSentBySms.tr();
+  }
 
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(6, (_) => TextEditingController());
-    _focusNodes = List.generate(6, (_) => FocusNode());
+    _controllers = List.generate(_otpLength, (_) => TextEditingController());
+    _focusNodes = List.generate(_otpLength, (_) => FocusNode());
+    _challengeToken = widget.challengeToken;
+    _deliveryMethod = widget.deliveryMethod;
+    _fallbackMethod = widget.fallbackMethod;
   }
 
   @override
@@ -48,7 +77,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   void _onDigitChanged(int index, String value) {
-    if (value.length == 1 && index < 5) {
+    if (value.length == 1 && index < _otpLength - 1) {
       _focusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
@@ -69,9 +98,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     // but we should re-add the listener from original code.
     ref.listen(otpControllerProvider, (previous, next) {
       if (next.error != null) {
+        final friendlyMessage = getFriendlyAuthMessage(next.error);
         setState(() {
-          _errorMessage = next.error.toString();
+          _errorMessage = friendlyMessage;
         });
+        AppFunctions.showSnackBar(
+          context: context,
+          message: friendlyMessage,
+          isError: true,
+        );
       }
     });
 
@@ -106,7 +141,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 Center(child: Image.asset(AppImages.logo, height: 80)),
                 const SizedBox(height: 40),
                 Text(
-                  "تحقق من عنوان جوالك", // "Verify your mobile address" / Check phone
+                  AppStrings.verifyOtp.tr(),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -114,20 +149,28 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "أدخل الرمز المكون من 6 أرقام الذي ارسلناه إلى رقمك ${widget.phone_number}",
+                  AppStrings.enterOtpForNumber.tr(args: [widget.phone_number]),
                   textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  _buildDeliveryMessage(),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+                ),
                 const SizedBox(height: 40),
 
-                // 6 Digit Input
+                // 4 Digit Input
                 Form(
                   key: controller.formKey,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(6, (index) {
+                    children: List.generate(_otpLength, (index) {
                       return SizedBox(
                         width: 45,
                         height: 55,
@@ -195,7 +238,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 Align(
                   alignment: Alignment.center,
                   child: Text(
-                    "مؤقت 00:45 ثانية",
+                    AppStrings.otpCodeExpiresIn.tr(args: ['00:45']),
                     style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                   ),
                 ),
@@ -214,11 +257,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       String otp = _controllers.map((c) => c.text).join();
                       controller.otpController.text = otp;
 
-                      if (otp.length == 6) {
+                      if (otp.length == _otpLength) {
                         // Manually validate to avoid form key issues with multiple fields if needed
                         // Or just call verify
                         final ok = await controller.verifyOtp(
-                          phone_number: widget.phone_number,
+                          challengeToken: _challengeToken,
                         );
                         if (ok && context.mounted) {
                           final user = ref.read(authControllerProvider).valueOrNull;
@@ -234,10 +277,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           }
                         }
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Please enter 6 digits"),
-                          ),
+                        AppFunctions.showSnackBar(
+                          context: context,
+                          message: AppStrings.enter4DigitCode.tr(),
+                          isError: true,
                         );
                       }
                     },
@@ -251,21 +294,28 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   onPressed: state.isLoading
                       ? null
                       : () async {
-                          await controller.resendOtp(
-                            phone_number: widget.phone_number,
+                          final resendResult = await controller.resendOtp(
+                            challengeToken: _challengeToken,
                           );
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  AppStrings.otpResentSuccessfully.tr(),
-                                ),
-                              ),
+                          if (resendResult != null) {
+                            setState(() {
+                              _challengeToken =
+                                  resendResult['challengeToken'] as String;
+                              _deliveryMethod =
+                                  resendResult['deliveryMethod'] as String?;
+                              _fallbackMethod =
+                                  resendResult['fallbackMethod'] as String?;
+                            });
+                          }
+                          if (context.mounted && resendResult != null) {
+                            AppFunctions.showSnackBar(
+                              context: context,
+                              message: AppStrings.otpResentSuccessfully.tr(),
                             );
                           }
                         },
                   child: Text(
-                    "إعادة إرسال الرمز", // Resend Code
+                    AppStrings.resendCode.tr(),
                     style: TextStyle(
                       color: Theme.of(context).primaryColor,
                       fontWeight: FontWeight.bold,

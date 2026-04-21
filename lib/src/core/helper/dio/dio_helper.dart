@@ -14,6 +14,7 @@ import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 
 import '../../../features/authintication/data/auth_repository.dart';
 import '../../../features/orders/utils/payment_debug_logger.dart';
@@ -23,7 +24,7 @@ import '../../common_widgets/no_internet_dialog.dart';
 import 'end_points.dart';
 
 /// Manages a global [Dio] instance with customized interceptors and base options.
-/// 
+///
 /// Provides a unified interface for GET, POST, PUT, PATCH, and DELETE operations
 /// while enforcing consistent headers and error handling across the entire app.
 class DioHelper {
@@ -32,6 +33,7 @@ class DioHelper {
 
   /// Track whether the "No Internet" dialog is currently visible to prevent multiple overlays.
   static bool _isShowingNoInternetDialog = false;
+  static bool _isRefreshingToken = false;
 
   static bool _isPaymentUrl(String url) {
     return url.contains('payments/') ||
@@ -106,15 +108,19 @@ class DioHelper {
     // Standard interceptor for global response and error handling
     dio.interceptors.add(
       InterceptorsWrapper(
-        onResponse: (response, handler) {
+        onResponse: (response, handler) async {
           // Detect unauthorized status (401) globally
           if (response.statusCode == 401) {
             // Avoid redirection loops during authentication attempts
             if (response.requestOptions.path == EndPoints.login ||
-                response.requestOptions.path == EndPoints.userSignup) {
+                response.requestOptions.path == EndPoints.userSignup ||
+                response.requestOptions.path == EndPoints.refreshToken) {
               return handler.next(response);
             }
-            // Navigate to sign-in and purge local credentials
+            final retried = await _tryRefreshAndRetry(response.requestOptions);
+            if (retried != null) {
+              return handler.resolve(retried);
+            }
             goRouter.push(RouteConstants.signIn);
             AuthRepository.clearLocalDetails();
           }
@@ -123,13 +129,18 @@ class DioHelper {
         onError: (DioException error, handler) async {
           // Handle connection-related exceptions with a global UI dialog
           if (error.response?.statusCode == 401) {
+            if (error.requestOptions.path != EndPoints.refreshToken) {
+              final retried = await _tryRefreshAndRetry(error.requestOptions);
+              if (retried != null) {
+                return handler.resolve(retried);
+              }
+            }
             goRouter.push(RouteConstants.signIn);
             AuthRepository.clearLocalDetails();
           } else if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
               error.type == DioExceptionType.connectionError ||
               error.type == DioExceptionType.unknown) {
-            
             final context = rootNavigatorKey.currentContext;
             if (context != null && !_isShowingNoInternetDialog) {
               _isShowingNoInternetDialog = true;
@@ -166,11 +177,10 @@ class DioHelper {
         "lang": lang,
       };
       if (_isPaymentUrl(url)) {
-        PaymentDebugLogger.info('DioHelper.GET:request', data: {
-          'url': url,
-          'query': query,
-          'lang': lang,
-        });
+        PaymentDebugLogger.info(
+          'DioHelper.GET:request',
+          data: {'url': url, 'query': query, 'lang': lang},
+        );
       }
       final response = await dio.get(
         url,
@@ -182,11 +192,14 @@ class DioHelper {
         ),
       );
       if (_isPaymentUrl(url)) {
-        PaymentDebugLogger.info('DioHelper.GET:response', data: {
-          'url': url,
-          'statusCode': response.statusCode,
-          'response': _responseSnapshot(response),
-        });
+        PaymentDebugLogger.info(
+          'DioHelper.GET:response',
+          data: {
+            'url': url,
+            'statusCode': response.statusCode,
+            'response': _responseSnapshot(response),
+          },
+        );
       }
       return response;
     } catch (error) {
@@ -194,14 +207,49 @@ class DioHelper {
         PaymentDebugLogger.error(
           'DioHelper.GET:error',
           error: error,
-          data: {
-            'url': url,
-            'query': query,
-          },
+          data: {'url': url, 'query': query},
         );
       }
       log('DioHelper (GET): $error');
       rethrow;
+    }
+  }
+
+  static Future<Response<dynamic>?> _tryRefreshAndRetry(
+    RequestOptions requestOptions,
+  ) async {
+    if (_isRefreshingToken ||
+        requestOptions.extra['retriedAfterRefresh'] == true) {
+      return null;
+    }
+
+    _isRefreshingToken = true;
+    try {
+      final refreshed = await AuthRepository.refreshAccessToken();
+      if (!refreshed || CachedVariables.token == null) {
+        return null;
+      }
+
+      final options = Options(
+        method: requestOptions.method,
+        headers: {
+          ...requestOptions.headers,
+          'Authorization': 'Bearer ${CachedVariables.token}',
+        },
+        contentType: requestOptions.contentType,
+        responseType: requestOptions.responseType,
+        validateStatus: (_) => true,
+        extra: {...requestOptions.extra, 'retriedAfterRefresh': true},
+      );
+
+      return dio.request<dynamic>(
+        requestOptions.path,
+        data: requestOptions.data,
+        queryParameters: requestOptions.queryParameters,
+        options: options,
+      );
+    } finally {
+      _isRefreshingToken = false;
     }
   }
 
@@ -227,15 +275,20 @@ class DioHelper {
         if (!isMultipart) "Content-Type": "application/json",
       };
       if (_isPaymentUrl(url)) {
-        PaymentDebugLogger.info('DioHelper.POST:request', data: {
-          'url': url,
-          'query': query,
-          'lang': lang,
-          'isMultipart': isMultipart,
-          'data': isMultipart ? {'multipart': true} : data is Map
-              ? Map<String, Object?>.from(data as Map)
-              : {'data': data?.toString()},
-        });
+        PaymentDebugLogger.info(
+          'DioHelper.POST:request',
+          data: {
+            'url': url,
+            'query': query,
+            'lang': lang,
+            'isMultipart': isMultipart,
+            'data': isMultipart
+                ? {'multipart': true}
+                : data is Map
+                ? Map<String, Object?>.from(data)
+                : {'data': data?.toString()},
+          },
+        );
       }
       final response = await dio.post(
         url,
@@ -248,11 +301,14 @@ class DioHelper {
         ),
       );
       if (_isPaymentUrl(url)) {
-        PaymentDebugLogger.info('DioHelper.POST:response', data: {
-          'url': url,
-          'statusCode': response.statusCode,
-          'response': _responseSnapshot(response),
-        });
+        PaymentDebugLogger.info(
+          'DioHelper.POST:response',
+          data: {
+            'url': url,
+            'statusCode': response.statusCode,
+            'response': _responseSnapshot(response),
+          },
+        );
       }
       return response;
     } catch (error) {
@@ -260,11 +316,7 @@ class DioHelper {
         PaymentDebugLogger.error(
           'DioHelper.POST:error',
           error: error,
-          data: {
-            'url': url,
-            'query': query,
-            'isMultipart': isMultipart,
-          },
+          data: {'url': url, 'query': query, 'isMultipart': isMultipart},
         );
       }
       log('DioHelper (POST): $error');
@@ -273,7 +325,7 @@ class DioHelper {
   }
 
   /// Performs an asynchronous PUT request.
-  /// 
+  ///
   /// Usually used for replacing a resource entirely.
   static Future<Response> putData({
     required String url,
@@ -305,7 +357,7 @@ class DioHelper {
   }
 
   /// Performs an asynchronous PATCH request.
-  /// 
+  ///
   /// Used for partial resource updates.
   static Future<Response> patchData({
     required String url,
@@ -348,11 +400,7 @@ class DioHelper {
         "Accept": "application/json",
         "Content-Type": "application/json",
       };
-      return await dio.delete(
-        url,
-        queryParameters: query,
-        data: data,
-      );
+      return await dio.delete(url, queryParameters: query, data: data);
     } catch (error) {
       log('DioHelper (DELETE): $error');
       rethrow;

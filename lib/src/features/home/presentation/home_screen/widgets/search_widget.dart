@@ -154,7 +154,9 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
                 context: context,
                 isScrollControlled: true,
                 useSafeArea: true,
-                builder: (context) => const FilterWidget(),
+                builder: (context) => const FilterWidget(
+                  contentType: FilterContentType.auction,
+                ),
               );
             },
             icon: Icon(
