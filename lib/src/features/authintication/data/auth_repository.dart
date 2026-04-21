@@ -228,10 +228,10 @@ class AuthRepository {
     }
   }
 
-  /// Fetches fresh user data from the backend.
-  static Future<UserModel> getUser(int id) async {
+  /// Fetches fresh data for the currently authenticated user.
+  static Future<UserModel> getUser() async {
     final result = await DioHelper.getData(
-      url: EndPoints.getUser(id),
+      url: EndPoints.currentUser,
       token: CachedVariables.token,
     );
 

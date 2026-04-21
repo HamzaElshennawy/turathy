@@ -81,7 +81,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
 
     try {
-      final user = await AuthRepository.getUser(userId);
+      final user = await AuthRepository.getUser();
       if (!mounted) return true;
 
       await AnalyticsService.setUser(
@@ -109,7 +109,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         return false;
       }
 
-      final user = await AuthRepository.getUser(userId);
+      final user = await AuthRepository.getUser();
       if (!mounted) return true;
 
       await AnalyticsService.setUser(
