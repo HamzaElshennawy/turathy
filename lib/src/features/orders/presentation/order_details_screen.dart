@@ -44,7 +44,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   static const int _maxFileSizeBytes = 5 * 1024 * 1024;
   static const bool _saveCardFeatureEnabled = bool.fromEnvironment(
     'GEIDEA_SAVE_CARD_ENABLED',
-    defaultValue: false,
+    defaultValue: true,
   );
   static const GeideaSdkService _geideaSdkService = GeideaSdkService();
 
