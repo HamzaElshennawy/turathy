@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,11 +36,8 @@ class OtpScreen extends ConsumerStatefulWidget {
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   static const int _otpLength = 4;
 
-  // We need one controller per digit if we manage them manually
-  // Or one main controller and focus/text logic.
-  // Using 4 controllers for simplicity in UI state management for focus.
-  late List<TextEditingController> _controllers;
-  late List<FocusNode> _focusNodes;
+  late final TextEditingController _otpTextController;
+  late final FocusNode _otpFocusNode;
   late String _challengeToken;
   late String? _deliveryMethod;
   late String? _fallbackMethod;
@@ -58,35 +56,54 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   @override
   void initState() {
     super.initState();
-    _controllers = List.generate(_otpLength, (_) => TextEditingController());
-    _focusNodes = List.generate(_otpLength, (_) => FocusNode());
+    _otpTextController = TextEditingController();
+    _otpFocusNode = FocusNode();
+    _otpFocusNode.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
     _challengeToken = widget.challengeToken;
     _deliveryMethod = widget.deliveryMethod;
     _fallbackMethod = widget.fallbackMethod;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _otpFocusNode.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
-    for (var c in _controllers) {
-      c.dispose();
-    }
-    for (var f in _focusNodes) {
-      f.dispose();
-    }
+    _otpTextController.dispose();
+    _otpFocusNode.dispose();
     super.dispose();
   }
 
-  void _onDigitChanged(int index, String value) {
-    if (value.length == 1 && index < _otpLength - 1) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
+  void _onOtpChanged(String value) {
+    final digitsOnly = value.replaceAll(RegExp(r'\D'), '');
+    final trimmed = digitsOnly.length > _otpLength
+        ? digitsOnly.substring(0, _otpLength)
+        : digitsOnly;
+
+    if (trimmed != value || trimmed != _otpTextController.text) {
+      _otpTextController.value = TextEditingValue(
+        text: trimmed,
+        selection: TextSelection.collapsed(offset: trimmed.length),
+      );
     }
 
-    // Combine text for the main controller logic if needed,
-    // or just pass combined string to verify.
-    String otp = _controllers.map((c) => c.text).join();
-    ref.read(otpControllerProvider.notifier).otpController.text = otp;
+    _syncOtpController(trimmed);
+    if (_errorMessage != null && trimmed.length < _otpLength) {
+      setState(() => _errorMessage = null);
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _syncOtpController([String? otp]) {
+    ref.read(otpControllerProvider.notifier).otpController.text =
+        otp ?? _otpTextController.text;
   }
 
   @override
@@ -165,53 +182,81 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // 4 Digit Input
-                Form(
-                  key: controller.formKey,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(_otpLength, (index) {
-                      return SizedBox(
-                        width: 45,
-                        height: 55,
-                        child: TextFormField(
-                          controller: _controllers[index],
-                          focusNode: _focusNodes[index],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(1),
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: InputDecoration(
-                            contentPadding: EdgeInsets.zero,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).primaryColor,
+                // Single native OTP field with 4 visual boxes for better iOS autofill.
+                AutofillGroup(
+                  child: Form(
+                    key: controller.formKey,
+                    child: Directionality(
+                      textDirection: ui.TextDirection.ltr,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: Opacity(
+                              opacity: 0.01,
+                              child: TextFormField(
+                                controller: _otpTextController,
+                                focusNode: _otpFocusNode,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.done,
+                                autofocus: true,
+                                autofillHints: const [AutofillHints.oneTimeCode],
+                                enableInteractiveSelection: false,
+                                showCursor: false,
+                                textDirection: ui.TextDirection.ltr,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(_otpLength),
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                onChanged: _onOtpChanged,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ),
                             ),
                           ),
-                          onChanged: (value) => _onDigitChanged(index, value),
-                        ),
-                      );
-                    }),
+                          GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _otpFocusNode.requestFocus(),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: List.generate(_otpLength, (index) {
+                                final otp = _otpTextController.text;
+                                final digit = index < otp.length ? otp[index] : '';
+                                final isActive = _otpFocusNode.hasFocus &&
+                                    ((otp.length == index) ||
+                                        (otp.length == _otpLength &&
+                                            index == _otpLength - 1));
+
+                                return Container(
+                                  width: 45,
+                                  height: 55,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isActive
+                                          ? Theme.of(context).primaryColor
+                                          : Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    digit,
+                                    textAlign: TextAlign.center,
+                                    textDirection: ui.TextDirection.ltr,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 
@@ -253,8 +298,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     isLoading: state.isLoading,
                     onPressed: () async {
                       setState(() => _errorMessage = null);
-                      // Update the main controller text before verifying just in case
-                      String otp = _controllers.map((c) => c.text).join();
+                      final otp = _otpTextController.text;
                       controller.otpController.text = otp;
 
                       if (otp.length == _otpLength) {
@@ -264,14 +308,22 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           challengeToken: _challengeToken,
                         );
                         if (ok && context.mounted) {
-                          final user = ref.read(authControllerProvider).valueOrNull;
-                          if (user != null && user.missingFields != null && user.missingFields!.isNotEmpty) {
-                             Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+                          final user = ref
+                              .read(authControllerProvider)
+                              .valueOrNull;
+                          if (user != null &&
+                              user.missingFields != null &&
+                              user.missingFields!.isNotEmpty) {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (_) => const CompleteProfileScreen(),
+                              ),
                             );
                           } else {
                             Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const MainScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const MainScreen(),
+                              ),
                               (route) => false,
                             );
                           }

@@ -8,6 +8,8 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/home/presentation/home_screen/widgets/products_widget/auctions_filter_widget.dart';
+import 'package:turathy/src/features/search/presentation/widgets/bottom_sheet_widget.dart';
+import 'package:turathy/src/features/search/presentation/widgets/filter_widget/filter_widget.dart';
 
 class AllAuctionsScreen extends ConsumerStatefulWidget {
   final ScrollController? scrollController;
@@ -100,7 +102,18 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                     ),
                     child: IconButton(
                       onPressed: () {
-                        // Filter action
+                        showModalBottomSheet(
+                          isScrollControlled: true,
+                          context: context,
+                          builder: (context) => BottomSheetWidget(
+                            title: AppStrings.filters.tr(),
+                            child: FilterWidget(
+                              contentType: FilterContentType.auction,
+                              onApply: () => ref.invalidate(filteredAuctionsProvider),
+                              onClear: () => ref.invalidate(filteredAuctionsProvider),
+                            ),
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.tune, color: Colors.grey),
                     ),

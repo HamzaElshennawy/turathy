@@ -304,12 +304,15 @@ final filteredAuctionsProvider = FutureProvider<List<AuctionModel>>((
   });
 
   final status = ref.watch(auctionsFilterProvider);
+  final advancedFilters = ref.watch(filterWidgetControllerProvider);
+  final filters = advancedFilters.copyWith(
+    isLiveAuctionsSelected: true,
+    auctionStatus: status,
+  );
 
   var auctions = await ref
       .watch(productsRepositoryProvider)
-      .getAllAuctions(
-        FilterState(isLiveAuctionsSelected: true, auctionStatus: status),
-      );
+      .getAllAuctions(filters);
 
   if (status == 'ending_soon') {
     auctions = auctions.reversed.toList();
