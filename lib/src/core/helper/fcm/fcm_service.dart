@@ -143,8 +143,8 @@ class FCMService {
     if (Platform.isAndroid) {
       const channel = AndroidNotificationChannel(
         'turathy_notifications',
-        'turathy Notifications',
-        description: 'Notifications from turathy app',
+        'Alturath Aljmeel Co. Notifications',
+        description: 'Notifications from Alturath Aljmeel Co. app',
         importance: Importance.high,
       );
 
@@ -191,7 +191,7 @@ class FCMService {
     await _registerTokenWithBackend(newToken);
   }
 
-  /// Internal: Syncs the [token] to the Turathy backend for the current user.
+  /// Internal: Syncs the [token] to the Alturath Aljmeel Co. backend for the current user.
   Future<void> _registerTokenWithBackend(String token) async {
     final userId = CachedVariables.userId;
     if (userId == null) {
@@ -244,8 +244,8 @@ class FCMService {
       NotificationDetails(
         android: AndroidNotificationDetails(
           'turathy_notifications',
-          'turathy Notifications',
-          channelDescription: 'Notifications from turathy app',
+          'Alturath Aljmeel Co. Notifications',
+          channelDescription: 'Notifications from Alturath Aljmeel Co. app',
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/launcher_icon',
@@ -435,8 +435,8 @@ class FCMService {
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'turathy_notifications',
-      'turathy Notifications',
-      channelDescription: 'Notifications from turathy app',
+      'Alturath Aljmeel Co. Notifications',
+      channelDescription: 'Notifications from Alturath Aljmeel Co. app',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/launcher_icon',

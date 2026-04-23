@@ -1258,7 +1258,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildBankInfoRow('Bank', 'Al Rajhi Bank', theme),
-              _buildBankInfoRow('Account Name', 'Turathy Co.', theme),
+              _buildBankInfoRow('Account Name', 'Alturath Aljmeel Co.', theme),
               _buildBankInfoRow('IBAN', 'SA00 0000 0000 0000 0000 0000', theme),
             ],
           ),

@@ -39,7 +39,7 @@ class App extends ConsumerWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: goRouter,
-      title: 'Turathy',
+      title: 'Alturath Aljmeel Co.',
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
@@ -70,4 +70,3 @@ class App extends ConsumerWidget {
     );
   }
 }
-
