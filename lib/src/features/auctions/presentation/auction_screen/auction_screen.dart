@@ -844,6 +844,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     bool isGranted = _accessStatus == 'GRANTED';
     bool isPending = _accessStatus == 'PENDING';
     bool isDenied = _accessStatus == 'DENIED';
+    bool isProfilePending = _accessStatus == 'PROFILE_PENDING';
+    bool isNicknameRequired = _accessStatus == 'NICKNAME_REQUIRED';
     bool isOwner = _currentAuction.userId == CachedVariables.userId;
 
     bool isAuctionEnded = false;
@@ -898,6 +900,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       }
     } else if (isPending) {
       buttonText = AppStrings.accessPending.tr();
+      buttonColor = Colors.orange;
+      onPressed = null;
+    } else if (isProfilePending) {
+      buttonText = AppStrings.profileApprovalPending.tr();
+      buttonColor = Colors.orange;
+      onPressed = null;
+    } else if (isNicknameRequired) {
+      buttonText = AppStrings.nicknameRequiredForAuction.tr();
       buttonColor = Colors.orange;
       onPressed = null;
     } else if (isDenied) {

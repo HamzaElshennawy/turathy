@@ -44,6 +44,9 @@ class UserModel {
   /// Whether the user's phone/email has been verified.
   final bool? isVerified;
 
+  /// Global approval state for auction participation.
+  final String? auctionAccessStatus;
+
   /// Whether the user has completed all required profile fields.
   final bool? isProfileComplete;
 
@@ -73,6 +76,7 @@ class UserModel {
     this.isAdmin,
     this.isSuperAdmin,
     this.isVerified,
+    this.auctionAccessStatus,
     this.isProfileComplete,
     this.missingFields,
     this.createdAt,
@@ -97,6 +101,7 @@ class UserModel {
           isAdmin == other.isAdmin &&
           isSuperAdmin == other.isSuperAdmin &&
           isVerified == other.isVerified &&
+          auctionAccessStatus == other.auctionAccessStatus &&
           isProfileComplete == other.isProfileComplete &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt);
@@ -116,6 +121,7 @@ class UserModel {
       isAdmin.hashCode ^
       isSuperAdmin.hashCode ^
       isVerified.hashCode ^
+      auctionAccessStatus.hashCode ^
       isProfileComplete.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;
@@ -134,6 +140,7 @@ class UserModel {
         ' isAdmin: $isAdmin,'
         ' isSuperAdmin: $isSuperAdmin,'
         ' isVerified: $isVerified,'
+        ' auctionAccessStatus: $auctionAccessStatus,'
         ' isProfileComplete: $isProfileComplete,'
         ' missingFields: $missingFields,'
         ' createdAt: $createdAt,'
@@ -155,6 +162,7 @@ class UserModel {
     bool? isAdmin,
     bool? isSuperAdmin,
     bool? isVerified,
+    String? auctionAccessStatus,
     bool? isProfileComplete,
     List<String>? missingFields,
     String? createdAt,
@@ -174,6 +182,7 @@ class UserModel {
       isAdmin: isAdmin ?? this.isAdmin,
       isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
       isVerified: isVerified ?? this.isVerified,
+      auctionAccessStatus: auctionAccessStatus ?? this.auctionAccessStatus,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       missingFields: missingFields ?? this.missingFields,
       createdAt: createdAt ?? this.createdAt,
@@ -196,6 +205,7 @@ class UserModel {
       'isAdmin': isAdmin,
       'isSuperAdmin': isSuperAdmin,
       'isVerified': isVerified,
+      'auctionAccessStatus': auctionAccessStatus,
       'isProfileComplete': isProfileComplete,
       'missingFields': missingFields,
       'createdAt': createdAt,
@@ -219,6 +229,7 @@ class UserModel {
       isAdmin: map['isAdmin'] as bool?,
       isSuperAdmin: map['isSuperAdmin'] as bool?,
       isVerified: map['isVerified'] as bool?,
+      auctionAccessStatus: map['auctionAccessStatus'] as String?,
       isProfileComplete: map['isProfileComplete'] as bool?,
       missingFields: map['missingFields'] != null
           ? List<String>.from(map['missingFields'])

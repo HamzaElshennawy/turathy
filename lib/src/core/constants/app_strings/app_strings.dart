@@ -503,6 +503,12 @@ class AppStrings {
   static const String requestAccessDescription = 'requestAccessDescription';
   static const String accessPending = 'accessPending';
   static const String accessDenied = 'accessDenied';
+  static const String profileApprovalPending = 'profileApprovalPending';
+  static const String profileApprovalPendingDescription =
+      'profileApprovalPendingDescription';
+  static const String nicknameRequiredForAuction = 'nicknameRequiredForAuction';
+  static const String nicknameRequiredForAuctionDescription =
+      'nicknameRequiredForAuctionDescription';
   static const String bidLimitExceeded = 'bidLimitExceeded';
   static const String myAuctionRequests = 'myAuctionRequests';
   static const String auctionAccessRequired = 'auctionAccessRequired';

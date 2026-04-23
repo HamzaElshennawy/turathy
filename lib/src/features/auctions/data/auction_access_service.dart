@@ -3,13 +3,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_access_model.dart';
+import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 
 /// Shared utility for checking and requesting auction access.
 /// Screens should call these methods and handle UI updates themselves.
 class AuctionAccessService {
+  final Ref _ref;
   final AuctionsRepository _repository;
 
-  AuctionAccessService(this._repository);
+  AuctionAccessService(this._ref, this._repository);
+
+  String? _profileGateStatus({int? auctionOwnerId}) {
+    if (auctionOwnerId != null &&
+        CachedVariables.userId != null &&
+        auctionOwnerId == CachedVariables.userId) {
+      return null;
+    }
+
+    final currentUser = _ref.read(authControllerProvider).valueOrNull;
+    if (currentUser == null) {
+      return null;
+    }
+
+    final nickname = currentUser.nickname?.trim() ?? '';
+    if (nickname.isEmpty) {
+      return 'NICKNAME_REQUIRED';
+    }
+
+    final approval = (currentUser.auctionAccessStatus ?? '').toUpperCase();
+    if (approval.isNotEmpty && approval != 'AUTO_APPROVED') {
+      return approval == 'BLOCKED' ? 'DENIED' : 'PROFILE_PENDING';
+    }
+
+    return null;
+  }
 
   /// Returns a status string: GRANTED, PENDING, DENIED, REQUIRED, ERROR.
   /// Handles admin shortcut and not-logged-in shortcut internally.
@@ -27,6 +54,11 @@ class AuctionAccessService {
     // Not logged in
     if (CachedVariables.userId == null) {
       return 'REQUIRED';
+    }
+
+    final profileGateStatus = _profileGateStatus(auctionOwnerId: auctionOwnerId);
+    if (profileGateStatus != null) {
+      return profileGateStatus;
     }
 
     try {
@@ -48,6 +80,11 @@ class AuctionAccessService {
       return 'LOGIN_REQUIRED';
     }
 
+    final profileGateStatus = _profileGateStatus();
+    if (profileGateStatus != null) {
+      return profileGateStatus;
+    }
+
     try {
       final response = await _repository.requestAccess(
         RequestAuctionAccessDto(
@@ -64,5 +101,5 @@ class AuctionAccessService {
 }
 
 final auctionAccessServiceProvider = Provider<AuctionAccessService>((ref) {
-  return AuctionAccessService(ref.read(productsRepositoryProvider));
+  return AuctionAccessService(ref, ref.read(productsRepositoryProvider));
 });

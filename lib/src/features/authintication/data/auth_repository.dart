@@ -401,9 +401,12 @@ class AuthRepository {
         await CacheHelper.setData(key: CachedKeys.userId, value: user.id.toString());
         CachedVariables.userId = user.id;
       }
-      if (user.name != null) {
-        await CacheHelper.setData(key: CachedKeys.userName, value: user.name!);
-        CachedVariables.userName = user.name;
+      final displayName = (user.nickname?.trim().isNotEmpty ?? false)
+          ? user.nickname!.trim()
+          : user.name;
+      if (displayName != null) {
+        await CacheHelper.setData(key: CachedKeys.userName, value: displayName);
+        CachedVariables.userName = displayName;
       }
       if (user.phone_number != null) {
         await CacheHelper.setData(key: CachedKeys.phone_number, value: user.phone_number!);

@@ -1033,6 +1033,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         color = Colors.orange;
         title = AppStrings.accessPending.tr();
         break;
+      case 'PROFILE_PENDING':
+        icon = Icons.hourglass_top_rounded;
+        color = Colors.orange;
+        title = AppStrings.profileApprovalPending.tr();
+        message = AppStrings.profileApprovalPendingDescription.tr();
+        break;
+      case 'NICKNAME_REQUIRED':
+        icon = Icons.badge_outlined;
+        color = Colors.orange;
+        title = AppStrings.nicknameRequiredForAuction.tr();
+        message = AppStrings.nicknameRequiredForAuctionDescription.tr();
+        break;
       case 'DENIED':
         icon = Icons.block;
         color = Colors.red;

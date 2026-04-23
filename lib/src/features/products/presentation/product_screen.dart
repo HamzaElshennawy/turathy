@@ -28,9 +28,7 @@ class ProductScreen extends ConsumerStatefulWidget {
 
 class _ProductScreenState extends ConsumerState<ProductScreen> {
   late PageController _pageController;
-  late ScrollController _scrollController;
   int _currentPage = 0;
-  double _purchaseCardProgress = 0.0;
 
   List<String> get _images {
     // Use images list if available, otherwise use imageUrl
@@ -56,7 +54,6 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
-    _scrollController = ScrollController()..addListener(_handleScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AnalyticsService.logScreenView(
         screenName: 'product_detail',
@@ -72,21 +69,8 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
 
   @override
   void dispose() {
-    _scrollController.removeListener(_handleScroll);
-    _scrollController.dispose();
     _pageController.dispose();
     super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!mounted) return;
-    final offset = _scrollController.offset;
-    final progress = (offset / 80).clamp(0.0, 1.0);
-    if (_purchaseCardProgress != progress) {
-      setState(() {
-        _purchaseCardProgress = progress;
-      });
-    }
   }
 
   @override
@@ -149,8 +133,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
       body: Stack(
         children: [
           ListView(
-            controller: _scrollController,
-            padding: const EdgeInsets.only(bottom: 160),
+            padding: const EdgeInsets.only(bottom: 24),
             children: [
               _buildImageCarousel(),
               if (_images.length > 1) _buildThumbnailStrip(),
@@ -168,6 +151,8 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 ),
               ),
               gapH16,
+              _buildPriceSummary(),
+              gapH16,
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
@@ -181,29 +166,14 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                 ),
               ),
               gapH24,
-              _buildBasicDataSection(),
-              gapH24,
             ],
           ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: IgnorePointer(
-              ignoring: _purchaseCardProgress <= 0,
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                offset: Offset(0, 1 - _purchaseCardProgress),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: _purchaseCardProgress,
-                  child: SafeArea(top: false, child: _buildBottomBar()),
-                ),
-              ),
-            ),
-          ),
         ],
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: _buildBottomBar(),
       ),
     );
   }
@@ -398,107 +368,43 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     );
   }
 
-  Widget _buildBasicDataSection() {
-    final stockValue = widget.product.isPreorderContact
-        ? ''
-        : widget.product.stock.toString();
-
+  Widget _buildPriceSummary() {
+    final bool isPreorder = widget.product.isPreorderContact;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppStrings.basicData.tr(),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          gapH16,
-          _buildDataRowWithDivider(
-            widget.product.category ?? '-',
-            AppStrings.productType.tr(),
-          ),
-          _buildDataRowWithDivider(
-            widget.product.itemType ?? '-',
-            AppStrings.itemType.tr(),
-          ),
-          _buildDataRowWithDivider(
-            widget.product.material ?? '-',
-            AppStrings.material.tr(),
-          ),
-          _buildDataRowWithDivider(
-            widget.product.approximateAge ?? '-',
-            AppStrings.approximateAge.tr(),
-          ),
-          _buildDataRowWithDivider(
-            widget.product.condition ?? '-',
-            AppStrings.productCondition.tr(),
-          ),
-          _buildDataRowWithDivider(
-            widget.product.origin ?? '-',
-            AppStrings.origin.tr(),
-          ),
-          _buildDataRowWithDivider(
-            widget.product.country ?? '-',
-            AppStrings.country.tr(),
-          ),
-          _buildDataRowWithDivider(stockValue, AppStrings.stockAvailable.tr()),
-          _buildDataRowWithDivider(
-            widget.product.gradingCompany ?? '-',
-            AppStrings.gradingCompany.tr(),
-          ),
-          _buildDataRow(
-            widget.product.gradeDesignation ?? '-',
-            AppStrings.gradeDesignation.tr(),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: isPreorder
+            ? Text(
+                AppStrings.priceOnRequest.tr(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.product.discountedPrice.toStringAsFixed(0),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  SvgPicture.asset('assets/icons/RSA.svg', height: 22),
+                ],
+              ),
       ),
-    );
-  }
-
-  Widget _buildDataRow(String value, String label) {
-    final normalizedValue =
-        value.trim().isEmpty || value.trim().toLowerCase() == 'null'
-        ? '-'
-        : value;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Label (bold)
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Value
-          Expanded(
-            child: Text(
-              normalizedValue,
-              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataRowWithDivider(String value, String label) {
-    return Column(
-      children: [
-        _buildDataRow(value, label),
-        Divider(height: 1, thickness: 1, color: Colors.grey.shade200),
-        const SizedBox(height: 12),
-      ],
     );
   }
 
@@ -659,9 +565,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                           : isOutOfStock
                           ? AppStrings.outOfStock.tr()
                           : isLowStock
-                          ? AppStrings.onlyLeft.tr(
-                              args: [widget.product.stock.toString()],
-                            )
+                          ? AppStrings.onlyLeft.tr()
                           : AppStrings.inStock.tr(),
                       style: TextStyle(
                         fontSize: 12,
