@@ -26,9 +26,18 @@ class ProductScreen extends ConsumerStatefulWidget {
   ConsumerState<ProductScreen> createState() => _ProductScreenState();
 }
 
-class _ProductScreenState extends ConsumerState<ProductScreen> {
+class _ProductScreenState extends ConsumerState<ProductScreen>
+    with SingleTickerProviderStateMixin {
   late PageController _pageController;
+  late AnimationController _introController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _contentSlideAnimation;
   int _currentPage = 0;
+
+  String get _languageCode => context.locale.languageCode;
+  String get _productTitle => widget.product.localizedTitle(_languageCode);
+  String get _productDescription =>
+      widget.product.localizedDescription(_languageCode);
 
   List<String> get _images {
     // Use images list if available, otherwise use imageUrl
@@ -54,6 +63,19 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _introController,
+      curve: Curves.easeOutCubic,
+    );
+    _contentSlideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
+          CurvedAnimation(parent: _introController, curve: Curves.easeOutCubic),
+        );
+    _introController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AnalyticsService.logScreenView(
         screenName: 'product_detail',
@@ -70,6 +92,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _introController.dispose();
     super.dispose();
   }
 
@@ -132,48 +155,68 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
       ),
       body: Stack(
         children: [
-          ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              _buildImageCarousel(),
-              if (_images.length > 1) _buildThumbnailStrip(),
-              gapH16,
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  widget.product.title ?? widget.product.name ?? '',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _contentSlideAnimation,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 180),
+                children: [
+                  _buildImageCarousel(),
+                  if (_images.length > 1) _buildThumbnailStrip(),
+                  gapH16,
+                  _buildHeaderSection(),
+                  gapH24,
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: SafeArea(
+              top: false,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _contentSlideAnimation,
+                  child: _buildBottomBar(),
                 ),
               ),
-              gapH16,
-              _buildPriceSummary(),
-              gapH16,
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  widget.product.description ?? '',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                    height: 1.6,
-                  ),
-                  textAlign: TextAlign.start,
-                ),
-              ),
-              gapH24,
-            ],
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: _buildBottomBar(),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _productTitle,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
+          ),
+          if (_productDescription.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              _productDescription,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey[700],
+                height: 1.65,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -242,7 +285,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -273,7 +316,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -303,7 +346,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
                         shape: BoxShape.circle,
                         color: _currentPage == index
                             ? Colors.white
-                            : Colors.white.withOpacity(0.5),
+                            : Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
                   ),
@@ -368,46 +411,6 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
     );
   }
 
-  Widget _buildPriceSummary() {
-    final bool isPreorder = widget.product.isPreorderContact;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: isPreorder
-            ? Text(
-                AppStrings.priceOnRequest.tr(),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.product.discountedPrice.toStringAsFixed(0),
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  SvgPicture.asset('assets/icons/RSA.svg', height: 22),
-                ],
-              ),
-      ),
-    );
-  }
-
   Widget _buildBottomBar() {
     final bool isOwner = widget.product.userId == CachedVariables.userId;
     final bool isPreorder = widget.product.isPreorderContact;
@@ -427,9 +430,16 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
-            offset: const Offset(0, -4),
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -595,20 +605,17 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
   Future<void> _handleBuyNow() async {
     final userId = CachedVariables.userId;
 
-    // Check if user is signed in
     if (userId == null) {
       _showSignInDialog();
       return;
     }
 
-    // Add to cart and navigate
     try {
       await ref
           .read(cartRepositoryProvider)
           .addToCart(userId, widget.product.id);
 
       if (mounted) {
-        // Navigate to cart
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CartScreen()),
@@ -672,7 +679,6 @@ class _ProductScreenState extends ConsumerState<ProductScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Navigate to login screen
               Navigator.pushNamed(context, '/login');
             },
             style: ElevatedButton.styleFrom(

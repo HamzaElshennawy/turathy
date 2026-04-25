@@ -42,6 +42,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   late String? _deliveryMethod;
   late String? _fallbackMethod;
   String? _errorMessage;
+  String? _lastAutoSubmittedOtp;
 
   String _buildDeliveryMessage() {
     if (_deliveryMethod == 'whatsapp' && _fallbackMethod == 'sms') {
@@ -99,11 +100,61 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     } else {
       setState(() {});
     }
+
+    if (trimmed.length == _otpLength && _lastAutoSubmittedOtp != trimmed) {
+      _lastAutoSubmittedOtp = trimmed;
+      _submitOtp(autoTriggered: true);
+    }
   }
 
   void _syncOtpController([String? otp]) {
     ref.read(otpControllerProvider.notifier).otpController.text =
         otp ?? _otpTextController.text;
+  }
+
+  Future<void> _submitOtp({required bool autoTriggered}) async {
+    final state = ref.read(otpControllerProvider);
+    final controller = ref.read(otpControllerProvider.notifier);
+    final otp = _otpTextController.text;
+
+    if (state.isLoading) {
+      return;
+    }
+
+    setState(() => _errorMessage = null);
+    controller.otpController.text = otp;
+
+    if (otp.length != _otpLength) {
+      if (!autoTriggered) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.enter4DigitCode.tr(),
+          isError: true,
+        );
+      }
+      return;
+    }
+
+    final ok = await controller.verifyOtp(challengeToken: _challengeToken);
+    if (!mounted || !ok) {
+      return;
+    }
+
+    TextInput.finishAutofillContext();
+
+    final user = ref.read(authControllerProvider).valueOrNull;
+    if (user != null &&
+        user.missingFields != null &&
+        user.missingFields!.isNotEmpty) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+      );
+    } else {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -297,44 +348,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     text: AppStrings.verify.tr(),
                     isLoading: state.isLoading,
                     onPressed: () async {
-                      setState(() => _errorMessage = null);
-                      final otp = _otpTextController.text;
-                      controller.otpController.text = otp;
-
-                      if (otp.length == _otpLength) {
-                        // Manually validate to avoid form key issues with multiple fields if needed
-                        // Or just call verify
-                        final ok = await controller.verifyOtp(
-                          challengeToken: _challengeToken,
-                        );
-                        if (ok && context.mounted) {
-                          final user = ref
-                              .read(authControllerProvider)
-                              .valueOrNull;
-                          if (user != null &&
-                              user.missingFields != null &&
-                              user.missingFields!.isNotEmpty) {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const CompleteProfileScreen(),
-                              ),
-                            );
-                          } else {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const MainScreen(),
-                              ),
-                              (route) => false,
-                            );
-                          }
-                        }
-                      } else {
-                        AppFunctions.showSnackBar(
-                          context: context,
-                          message: AppStrings.enter4DigitCode.tr(),
-                          isError: true,
-                        );
-                      }
+                      await _submitOtp(autoTriggered: false);
                     },
                   ),
                 ),

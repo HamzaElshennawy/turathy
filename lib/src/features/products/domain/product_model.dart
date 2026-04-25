@@ -6,14 +6,21 @@ class ProductModel {
 
   final int id;
   final int? userId;
+  final String? titleAr;
+  final String? titleEn;
   final String? title;
+  final String? nameAr;
+  final String? nameEn;
   final String? name;
+  final String? descriptionAr;
+  final String? descriptionEn;
   final String? description;
   final double? price;
   final String saleMode;
   final String? imageUrl;
   final String? category;
   final String? brand;
+  final String? sku;
   final int stock;
   final double discount;
   final double rating;
@@ -56,6 +63,20 @@ class ProductModel {
   bool get isPreorderContact => saleMode == saleModePreorderContact;
   bool get isDirectPurchase => !isPreorderContact;
 
+  String localizedTitle(String languageCode) {
+    if (languageCode.toLowerCase().startsWith('ar')) {
+      return titleAr ?? nameAr ?? title ?? name ?? '';
+    }
+    return titleEn ?? nameEn ?? title ?? name ?? titleAr ?? nameAr ?? '';
+  }
+
+  String localizedDescription(String languageCode) {
+    if (languageCode.toLowerCase().startsWith('ar')) {
+      return descriptionAr ?? description ?? descriptionEn ?? '';
+    }
+    return descriptionEn ?? description ?? descriptionAr ?? '';
+  }
+
   double get discountedPrice {
     final basePrice = price ?? 0;
     if (isPreorderContact || !hasDiscount) return basePrice;
@@ -68,14 +89,21 @@ class ProductModel {
   const ProductModel({
     required this.id,
     this.userId,
+    this.titleAr,
+    this.titleEn,
     required this.title,
+    this.nameAr,
+    this.nameEn,
     required this.name,
+    this.descriptionAr,
+    this.descriptionEn,
     required this.description,
     required this.price,
     this.saleMode = saleModeDirectPurchase,
     required this.imageUrl,
     required this.category,
     required this.brand,
+    this.sku,
     required this.stock,
     required this.discount,
     required this.rating,
@@ -109,14 +137,21 @@ class ProductModel {
           runtimeType == other.runtimeType &&
           id == other.id &&
           userId == other.userId &&
+          titleAr == other.titleAr &&
+          titleEn == other.titleEn &&
           title == other.title &&
+          nameAr == other.nameAr &&
+          nameEn == other.nameEn &&
           name == other.name &&
+          descriptionAr == other.descriptionAr &&
+          descriptionEn == other.descriptionEn &&
           description == other.description &&
           price == other.price &&
           saleMode == other.saleMode &&
           imageUrl == other.imageUrl &&
           category == other.category &&
           brand == other.brand &&
+          sku == other.sku &&
           stock == other.stock &&
           discount == other.discount &&
           rating == other.rating &&
@@ -145,14 +180,21 @@ class ProductModel {
   int get hashCode =>
       id.hashCode ^
       userId.hashCode ^
+      titleAr.hashCode ^
+      titleEn.hashCode ^
       title.hashCode ^
+      nameAr.hashCode ^
+      nameEn.hashCode ^
       name.hashCode ^
+      descriptionAr.hashCode ^
+      descriptionEn.hashCode ^
       description.hashCode ^
       price.hashCode ^
       saleMode.hashCode ^
       imageUrl.hashCode ^
       category.hashCode ^
       brand.hashCode ^
+      sku.hashCode ^
       stock.hashCode ^
       discount.hashCode ^
       rating.hashCode ^
@@ -180,14 +222,21 @@ class ProductModel {
   ProductModel copyWith({
     int? id,
     int? userId,
+    String? titleAr,
+    String? titleEn,
     String? title,
+    String? nameAr,
+    String? nameEn,
     String? name,
+    String? descriptionAr,
+    String? descriptionEn,
     String? description,
     double? price,
     String? saleMode,
     String? imageUrl,
     String? category,
     String? brand,
+    String? sku,
     int? stock,
     double? discount,
     double? rating,
@@ -216,14 +265,21 @@ class ProductModel {
     return ProductModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      titleAr: titleAr ?? this.titleAr,
+      titleEn: titleEn ?? this.titleEn,
       title: title ?? this.title,
+      nameAr: nameAr ?? this.nameAr,
+      nameEn: nameEn ?? this.nameEn,
       name: name ?? this.name,
+      descriptionAr: descriptionAr ?? this.descriptionAr,
+      descriptionEn: descriptionEn ?? this.descriptionEn,
       description: description ?? this.description,
       price: price ?? this.price,
       saleMode: saleMode ?? this.saleMode,
       imageUrl: imageUrl ?? this.imageUrl,
       category: category ?? this.category,
       brand: brand ?? this.brand,
+      sku: sku ?? this.sku,
       stock: stock ?? this.stock,
       discount: discount ?? this.discount,
       rating: rating ?? this.rating,
@@ -255,14 +311,21 @@ class ProductModel {
     return {
       'id': id,
       'user_id': userId,
+      'title_ar': titleAr,
+      'title_en': titleEn,
       'title': title,
+      'name_ar': nameAr,
+      'name_en': nameEn,
       'name': name,
+      'description_ar': descriptionAr,
+      'description_en': descriptionEn,
       'description': description,
       'price': price,
       'sale_mode': saleMode,
       'imageUrl': imageUrl,
       'category': category,
       'brand': brand,
+      'sku': sku,
       'stock': stock,
       'discount': discount,
       'rating': rating,
@@ -293,15 +356,29 @@ class ProductModel {
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      userId: json['user_id'] != null ? int.tryParse(json['user_id'].toString()) : null,
-      title: json['title'] as String?,
-      name: json['name'] as String?,
-      description: json['description'] as String?,
-      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
+      userId: json['user_id'] != null
+          ? int.tryParse(json['user_id'].toString())
+          : null,
+      titleAr: json['title_ar'] as String?,
+      titleEn: json['title_en'] as String?,
+      title: (json['title'] ?? json['title_en'] ?? json['title_ar']) as String?,
+      nameAr: json['name_ar'] as String?,
+      nameEn: json['name_en'] as String?,
+      name: (json['name'] ?? json['name_en'] ?? json['name_ar']) as String?,
+      descriptionAr: (json['description_ar'] ?? json['desc_ar']) as String?,
+      descriptionEn: (json['description_en'] ?? json['desc_en']) as String?,
+      description:
+          (json['description'] ??
+              json['description_en'] ??
+              json['description_ar']) as String?,
+      price: json['price'] != null
+          ? double.tryParse(json['price'].toString())
+          : null,
       saleMode: (json['sale_mode'] ?? saleModeDirectPurchase).toString(),
-      imageUrl: (json['imageUrl'] ?? json['image']) as String?,
+      imageUrl: (json['imageUrl'] ?? json['image_url'] ?? json['image']) as String?,
       category: json['category'] as String?,
       brand: json['brand'] as String?,
+      sku: json['sku'] as String?,
       stock: json['stock'] != null ? (int.tryParse(json['stock'].toString()) ?? 0) : 0,
       discount: json['discount'] != null ? (double.tryParse(json['discount'].toString()) ?? 0.0) : 0.0,
       rating: json['rating'] != null ? (double.tryParse(json['rating'].toString()) ?? 0.0) : 0.0,
@@ -328,11 +405,19 @@ class ProductModel {
       metalDiameter: json['metal_diameter'] != null ? double.tryParse(json['metal_diameter'].toString()) : null,
       metalThickness: json['metal_thickness'] != null ? double.tryParse(json['metal_thickness'].toString()) : null,
       metalFineness: json['metal_fineness'] as String?,
-      images: json['images'] != null
-          ? List<String>.from(json['images'] as Iterable)
-          : null,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      images: () {
+        final rawImages = json['images'];
+        if (rawImages is Iterable) {
+          return rawImages.map((item) => item.toString()).toList();
+        }
+        return null;
+      }(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }
