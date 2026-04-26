@@ -8,8 +8,7 @@
 abstract class EndPoints {
   /// The root URL for all API calls.
   static String get baseUrl {
-    // Development/Staging IP
-    return "http://144.91.124.224/backend/";
+    return "https://api.alturathaljmeel.com.sa/";
   }
 
   // ── Authentication & User Identity ──────────────────────────────────────────
