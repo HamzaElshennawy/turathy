@@ -10,9 +10,9 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 
 /// Configuration constants and helper for [io.Socket] options.
 abstract class SocketConfig {
-  /// Internal development/staging server IP.
+  /// Secure public host for WebSocket connections.
   static String get _baseUrl {
-    return 'http://144.91.124.224';
+    return 'https://api.alturathaljmeel.com.sa';
   }
 
   /// Initial delay (in milliseconds) before the first reconnection attempt.
@@ -73,4 +73,3 @@ abstract class SocketConfig {
   /// Interval at which the app checks if the socket is still internally 'connected'.
   static const Duration heartbeatInterval = Duration(seconds: 30);
 }
-
