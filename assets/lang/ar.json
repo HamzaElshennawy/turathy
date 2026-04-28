@@ -515,4 +515,8 @@
   "couldNotLoadSavedCards": "تعذر تحميل البطاقات المحفوظة حالياً."
 ,
   "couldNotUpdateSavedCards": "تعذر تحديث البطاقات المحفوظة حالياً."
+,
+  "alreadyInCart": "موجود في السلة"
+,
+  "couldNotAddToCart": "تعذر إضافة المنتج إلى السلة. يرجى المحاولة مرة أخرى."
 }

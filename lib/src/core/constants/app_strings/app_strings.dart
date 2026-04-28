@@ -295,6 +295,8 @@ class AppStrings {
   static const String checkout = "checkout";
   static const String signInRequired = "signInRequired";
   static const String signInToAddToCart = "signInToAddToCart";
+  static const String alreadyInCart = "alreadyInCart";
+  static const String couldNotAddToCart = "couldNotAddToCart";
 
   // ── Bidding Controls ───────────────────────────────────────────────────────
   

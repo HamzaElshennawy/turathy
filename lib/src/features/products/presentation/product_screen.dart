@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/dio/end_points.dart';
@@ -86,6 +87,11 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
         category: widget.product.category,
         price: widget.product.price,
       );
+      // Pre-load cart data so the "Already in Cart" check works immediately
+      final userId = CachedVariables.userId;
+      if (userId != null) {
+        ref.read(cartProvider(userId).future);
+      }
     });
   }
 
@@ -423,6 +429,13 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
         ? const Color(0xFFEF6C00)
         : const Color(0xFF2E7D32);
 
+    // Check if product is already in cart
+    final userId = CachedVariables.userId;
+    final bool isInCart = userId != null &&
+        (ref.watch(cartProvider(userId)).valueOrNull ?? []).any(
+          (item) => item.productId == widget.product.id,
+        );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -476,6 +489,38 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
                               ),
                             ),
                           ],
+                        ),
+                      )
+                    : isInCart
+                    ? ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CartScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.shopping_cart, size: 18),
+                        label: Text(
+                          AppStrings.alreadyInCart.tr(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE8F5E9),
+                          foregroundColor: const Color(0xFF1B5E20),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            side: const BorderSide(
+                              color: Color(0xFF1B5E20),
+                              width: 1.5,
+                            ),
+                          ),
+                          elevation: 0,
                         ),
                       )
                     : ElevatedButton(
@@ -615,6 +660,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
           .read(cartRepositoryProvider)
           .addToCart(userId, widget.product.id);
 
+      // Refresh cart data so the button updates
+      ref.invalidate(cartProvider(userId));
+
       if (mounted) {
         Navigator.push(
           context,
@@ -623,8 +671,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.couldNotAddToCart.tr(),
+          isError: true,
         );
       }
     }
@@ -649,8 +699,10 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.couldNotAddToCart.tr(),
+          isError: true,
         );
       }
     }

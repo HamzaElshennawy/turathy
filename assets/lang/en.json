@@ -515,4 +515,8 @@
   "couldNotLoadSavedCards": "We could not load your saved cards right now."
 ,
   "couldNotUpdateSavedCards": "We could not update your saved cards right now."
+,
+  "alreadyInCart": "Already in Cart"
+,
+  "couldNotAddToCart": "We could not add this item to your cart. Please try again."
 }
