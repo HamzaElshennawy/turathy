@@ -124,6 +124,15 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
   }
 
   @override
+  void didUpdateWidget(covariant AuctionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.auction != widget.auction) {
+      _calculateRemainingTime();
+      _loadAccess();
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     super.dispose();

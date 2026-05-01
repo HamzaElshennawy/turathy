@@ -31,8 +31,8 @@ class AuctionAccessService {
     }
 
     final approval = (currentUser.auctionAccessStatus ?? '').toUpperCase();
-    if (approval.isNotEmpty && approval != 'AUTO_APPROVED') {
-      return approval == 'BLOCKED' ? 'DENIED' : 'PROFILE_PENDING';
+    if (approval == 'BLOCKED') {
+      return 'DENIED';
     }
 
     return null;
