@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/constants/app_locations/app_locations.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/features/main_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
@@ -149,14 +150,17 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         ref.read(authControllerProvider.notifier).updateUser(updatedUser);
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profileUpdatedSuccessfully'.tr()), backgroundColor: Colors.green),
+      AppFunctions.showSnackBar(
+        context: context,
+        message: 'profileUpdatedSuccessfully'.tr(),
       );
 
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('profileUpdateFailed'.tr()), backgroundColor: Colors.red),
+      AppFunctions.showSnackBar(
+        context: context,
+        message: 'profileUpdateFailed'.tr(),
+        isError: true,
       );
     }
   }
@@ -170,8 +174,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
 
     if (result != null && mounted) {
       ref.invalidate(userAddressesProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('addressSavedSuccessfully'.tr()), backgroundColor: Colors.green),
+      AppFunctions.showSnackBar(
+        context: context,
+        message: 'addressSavedSuccessfully'.tr(),
       );
     }
   }
@@ -197,8 +202,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
       final success = await ProfileRepository.deleteAddress(addressId);
       if (success && mounted) {
         ref.invalidate(userAddressesProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('addressDeletedSuccessfully'.tr()), backgroundColor: Colors.green),
+        AppFunctions.showSnackBar(
+          context: context,
+          message: 'addressDeletedSuccessfully'.tr(),
         );
       }
     }
