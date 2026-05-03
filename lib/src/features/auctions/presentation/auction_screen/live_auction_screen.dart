@@ -82,6 +82,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   // Prevents the post-frame scroll from firing on every rebuild
   bool _hasInitiallyScrolled = false;
 
+  // Tracks winners per product from live auctionItemEnded events.
+  // Key: productId, Value: winner SocketUser
+  final Map<int, SocketUser> _productWinners = {};
+
+  // Tracks which products the current user participated in (bid on) during
+  // this live session — used for badge rendering when item.bids is stale.
+  final Set<int> _productParticipants = {};
+
   StreamSubscription? _socketErrorSubscription;
   StreamSubscription? _bidRejectedSubscription;
 
@@ -352,6 +360,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         _cancelFailSafeTimer();
         //_wasLiveWhenJoined = true;
 
+        // ── Record the winner for the just-ended product so the badge
+        //    Builder can show "You Won" / "You Lost" / "Sold" correctly,
+        //    even when item.bids is stale from the initial API load. ──
+        final endedProductId = auction.currentProductId;
+        if (endedProductId != null && event.winner != null) {
+          _productWinners[endedProductId] = event.winner!;
+        }
+
         // Sound / notification — uses current auction state before it changes
         if (event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
@@ -365,12 +381,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             // uses the still-current productId, keeping it out of the
             // setState callback.
             final didIParticipate =
-                auction.auctionBids?.any(
+                _productParticipants.contains(endedProductId) ||
+                (auction.auctionBids?.any(
                   (b) =>
                       b.productId == auction.currentProductId &&
                       b.userId == CachedVariables.userId,
                 ) ??
-                false;
+                false);
             if (didIParticipate) {
               _safePlay('sounds/lose_notification.wav');
             }
@@ -504,6 +521,27 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         if (event.newBid.userId != CachedVariables.userId) {
           _safePlay('sounds/higher_bid_notification.wav');
           HapticFeedback.lightImpact();
+        }
+
+        // ── Keep per-product bids in sync so badge logic has fresh data ──
+        final bidProductId = event.newBid.productId;
+        if (bidProductId != null && auction.auctionProducts != null) {
+          final matchingProduct = auction.auctionProducts!.firstWhere(
+            (p) => p.id == bidProductId,
+            orElse: () => AuctionProducts(),
+          );
+          if (matchingProduct.id != null) {
+            matchingProduct.bids ??= [];
+            if (!matchingProduct.bids!.any((b) => b.id == event.newBid.id)) {
+              matchingProduct.bids!.add(event.newBid);
+            }
+          }
+        }
+
+        // Track participation: if current user placed a bid on this product
+        if (bidProductId != null &&
+            event.newBid.userId == CachedVariables.userId) {
+          _productParticipants.add(bidProductId);
         }
 
         setState(() {
@@ -848,56 +886,93 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
                                         // If we are here, it's either Past (Sold/Expired) or auction ended completely
 
-                                        // Use per-product bids (item.bids) which are populated from the API
-                                        // This is more reliable than auction.auctionBids which may be stale after socket events
-                                        final productBids = item.bids ?? [];
-
-                                        // Determine winner of this item (highest bid wins)
-                                        AuctionBid? highestBid;
-                                        if (productBids.isNotEmpty) {
-                                          final sorted = [...productBids]
-                                            ..sort(
-                                              (a, b) => (b.bid ?? 0).compareTo(
-                                                a.bid ?? 0,
-                                              ),
-                                            );
-                                          highestBid = sorted.first;
-                                        }
-
                                         late String badgeText;
                                         Color badgeColor = Colors.grey;
-
                                         final currentUserId =
                                             CachedVariables.userId;
 
-                                        if (highestBid != null) {
-                                          if (highestBid.userId ==
-                                              currentUserId) {
-                                            // User has the highest bid - they won
+                                        // ── Primary source: live event winner data ──
+                                        // _productWinners is populated from auctionItemEnded
+                                        // events and is always authoritative for items that
+                                        // ended during this session.
+                                        final liveWinner =
+                                            item.id != null
+                                                ? _productWinners[item.id]
+                                                : null;
+
+                                        if (liveWinner != null) {
+                                          // We have authoritative winner info from the live event
+                                          if (liveWinner.id == currentUserId) {
                                             badgeText = AppStrings.youWon.tr();
                                             badgeColor = Colors.green;
                                           } else {
-                                            // Someone else won - check if user participated
-                                            final didParticipate = productBids
-                                                .any(
-                                                  (b) =>
-                                                      b.userId == currentUserId,
-                                                );
+                                            // Check if current user participated
+                                            final didParticipate =
+                                                (item.id != null &&
+                                                    _productParticipants
+                                                        .contains(item.id)) ||
+                                                (item.bids?.any(
+                                                      (b) =>
+                                                          b.userId ==
+                                                          currentUserId,
+                                                    ) ??
+                                                    false);
                                             if (didParticipate) {
-                                              // User bid but lost
-                                              badgeText = AppStrings.youLost
-                                                  .tr();
+                                              badgeText =
+                                                  AppStrings.youLost.tr();
                                               badgeColor = Colors.red;
                                             } else {
-                                              // Someone else won and user didn't participate
-                                              badgeText = AppStrings.sold.tr();
+                                              badgeText =
+                                                  AppStrings.sold.tr();
                                               badgeColor = Colors.grey;
                                             }
                                           }
                                         } else {
-                                          // No bids at all - expired
-                                          badgeText = AppStrings.expired.tr();
-                                          badgeColor = Colors.grey;
+                                          // ── Fallback: per-product bids from API/socket ──
+                                          final productBids =
+                                              item.bids ?? [];
+
+                                          AuctionBid? highestBid;
+                                          if (productBids.isNotEmpty) {
+                                            final sorted = [...productBids]
+                                              ..sort(
+                                                (a, b) =>
+                                                    (b.bid ?? 0).compareTo(
+                                                      a.bid ?? 0,
+                                                    ),
+                                              );
+                                            highestBid = sorted.first;
+                                          }
+
+                                          if (highestBid != null) {
+                                            if (highestBid.userId ==
+                                                currentUserId) {
+                                              badgeText =
+                                                  AppStrings.youWon.tr();
+                                              badgeColor = Colors.green;
+                                            } else {
+                                              final didParticipate =
+                                                  productBids.any(
+                                                    (b) =>
+                                                        b.userId ==
+                                                        currentUserId,
+                                                  );
+                                              if (didParticipate) {
+                                                badgeText =
+                                                    AppStrings.youLost.tr();
+                                                badgeColor = Colors.red;
+                                              } else {
+                                                badgeText =
+                                                    AppStrings.sold.tr();
+                                                badgeColor = Colors.grey;
+                                              }
+                                            }
+                                          } else {
+                                            // No bids at all - expired
+                                            badgeText =
+                                                AppStrings.expired.tr();
+                                            badgeColor = Colors.grey;
+                                          }
                                         }
 
                                         return Positioned(
