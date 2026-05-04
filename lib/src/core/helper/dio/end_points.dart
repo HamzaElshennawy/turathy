@@ -42,6 +42,9 @@ abstract class EndPoints {
   /// Endpoint for updating user profile details.
   static const String updateUser = "users/update-user";
 
+  /// Endpoint to delete the current authenticated user's account.
+  static const String deleteAccount = "users/me";
+
   /// Returns the path to upload a user profile picture based on [id].
   static String uploadProfilePicture(int id) => "users/profile-picture?user_id=$id";
 

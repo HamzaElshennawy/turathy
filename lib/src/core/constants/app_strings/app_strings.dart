@@ -82,6 +82,9 @@ class AppStrings {
   static const String holdPressToDeleteAccount = "holdPressToDeleteAccount";
   static const String deleteAccount = "deleteAccount";
   static const String areYouSureToDeleteAccount = "areYouSureToDeleteAccount";
+  static const String deleteAccountFinalWarningTitle = "deleteAccountFinalWarningTitle";
+  static const String deleteAccountFinalWarningBody = "deleteAccountFinalWarningBody";
+  static const String accountDeletedSuccessfully = "accountDeletedSuccessfully";
   static const String delete = "delete";
   static const String pleaseSignInOrCreateAccount = "pleaseSignInOrCreateAccount";
   static const String contactUs = "contactUs";

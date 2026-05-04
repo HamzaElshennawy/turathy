@@ -226,13 +226,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             iconColor: Colors.red.shade600,
             onTap: () => _handleSignOut(context, ref),
           ),
-          //_buildSettingsTile(
-          //  icon: Icons.person_remove_outlined,
-          //  title: AppStrings.deleteAccount.tr(),
-          //  textColor: Colors.red.shade600,
-          //  iconColor: Colors.red.shade600,
-          //  onTap: () => _handleDeleteAccount(context, ref),
-          //),
+          _buildSettingsTile(
+            icon: Icons.person_remove_outlined,
+            title: AppStrings.deleteAccount.tr(),
+            textColor: Colors.red.shade600,
+            iconColor: Colors.red.shade600,
+            onTap: () => _handleDeleteAccount(context, ref),
+          ),
         ]),
       ],
 
@@ -363,30 +363,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  //Future<void> _handleDeleteAccount(BuildContext context, WidgetRef ref) async {
-  //  final result = await showDialog<bool>(
-  //    context: context,
-  //    builder: (context) => AlertDialog(
-  //      title: Text(AppStrings.deleteAccount.tr()),
-  //      content: Text(AppStrings.areYouSureToDeleteAccount.tr()),
-  //      actions: [
-  //        TextButton(
-  //          onPressed: () => Navigator.of(context).pop(false),
-  //          child: Text(AppStrings.cancel.tr()),
-  //        ),
-  //        TextButton(
-  //          onPressed: () => Navigator.of(context).pop(true),
-  //          style: TextButton.styleFrom(foregroundColor: Colors.red),
-  //          child: Text(AppStrings.delete.tr()),
-  //        ),
-  //      ],
-  //    ),
-  //  );
+  Future<void> _handleDeleteAccount(BuildContext context, WidgetRef ref) async {
+    final step1Result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppStrings.deleteAccount.tr()),
+        content: Text(AppStrings.areYouSureToDeleteAccount.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(AppStrings.delete.tr()),
+          ),
+        ],
+      ),
+    );
 
-  //  if (result == true) {
-  //    // TODO: Handle delete account API call
-  //  }
-  //}
+    if (step1Result != true || !context.mounted) return;
+
+    final step2Result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppStrings.deleteAccountFinalWarningTitle.tr()),
+        content: Text(AppStrings.deleteAccountFinalWarningBody.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(AppStrings.cancel.tr()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(AppStrings.delete.tr()),
+          ),
+        ],
+      ),
+    );
+
+    if (step2Result == true && context.mounted) {
+      final success = await ref.read(authControllerProvider.notifier).deleteAccount();
+      if (success && context.mounted) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.accountDeletedSuccessfully.tr(),
+          isError: false,
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => SignInScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
 }
 
 class ProfileAvatar extends ConsumerStatefulWidget {

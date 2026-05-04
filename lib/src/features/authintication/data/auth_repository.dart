@@ -1,7 +1,7 @@
 /// {@category Data}
 ///
 /// Data repository for all authentication-related operations.
-/// 
+///
 /// This repository acts as the single point of entry for:
 /// - **API Interactions**: Login, Signup, OTP Verification, Password Changes.
 /// - **Session Management**: Storing and retrieving tokens and user IDs from local cache.
@@ -21,8 +21,8 @@ import '../../../core/helper/dio/end_points.dart';
 import '../domain/user_model.dart';
 
 /// Internal utility to ensure a Dio response's data is a [Map].
-/// 
-/// If Dio returns a raw JSON string instead of a parsed Map, this helper 
+///
+/// If Dio returns a raw JSON string instead of a parsed Map, this helper
 /// decodes it. Returns an empty map as a fallback to prevent runtime crashes.
 Map<String, dynamic> _ensureMap(dynamic data) {
   if (data is Map<String, dynamic>) return data;
@@ -63,12 +63,12 @@ String? _extractRefreshToken(Map<String, dynamic> data) {
 /// Manages authentication state and persistence.
 class AuthRepository {
   /// Authenticates a user using phone and password.
-  /// 
+  ///
   /// On success:
   /// - Caches the auth token.
   /// - Persists user details locally.
   /// - Returns a map containing the [UserModel] and navigation flags.
-  /// 
+  ///
   /// Throws [AuthException] on failure.
   static Future<Map<String, dynamic>> signIn(
     String phone,
@@ -83,7 +83,7 @@ class AuthRepository {
       },
     );
     final body = _ensureMap(result.data);
-    
+
     if (result.statusCode == 200 || result.statusCode == 201) {
       final data = _extractAuthData(body);
       if (data['requiresOtp'] == true) {
@@ -125,7 +125,8 @@ class AuthRepository {
       };
     } else {
       AppFunctions.logPrint(message: 'signIn error: ${result.statusCode}');
-      String message = body['message']?.toString() ??
+      String message =
+          body['message']?.toString() ??
           body['error']?.toString() ??
           'An error occurred while signing in';
       throw AuthException(message, result.statusCode);
@@ -133,16 +134,13 @@ class AuthRepository {
   }
 
   /// Verifies a Google ID token with the backend.
-  /// 
-  /// This method is called after the client successfully signs in via 
+  ///
+  /// This method is called after the client successfully signs in via
   /// the Google SDK.
   static Future<UserModel> googleSignIn(String token) async {
     final result = await DioHelper.postData(
       url: EndPoints.googleLogin,
-      data: {
-        'token': token,
-        'platform': _currentPlatformLabel(),
-      },
+      data: {'token': token, 'platform': _currentPlatformLabel()},
     );
 
     final body = _ensureMap(result.data);
@@ -171,7 +169,8 @@ class AuthRepository {
       CachedVariables.isAppleSignIn = false;
       return user;
     } else {
-      String message = body['error']?.toString() ??
+      String message =
+          body['error']?.toString() ??
           'An error occurred while signing in with Google';
       throw AuthException(message, result.statusCode);
     }
@@ -222,7 +221,8 @@ class AuthRepository {
       CachedVariables.isGoogleSignIn = false;
       return user;
     } else {
-      String message = body['error']?.toString() ??
+      String message =
+          body['error']?.toString() ??
           'An error occurred while signing in with Apple';
       throw AuthException(message, result.statusCode);
     }
@@ -247,7 +247,7 @@ class AuthRepository {
   }
 
   /// Registers a new user account.
-  /// 
+  ///
   /// Returns registration status and identifying information (userId).
   /// Subsequent verification (OTP) is usually required.
   static Future<Map<String, dynamic>> createUser(UserModel user) async {
@@ -273,7 +273,8 @@ class AuthRepository {
         'message': data['message'],
       };
     } else {
-      String message = body['message']?.toString() ??
+      String message =
+          body['message']?.toString() ??
           body['error']?.toString() ??
           'Signup failed';
       throw AuthException(message, result.statusCode);
@@ -281,7 +282,7 @@ class AuthRepository {
   }
 
   /// Validates a One-Time Password for a specific phone number.
-  /// 
+  ///
   /// If successfully verified, the user session is initialized.
   static Future<UserModel> verifyOtp({
     required String challengeToken,
@@ -345,7 +346,9 @@ class AuthRepository {
   }
 
   /// Triggers the OTP flow (e.g. for registration or password reset).
-  static Future<Map<String, dynamic>> requestOtp({required String number}) async {
+  static Future<Map<String, dynamic>> requestOtp({
+    required String number,
+  }) async {
     final result = await DioHelper.postData(
       url: EndPoints.requestOTP,
       data: {'number': number},
@@ -393,12 +396,15 @@ class AuthRepository {
   }
 
   /// Synchronizes [user] data with persistent local storage.
-  /// 
+  ///
   /// Updates both [CacheHelper] (Secure Storage) and [CachedVariables] (In-Memory).
   static Future<void> cacheData(UserModel? user) async {
     if (user != null) {
       if (user.id != null) {
-        await CacheHelper.setData(key: CachedKeys.userId, value: user.id.toString());
+        await CacheHelper.setData(
+          key: CachedKeys.userId,
+          value: user.id.toString(),
+        );
         CachedVariables.userId = user.id;
       }
       final displayName = (user.nickname?.trim().isNotEmpty ?? false)
@@ -409,45 +415,72 @@ class AuthRepository {
         CachedVariables.userName = displayName;
       }
       if (user.phone_number != null) {
-        await CacheHelper.setData(key: CachedKeys.phone_number, value: user.phone_number!);
+        await CacheHelper.setData(
+          key: CachedKeys.phone_number,
+          value: user.phone_number!,
+        );
         CachedVariables.phone_number = user.phone_number;
       }
       if (user.password != null) {
-        await CacheHelper.setData(key: CachedKeys.password, value: user.password!);
+        await CacheHelper.setData(
+          key: CachedKeys.password,
+          value: user.password!,
+        );
         CachedVariables.password = user.password;
       }
       if (user.profilePicUrl != null) {
-        await CacheHelper.setData(key: CachedKeys.profilePicUrl, value: user.profilePicUrl!);
+        await CacheHelper.setData(
+          key: CachedKeys.profilePicUrl,
+          value: user.profilePicUrl!,
+        );
         CachedVariables.profilePicUrl = user.profilePicUrl;
       }
     }
   }
 
   /// Hydrates [CachedVariables] from [CacheHelper] during app initialization.
-  /// 
+  ///
   /// Also handles legacy token migration from early app versions.
   static Future<void> getLocalDetails() async {
-    CachedVariables.userId = int.tryParse(await CacheHelper.getData(key: CachedKeys.userId) ?? '');
-    CachedVariables.userName = await CacheHelper.getData(key: CachedKeys.userName);
-    CachedVariables.phone_number = await CacheHelper.getData(key: CachedKeys.phone_number);
-    CachedVariables.password = await CacheHelper.getData(key: CachedKeys.password);
-    CachedVariables.profilePicUrl = await CacheHelper.getData(key: CachedKeys.profilePicUrl);
-    CachedVariables.onBoard = await CacheHelper.getData(key: CachedKeys.onBoard);
-    CachedVariables.token = await CacheHelper.getData(key: CachedKeys.authToken);
-    CachedVariables.refreshToken =
-        await CacheHelper.getData(key: CachedKeys.refreshToken);
+    CachedVariables.userId = int.tryParse(
+      await CacheHelper.getData(key: CachedKeys.userId) ?? '',
+    );
+    CachedVariables.userName = await CacheHelper.getData(
+      key: CachedKeys.userName,
+    );
+    CachedVariables.phone_number = await CacheHelper.getData(
+      key: CachedKeys.phone_number,
+    );
+    CachedVariables.password = await CacheHelper.getData(
+      key: CachedKeys.password,
+    );
+    CachedVariables.profilePicUrl = await CacheHelper.getData(
+      key: CachedKeys.profilePicUrl,
+    );
+    CachedVariables.onBoard = await CacheHelper.getData(
+      key: CachedKeys.onBoard,
+    );
+    CachedVariables.token = await CacheHelper.getData(
+      key: CachedKeys.authToken,
+    );
+    CachedVariables.refreshToken = await CacheHelper.getData(
+      key: CachedKeys.refreshToken,
+    );
 
     // Migration logic for old installs (fcmToken -> authToken)
     if (CachedVariables.token == null) {
       final legacyToken = await CacheHelper.getData(key: CachedKeys.fcmToken);
       if (legacyToken != null) {
         log('Migrating auth token from legacy fcmToken key');
-        await CacheHelper.setData(key: CachedKeys.authToken, value: legacyToken);
+        await CacheHelper.setData(
+          key: CachedKeys.authToken,
+          value: legacyToken,
+        );
         await CacheHelper.deleteData(key: CachedKeys.fcmToken);
         CachedVariables.token = legacyToken;
       }
     }
-    
+
     final isGoogle = await CacheHelper.getData(key: CachedKeys.isGoogleSignIn);
     CachedVariables.isGoogleSignIn = isGoogle == 'true';
     final isApple = await CacheHelper.getData(key: CachedKeys.isAppleSignIn);
@@ -455,7 +488,7 @@ class AuthRepository {
   }
 
   /// Wipes all user data from memory and local storage.
-  /// 
+  ///
   /// Typically called during logout or account deletion.
   static Future<void> clearLocalDetails() async {
     CachedVariables.token = null;
@@ -517,6 +550,24 @@ class AuthRepository {
     return true;
   }
 
+  static Future<bool> deleteAccount() async {
+    final result = await DioHelper.deleteData(
+      url: EndPoints.deleteAccount,
+      token: CachedVariables.token,
+    );
+    final body = _ensureMap(result.data);
+    if (result.statusCode == 200 || result.statusCode == 201) {
+      await clearLocalDetails();
+      return true;
+    } else {
+      String message =
+          body['message']?.toString() ??
+          body['error']?.toString() ??
+          'Failed to delete account';
+      throw AuthException(message, result.statusCode);
+    }
+  }
+
   /// Uploads a new profile picture to the backend.
   ///
   /// Requires the [userId] and the local [filePath] of the selected image.
@@ -541,21 +592,24 @@ class AuthRepository {
     if (result.statusCode == 200 || result.statusCode == 201) {
       final data = _ensureMap(body['data']);
       final profilePicUrl = data['profilePicUrl'] as String;
-      
-      await CacheHelper.setData(key: CachedKeys.profilePicUrl, value: profilePicUrl);
+
+      await CacheHelper.setData(
+        key: CachedKeys.profilePicUrl,
+        value: profilePicUrl,
+      );
       CachedVariables.profilePicUrl = profilePicUrl;
-      
+
       return profilePicUrl;
     } else {
-      final message = body['message']?.toString() ?? 'Failed to upload profile picture';
+      final message =
+          body['message']?.toString() ?? 'Failed to upload profile picture';
       throw AuthException(message, result.statusCode);
     }
   }
 }
 
-
 /// Custom exception for authentication-related failures.
-/// 
+///
 /// Contains a descriptive [message] and an optional HTTP error [code].
 class AuthException implements Exception {
   final String message;
@@ -618,6 +672,6 @@ String getFriendlyAuthMessage(
   }
 
   return message;
+
+  ///// Deletes the currently authenticated user's account permanently.
 }
-
-

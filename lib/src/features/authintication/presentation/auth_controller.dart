@@ -1,9 +1,9 @@
 /// {@category Presentation}
 ///
 /// Business logic and state management for application-wide authentication.
-/// 
+///
 /// This controller manages the [UserModel] state using Riverpod's [StateNotifier].
-/// It also handles form logic for sign-in/up and coordinates side-effects like 
+/// It also handles form logic for sign-in/up and coordinates side-effects like
 /// Firebase Cloud Messaging (FCM) token registration.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,23 +21,40 @@ import 'country_code_provider.dart';
 /// Known dial codes for supported countries, ordered by length (longest first)
 /// to ensure greedy matching in [_splitPhoneNumber].
 const _knownDialCodes = [
-  '+966', '+971', '+965', '+974', '+973', '+968', '+962', '+961', '+963',
-  '+964', '+970', '+967', '+249', '+218', '+216', '+213', '+212', '+222',
-  '+252', '+253', '+269', '+20',
+  '+966',
+  '+971',
+  '+965',
+  '+974',
+  '+973',
+  '+968',
+  '+962',
+  '+961',
+  '+963',
+  '+964',
+  '+970',
+  '+967',
+  '+249',
+  '+218',
+  '+216',
+  '+213',
+  '+212',
+  '+222',
+  '+252',
+  '+253',
+  '+269',
+  '+20',
 ];
 
 /// Deconstructs a raw phone string into its dial code and local component.
-/// 
+///
 /// Uses [_knownDialCodes] for prioritized matching.
 ({String? dialCode, String? localNumber}) _splitPhoneNumber(String? phone) {
-  if (phone == null || phone.isEmpty) return (dialCode: null, localNumber: phone);
+  if (phone == null || phone.isEmpty)
+    return (dialCode: null, localNumber: phone);
   if (phone.startsWith('+')) {
     for (final code in _knownDialCodes) {
       if (phone.startsWith(code)) {
-        return (
-          dialCode: code,
-          localNumber: phone.substring(code.length),
-        );
+        return (dialCode: code, localNumber: phone.substring(code.length));
       }
     }
     // Generic fallback for unknown codes.
@@ -97,7 +114,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   }
 
   /// Performs credential-based login.
-  /// 
+  ///
   /// Triggers [FCMService] registration and clears notification state on success.
   Future<Map<String, dynamic>> signIn(
     String fullphone_number,
@@ -114,11 +131,11 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
       state = AsyncValue.data(user);
       await AnalyticsService.setUser(user, authMethod: 'phone');
       await AnalyticsService.logLogin(method: 'phone');
-      
+
       // Post-login side effects
       await FCMService().registerAfterLogin();
       ref.invalidate(notificationsNotifierProvider);
-      
+
       return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -127,7 +144,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   }
 
   /// Triggers the account creation flow.
-  /// 
+  ///
   /// Validates the [formKey] before calling the repository.
   Future<Map<String, dynamic>> signUp(String fullphone_number) async {
     state = const AsyncValue.loading();
@@ -172,8 +189,36 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     return true;
   }
 
+  /// Deletes the user account and signs out.
+  Future<bool> deleteAccount() async {
+    state = const AsyncValue.loading();
+    try {
+      final success = await AuthRepository.deleteAccount();
+      if (success) {
+        await FCMService().unregisterDevice();
+        if (CachedVariables.isGoogleSignIn) {
+          try {
+            final googleSignIn = buildGoogleSignInClient();
+            await googleSignIn.signOut();
+          } catch (_) {}
+        }
+        phoneController.clear();
+        nameController.clear();
+        passwordController.clear();
+        await AnalyticsService.clearUser();
+        state = const AsyncValue.data(null);
+        ref.invalidate(notificationsNotifierProvider);
+        return true;
+      }
+      return false;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      return false;
+    }
+  }
+
   /// Initiates the Google Sign-In OAuth flow.
-  /// 
+  ///
   /// On success, sends the ID token to the backend for verification.
   Future<void> signInWithGoogle() async {
     state = const AsyncValue.loading();
@@ -277,10 +322,9 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
 }
 
 /// Global provider for the [AuthController].
-/// 
+///
 /// Monitors the authentication state across the entire application.
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<UserModel?>>((ref) {
       return AuthController(ref);
     });
-
