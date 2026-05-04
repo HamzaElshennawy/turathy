@@ -65,7 +65,7 @@ class FilterWidget extends ConsumerWidget {
                       ref
                           .read(filterWidgetControllerProvider.notifier)
                           .categories
-                          .map((e) => e.name ?? '')
+                          .map((e) => e.localizedName(context.locale.languageCode))
                           .toList(),
                       [
                         ref

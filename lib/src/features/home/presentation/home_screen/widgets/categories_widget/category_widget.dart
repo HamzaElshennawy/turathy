@@ -83,9 +83,8 @@ class CategoriesWidget extends ConsumerWidget {
                             ),
                           ),
                           child: Text(
-                            (context.locale == const Locale('ar')
-                                    ? categories[index].name
-                                    : categories[index].name) ??
+                            categories[index].localizedName(
+                                    context.locale.languageCode) ??
                                 "",
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.titleSmall

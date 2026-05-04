@@ -121,7 +121,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                           padding: const EdgeInsets.only(right: 8),
                           child: ChoiceChip(
                             label: Text(
-                              category.name ?? '',
+                              category.localizedName(context.locale.languageCode),
                               style: TextStyle(
                                 color: isSelected ? Colors.white : Colors.black,
                                 fontWeight: FontWeight.bold,
