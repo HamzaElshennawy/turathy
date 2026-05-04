@@ -199,7 +199,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product.title ?? product.name ?? '',
+                  product.localizedTitle(context.locale.languageCode),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -451,7 +451,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         pCs: cartItems.length,
         codAmt: '0',
         weight: '1',
-        itemDesc: cartItems.map((e) => e.product?.title ?? '').join(', '),
+        itemDesc: cartItems.map((e) => e.product?.localizedTitle('ar') ?? '').join(', '),
       );
 
       Navigator.push(

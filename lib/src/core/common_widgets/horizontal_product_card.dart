@@ -119,7 +119,7 @@ class HorizontalProductCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildTextContent(),
+                    _buildTextContent(context),
                     _buildPriceLayer(),
                   ],
                 ),
@@ -158,12 +158,12 @@ class HorizontalProductCard extends ConsumerWidget {
   }
 
   /// Internal: Renders title and description with overflow management.
-  Widget _buildTextContent() {
+  Widget _buildTextContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          product.title ?? '',
+          product.localizedTitle(context.locale.languageCode),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
@@ -174,7 +174,7 @@ class HorizontalProductCard extends ConsumerWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          product.description ?? '',
+          product.localizedDescription(context.locale.languageCode),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

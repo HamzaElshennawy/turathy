@@ -157,7 +157,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    widget.product.title ?? '',
+                    widget.product.localizedTitle(context.locale.languageCode),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -168,7 +168,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                   ),
                   gapH4,
                   Text(
-                    widget.product.description ?? '',
+                    widget.product.localizedDescription(context.locale.languageCode),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3),

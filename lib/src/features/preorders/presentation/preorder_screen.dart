@@ -167,7 +167,7 @@ class _PreorderScreenState extends ConsumerState<PreorderScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product.title ?? product.name ?? '',
+                  product.localizedTitle(context.locale.languageCode),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

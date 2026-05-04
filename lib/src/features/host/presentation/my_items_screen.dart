@@ -186,9 +186,9 @@ class _MyProductsList extends ConsumerWidget {
                     ),
                   ),
                   title: Text(
-                    product.title ??
-                        product.name ??
-                        AppStrings.untitledProduct.tr(),
+                    product.localizedTitle(context.locale.languageCode).isNotEmpty
+                        ? product.localizedTitle(context.locale.languageCode)
+                        : AppStrings.untitledProduct.tr(),
                   ),
                   subtitle: Row(
                     children: [
