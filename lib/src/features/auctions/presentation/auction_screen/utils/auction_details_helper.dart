@@ -27,10 +27,12 @@ class AuctionDetailsHelper {
     final int? currentUserId = CachedVariables.userId;
 
     if (activeProduct != null && activeProduct.id != null) {
-      final bool isCurrentLiveProduct = _isSameProduct(
-        activeProduct.displayName,
-        auction.currentProduct,
-      );
+      final bool isCurrentLiveProduct = auction.currentProductId != null
+          ? activeProduct.id == auction.currentProductId
+          : _isSameProduct(
+              activeProduct.displayName,
+              auction.currentProduct,
+            );
 
       bool isProductEnded = false;
 
@@ -49,8 +51,10 @@ class AuctionDetailsHelper {
       } else {
         final currentIndex = auction.auctionProducts!.indexWhere(
           (p) =>
-              _isSameProduct(p.displayName, auction.currentProduct) ||
-              p.id == auction.currentProductId,
+              auction.currentProductId != null
+                  ? p.id == auction.currentProductId
+                  : _isSameProduct(p.displayName, auction.currentProduct) ||
+                      p.id == auction.currentProductId,
         );
         final activeIndex = auction.auctionProducts!.indexWhere(
           (p) => p.id == activeProduct.id,

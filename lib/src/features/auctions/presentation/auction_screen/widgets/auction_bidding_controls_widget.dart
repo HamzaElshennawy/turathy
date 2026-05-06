@@ -297,18 +297,19 @@ class _AuctionBiddingControlsWidgetState
     // Dynamic bid increment logic based on the current price
     bidIncrement = _getIncrementForPrice(currentPrice);
 
-    // Determine if the auction has truly ended based on the model or current time vs expiry
-    final bool isTrulyEnded =
+    // Determine if the auction has truly ended based on explicit flags.
+    // The parent widget (LiveAuctionScreen) sets isAuctionEnded via socket events.
+    final bool isAuctionEnded =
         widget.isAuctionEnded ||
         widget.auction.isExpired == true ||
-        widget.auction.isCanceled == true ||
-        (widget.auction.expiryDate != null &&
-            DateTime.now().isAfter(widget.auction.expiryDate!));
+        widget.auction.isCanceled == true;
 
-    // Reaching zero on the timer only means "ended" if we aren't in pre-auction anymore
-    // (In pre-auction, zero means "starting live")
-    final bool isAuctionEnded =
-        isTrulyEnded ||
+    // Also disable bidding when the local timer has hit zero (item/auction expired)
+    // but the socket event hasn't arrived yet. This prevents bids during the
+    // brief transition window between items. The full "Ended" result UI only
+    // shows when isAuctionEnded is true (from socket events).
+    final bool isBiddingDisabled =
+        isAuctionEnded ||
         (!widget.auction.isPreAuction && _remainingTime == Duration.zero);
 
     // Check if the auction has actually started (reached startDate)
@@ -824,7 +825,7 @@ class _AuctionBiddingControlsWidgetState
                 ),
               ),
             ),
-          ] else if (!isAuctionEnded) ...[
+          ] else if (!isBiddingDisabled) ...[
             // ─────────────────────────────────────────────────
             // PRE-AUCTION: two bidding options
             // ─────────────────────────────────────────────────

@@ -238,6 +238,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           if (!mounted) return;
           if (event.id == auctionId) {
             _checkAccess();
+            // Refetch auction details so _currentAuction picks up
+            // currentProduct, isLive, etc. from the server.
+            _fetchAuctionDetails();
           }
         });
 
@@ -751,8 +754,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       // In a live auction, if this item comes BEFORE the current item, it has ended
       final currentIndex = _currentAuction.auctionProducts!.indexWhere(
         (p) =>
-            p.displayName == _currentAuction.currentProduct ||
-            p.id == _currentAuction.currentProductId,
+            _currentAuction.currentProductId != null
+                ? p.id == _currentAuction.currentProductId
+                : p.displayName == _currentAuction.currentProduct ||
+                    p.id == _currentAuction.currentProductId,
       );
       final thisIndex = _currentAuction.auctionProducts!.indexWhere(
         (p) => p.id == productId,
@@ -858,7 +863,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     //  isAuctionEnded = true;
     //}
     else if (_currentAuction.currentProduct == null &&
+        _currentAuction.currentProductId == null &&
         _currentAuction.isPreAuction == false &&
+        _currentAuction.isLive != true &&
         _timeLeft == Duration.zero) {
       isAuctionEnded = true;
     }
@@ -988,8 +995,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 final products = _currentAuction.auctionProducts!;
                 final currentIndex = products.indexWhere(
                   (p) =>
-                      p.id == _currentAuction.currentProductId ||
-                      p.displayName == _currentAuction.currentProduct,
+                      _currentAuction.currentProductId != null
+                          ? p.id == _currentAuction.currentProductId
+                          : p.displayName == _currentAuction.currentProduct,
                 );
                 final thisIndex = products.indexWhere(
                   (p) => p.id == product.id,
@@ -1760,8 +1768,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     _timeLeft == Duration.zero &&
                     _currentAuction.isExpired != true &&
                     _currentAuction.isCanceled != true &&
-                    (product.id == _currentAuction.currentProductId ||
-                        product.displayName == _currentAuction.currentProduct);
+                    (_currentAuction.currentProductId != null
+                        ? product.id == _currentAuction.currentProductId
+                        : product.displayName == _currentAuction.currentProduct);
 
                 return GestureDetector(
                   onTap: _canOpenItemBottomSheet
@@ -1893,8 +1902,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     _timeLeft == Duration.zero &&
                     _currentAuction.isExpired != true &&
                     _currentAuction.isCanceled != true &&
-                    (product.id == _currentAuction.currentProductId ||
-                        product.displayName == _currentAuction.currentProduct);
+                    (_currentAuction.currentProductId != null
+                        ? product.id == _currentAuction.currentProductId
+                        : product.displayName == _currentAuction.currentProduct);
 
                 return GestureDetector(
                   onTap: _canOpenItemBottomSheet

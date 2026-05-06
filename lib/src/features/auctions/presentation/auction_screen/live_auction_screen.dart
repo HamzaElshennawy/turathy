@@ -258,7 +258,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     }
 
     final currentIndex = auction.auctionProducts!.indexWhere(
-      (p) => _isSameProduct(p.displayName, auction.currentProduct),
+      (p) => auction.currentProductId != null
+          ? p.id == auction.currentProductId
+          : _isSameProduct(p.displayName, auction.currentProduct),
     );
 
     if (currentIndex == -1 ||
@@ -289,9 +291,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       );
     } else {
       productToBidOn = auction.auctionProducts?.firstWhere(
-        (element) =>
-            element.displayName == auction.currentProduct ||
-            element.id == auction.currentProductId,
+        (element) => auction.currentProductId != null
+            ? element.id == auction.currentProductId
+            : element.displayName == auction.currentProduct,
         orElse: () => AuctionProducts(),
       );
     }
@@ -564,9 +566,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         auction.auctionProducts!.isNotEmpty) {
       // Find the product that matches the current_product name or ID
       final currentProductObj = auction.auctionProducts!.firstWhere(
-        (p) =>
-            p.displayName == auction.currentProduct ||
-            p.id == auction.currentProductId,
+        (p) => auction.currentProductId != null
+            ? p.id == auction.currentProductId
+            : p.displayName == auction.currentProduct,
         orElse: () => auction.auctionProducts![0],
       );
 
@@ -677,8 +679,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         final activeProduct =
             _selectedProduct ??
             auction.auctionProducts?.firstWhere((p) {
-              return p.displayName == auction.currentProduct ||
-                  p.id == auction.currentProductId;
+              return auction.currentProductId != null
+                  ? p.id == auction.currentProductId
+                  : p.displayName == auction.currentProduct;
             }, orElse: () => AuctionProducts());
 
         return Column(
@@ -766,11 +769,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                           itemBuilder: (context, index) {
                             final item = auction.auctionProducts![index];
                             final bool isLive =
-                                item.displayName == auction.currentProduct ||
-                                item.id == auction.currentProductId;
+                                auction.currentProductId != null
+                                    ? item.id == auction.currentProductId
+                                    : item.displayName ==
+                                        auction.currentProduct;
                             final bool isSelected =
                                 item.id ==
                                 (_selectedProduct?.id ??
+                                    auction.currentProductId ??
                                     (auction.auctionProducts
                                             ?.firstWhere(
                                               (p) =>
@@ -778,8 +784,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                                   auction.currentProduct,
                                               orElse: () => AuctionProducts(),
                                             )
-                                            .id ??
-                                        auction.currentProductId));
+                                            .id));
 
                             return GestureDetector(
                               onTap: () {
@@ -832,10 +837,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                         final currentIndex = auction
                                             .auctionProducts!
                                             .indexWhere(
-                                              (p) => _isSameProduct(
-                                                p.displayName,
-                                                auction.currentProduct,
-                                              ),
+                                              (p) =>
+                                                  auction.currentProductId !=
+                                                          null
+                                                      ? p.id ==
+                                                          auction
+                                                              .currentProductId
+                                                      : _isSameProduct(
+                                                          p.displayName,
+                                                          auction
+                                                              .currentProduct,
+                                                        ),
                                             );
                                         // If current product not found (e.g. auction ended completely), maybe all are sold?
                                         // Or if auction just started?
@@ -1073,13 +1085,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                   !auction.isPreAuction &&
                   _selectedProduct != null &&
                   _selectedProduct?.id !=
-                      (auction.auctionProducts
+                      (auction.currentProductId ??
+                          auction.auctionProducts
                               ?.firstWhere(
                                 (p) => p.displayName == auction.currentProduct,
                                 orElse: () => AuctionProducts(),
                               )
-                              .id ??
-                          auction.currentProductId),
+                              .id),
               selectedProduct: _selectedProduct,
               isOwner: auction.userId == CachedVariables.userId,
               winnerId: _winnerId,
@@ -1196,9 +1208,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     }
 
     final index = auction.auctionProducts!.indexWhere(
-      (p) =>
-          p.displayName == auction.currentProduct ||
-          p.id == auction.currentProductId,
+      (p) => auction.currentProductId != null
+          ? p.id == auction.currentProductId
+          : p.displayName == auction.currentProduct,
     );
 
     if (index != -1 && _scrollController.hasClients) {
@@ -1398,6 +1410,7 @@ class AuctionResultDialog extends ConsumerWidget {
                   ? ElevatedButton.icon(
                       onPressed: () async {
                         final currentProductId =
+                            auction.currentProductId ??
                             auction.auctionProducts
                                 ?.firstWhere(
                                   (p) =>
@@ -1405,7 +1418,6 @@ class AuctionResultDialog extends ConsumerWidget {
                                   orElse: () => AuctionProducts(),
                                 )
                                 .id ??
-                            auction.currentProductId ??
                             0;
 
                         Navigator.of(context).pop();

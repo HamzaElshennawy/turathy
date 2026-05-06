@@ -38,10 +38,13 @@ class AuctionItemDetailsWidget extends StatelessWidget {
             // Use local state if ended, otherwise check model
             // Determine status for the ACTIVE product (displayed in big view)
             if (activeProduct != null && activeProduct!.id != null) {
-              final bool isCurrentLiveProduct = _isSameProduct(
-                activeProduct!.displayName,
-                auction.currentProduct,
-              );
+              final bool isCurrentLiveProduct =
+                  auction.currentProductId != null
+                      ? activeProduct!.id == auction.currentProductId
+                      : _isSameProduct(
+                          activeProduct!.displayName,
+                          auction.currentProduct,
+                        );
 
               // If it's the current live product, check if the AUCTION itself is ended/expired.
               // If auction is live and this is the current product, no special "Sold" badge needed yet (unless expired).
@@ -63,8 +66,11 @@ class AuctionItemDetailsWidget extends StatelessWidget {
               } else {
                 final currentIndex = auction.auctionProducts!.indexWhere(
                   (p) =>
-                      _isSameProduct(p.displayName, auction.currentProduct) ||
-                      p.id == auction.currentProductId,
+                      auction.currentProductId != null
+                          ? p.id == auction.currentProductId
+                          : _isSameProduct(
+                                p.displayName, auction.currentProduct) ||
+                              p.id == auction.currentProductId,
                 );
                 final activeIndex = auction.auctionProducts!.indexWhere(
                   (p) => p.id == activeProduct!.id,

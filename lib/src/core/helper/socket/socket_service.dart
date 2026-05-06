@@ -1,7 +1,7 @@
 /// {@category Core}
 ///
 /// A robust service for managing real-time bidirectional communication via WebSockets.
-/// 
+///
 /// This service wraps the `socket_io_client` package to provide:
 /// - Automatic reconnection with exponential backoff strategies.
 /// - Heartbeat monitoring to detect silent connection drops or network jitter.
@@ -19,22 +19,22 @@ import 'socket_config.dart';
 import 'socket_connection_state.dart';
 
 /// The central authority for the application's WebSocket lifecycle and event distribution.
-/// 
-/// Manages a single [io.Socket] instance, providing a high-level API for 
+///
+/// Manages a single [io.Socket] instance, providing a high-level API for
 /// features to subscribe to real-time events without managing raw socket listeners.
 class SocketService {
   /// The underlying Socket.IO client instance.
   io.Socket? _socket;
-  
+
   /// Timer used to periodically check if the connection is still alive (Heartbeat).
   Timer? _heartbeatTimer;
-  
+
   /// Timer used to manage delayed reconnection attempts using backoff logic.
   Timer? _reconnectionTimer;
 
   /// Cached ID of the last auction room joined, used for automatic re-joining on reconnect.
   int? _lastJoinedAuctionId;
-  
+
   /// Cached ID of the current user, used for authenticated re-joining on reconnect.
   int? _lastJoinedUserId;
 
@@ -61,9 +61,9 @@ class SocketService {
   bool get isConnected => _currentStatus.isConnected;
 
   /// Establishes a connection to the WebSocket server using [SocketConfig].
-  /// 
+  ///
   /// Returns a [Future] that completes when the connection is established.
-  /// Throws a [TimeoutException] if the handshake takes longer than 
+  /// Throws a [TimeoutException] if the handshake takes longer than
   /// [SocketConfig.connectionTimeout].
   Future<void> connect() async {
     if (_socket?.connected == true) {
@@ -107,7 +107,11 @@ class SocketService {
 
       timeoutTimer = Timer(SocketConfig.connectionTimeout, () {
         if (!completer.isCompleted) {
-          completer.completeError(TimeoutException('Socket connection timeout after ${SocketConfig.connectionTimeout.inSeconds}s'));
+          completer.completeError(
+            TimeoutException(
+              'Socket connection timeout after ${SocketConfig.connectionTimeout.inSeconds}s',
+            ),
+          );
         }
       });
 
@@ -196,7 +200,9 @@ class SocketService {
     // Re-synchronization: Automatically rejoin last auction on successful connect
     _socket!.onConnect((_) {
       if (_lastJoinedAuctionId != null && _lastJoinedUserId != null) {
-        log('SocketService: Restoring auction session for ID: $_lastJoinedAuctionId');
+        log(
+          'SocketService: Restoring auction session for ID: $_lastJoinedAuctionId',
+        );
         emitJoinAuction(_lastJoinedAuctionId!, _lastJoinedUserId!);
       }
     });
@@ -244,7 +250,7 @@ class SocketService {
   }
 
   /// Returns a typed stream for a specific socket event.
-  /// 
+  ///
   /// - [eventName]: The key used by the server to emit the event (e.g. 'newBid').
   /// - [parser]: A transformer function that converts raw dynamic data into a type [T].
   Stream<T> getEventStream<T>(String eventName, T Function(dynamic) parser) {
@@ -281,7 +287,7 @@ class SocketService {
   }
 
   /// Internal: Monitors the socket's internal `connected` property periodically.
-  /// 
+  ///
   /// This bridges gaps where the underlying library fails to emit disconnect events
   /// during specific network failure modes (e.g., DNS timeout).
   void _startHeartbeat() {
@@ -355,7 +361,7 @@ class SocketService {
   }
 
   /// Joins a specific auction room to receive its focused event stream.
-  /// 
+  ///
   /// Automatically caches [auctionId] and [userId] for session recovery.
   void emitJoinAuction(int auctionId, int userId) {
     _lastJoinedAuctionId = auctionId;
@@ -438,7 +444,7 @@ class SocketService {
   }
 
   /// Manually requests an authoritative state snapshot from the server.
-  /// 
+  ///
   /// Essential for resetting local UI state after network gaps or sequence errors.
   void emitRequestSync(int auctionId) {
     _safeEmit('requestSync', {'auctionId': auctionId});
@@ -488,4 +494,3 @@ class SocketService {
     }
   }
 }
-
