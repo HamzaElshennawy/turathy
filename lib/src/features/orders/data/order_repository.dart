@@ -30,33 +30,48 @@ class OrderRepository {
             .toList(),
         'address_id': order.addressId,
       };
+      if (order.deliveryMethod != null) {
+        data['delivery_method'] = order.deliveryMethod;
+      }
+      if (order.shippingFee != null) {
+        data['shipping_fee'] = order.shippingFee;
+      }
+      if (order.combineShipments != null) {
+        data['combine_shipments'] = order.combineShipments;
+      }
     } else {
       data = Map<String, dynamic>.from(order.toJson())..remove('user_id');
     }
 
-    PaymentDebugLogger.info('createOrder:request', data: {
-      'url': url,
-      'orderId': order.id,
-      'userId': order.userId,
-      'auctionId': order.auctionId,
-      'addressId': order.addressId,
-      'itemCount': order.items.length,
-      'total': order.total,
-      'isProductOrder': isProductOrder,
-      'payload': data,
-    });
+    PaymentDebugLogger.info(
+      'createOrder:request',
+      data: {
+        'url': url,
+        'orderId': order.id,
+        'userId': order.userId,
+        'auctionId': order.auctionId,
+        'addressId': order.addressId,
+        'itemCount': order.items.length,
+        'total': order.total,
+        'isProductOrder': isProductOrder,
+        'payload': data,
+      },
+    );
     final result = await DioHelper.postData(
       url: url,
       token: CachedVariables.token,
       data: data,
     );
     if (result.statusCode == 201) {
-      PaymentDebugLogger.info('createOrder:success', data: {
-        'statusCode': result.statusCode,
-        'response': result.data is Map
-            ? Map<String, Object?>.from(result.data as Map)
-            : {'response': result.data.toString()},
-      });
+      PaymentDebugLogger.info(
+        'createOrder:success',
+        data: {
+          'statusCode': result.statusCode,
+          'response': result.data is Map
+              ? Map<String, Object?>.from(result.data as Map)
+              : {'response': result.data.toString()},
+        },
+      );
       return OrderModel.fromJson(result.data['data']);
     } else {
       String message =
@@ -95,25 +110,44 @@ class OrderRepository {
   }
 
   Future<OrderModel> updateOrder(OrderModel order) async {
-    PaymentDebugLogger.info('updateOrder:request', data: {
-      'orderId': order.id,
-      'addressId': order.addressId,
-    });
+    PaymentDebugLogger.info(
+      'updateOrder:request',
+      data: {
+        'orderId': order.id,
+        'addressId': order.addressId,
+        'deliveryMethod': order.deliveryMethod,
+        'shippingFee': order.shippingFee,
+        'combineShipments': order.combineShipments,
+      },
+    );
+    final Map<String, dynamic> data = {
+      'order_id': order.id,
+      'address_id': order.addressId,
+    };
+    if (order.deliveryMethod != null) {
+      data['delivery_method'] = order.deliveryMethod;
+    }
+    if (order.shippingFee != null) {
+      data['shipping_fee'] = order.shippingFee;
+    }
+    if (order.combineShipments != null) {
+      data['combine_shipments'] = order.combineShipments;
+    }
     final result = await DioHelper.postData(
       url: EndPoints.baseUrl + 'order/update-order',
       token: CachedVariables.token,
-      data: {
-        'order_id': order.id,
-        'address_id': order.addressId,
-      },
+      data: data,
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
-      PaymentDebugLogger.info('updateOrder:success', data: {
-        'statusCode': result.statusCode,
-        'response': result.data is Map
-            ? Map<String, Object?>.from(result.data as Map)
-            : {'response': result.data.toString()},
-      });
+      PaymentDebugLogger.info(
+        'updateOrder:success',
+        data: {
+          'statusCode': result.statusCode,
+          'response': result.data is Map
+              ? Map<String, Object?>.from(result.data as Map)
+              : {'response': result.data.toString()},
+        },
+      );
       return OrderModel.fromJson(result.data['data']);
     } else {
       String message =
@@ -139,13 +173,16 @@ class OrderRepository {
     required String filePath,
   }) async {
     final String fileName = filePath.split('/').last.split('\\').last;
-    PaymentDebugLogger.info('uploadStoreReceipt:request', data: {
-      'userId': userId,
-      'orderId': orderId,
-      'amount': amount,
-      'fileName': fileName,
-      'filePath': filePath,
-    });
+    PaymentDebugLogger.info(
+      'uploadStoreReceipt:request',
+      data: {
+        'userId': userId,
+        'orderId': orderId,
+        'amount': amount,
+        'fileName': fileName,
+        'filePath': filePath,
+      },
+    );
 
     final formData = FormData.fromMap({
       'order_id': orderId,
@@ -161,12 +198,15 @@ class OrderRepository {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      PaymentDebugLogger.info('uploadStoreReceipt:success', data: {
-        'statusCode': response.statusCode,
-        'response': response.data is Map
-            ? Map<String, Object?>.from(response.data as Map)
-            : {'response': response.data.toString()},
-      });
+      PaymentDebugLogger.info(
+        'uploadStoreReceipt:success',
+        data: {
+          'statusCode': response.statusCode,
+          'response': response.data is Map
+              ? Map<String, Object?>.from(response.data as Map)
+              : {'response': response.data.toString()},
+        },
+      );
       return OrderModel.fromJson(response.data['data']);
     } else {
       String message =
@@ -186,10 +226,13 @@ class OrderRepository {
   }
 
   Future<OrderModel> getTrustedOrderStatus(int orderId) async {
-    PaymentDebugLogger.info('getTrustedOrderStatus:request', data: {
-      'orderId': orderId,
-      'url': EndPoints.getOrderPaymentStatus(orderId),
-    });
+    PaymentDebugLogger.info(
+      'getTrustedOrderStatus:request',
+      data: {
+        'orderId': orderId,
+        'url': EndPoints.getOrderPaymentStatus(orderId),
+      },
+    );
     final response = await DioHelper.getData(
       url: EndPoints.getOrderPaymentStatus(orderId),
       token: CachedVariables.token,
@@ -197,10 +240,10 @@ class OrderRepository {
 
     if (response.statusCode == 200) {
       final data = Map<String, dynamic>.from(response.data['data'] as Map);
-      PaymentDebugLogger.info('getTrustedOrderStatus:success', data: {
-        'statusCode': response.statusCode,
-        'data': data,
-      });
+      PaymentDebugLogger.info(
+        'getTrustedOrderStatus:success',
+        data: {'statusCode': response.statusCode, 'data': data},
+      );
       return OrderModel(
         id: data['orderId'] as int? ?? orderId,
         userId: data['userId'] as int? ?? 0,

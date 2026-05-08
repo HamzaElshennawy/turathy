@@ -24,7 +24,7 @@ class CheckoutFlowCoordinator {
 
   Future<OrderModel> syncOrderDetails({
     required OrderModel order,
-    required int addressId,
+    required int? addressId,
   }) async {
     PaymentDebugLogger.info('syncOrderDetails:start', data: {
       'orderId': order.id,

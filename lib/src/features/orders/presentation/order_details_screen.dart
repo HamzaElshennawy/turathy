@@ -21,6 +21,7 @@ import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/domain/saved_payment_method_model.dart';
 import 'package:turathy/src/features/orders/presentation/widgets/card_checkout_section.dart';
 import 'package:turathy/src/features/orders/utils/payment_debug_logger.dart';
+import 'package:turathy/src/features/orders/presentation/delivery_method_screen.dart';
 
 enum UnifiedPaymentMethod { creditCard, bankTransfer }
 
@@ -252,25 +253,79 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
   }
 
+  Future<void> _pickDeliveryMethod() async {
+    final deliveryMethodData = await Navigator.push<DeliveryMethodData>(
+      context,
+      MaterialPageRoute(builder: (context) => const DeliveryMethodScreen()),
+    );
+
+    if (deliveryMethodData == null || !mounted) return;
+
+    UserAddressModel? selectedAddress;
+    if (deliveryMethodData.method.key != 'PICKUP') {
+      selectedAddress = await Navigator.push<UserAddressModel>(
+        context,
+        MaterialPageRoute(builder: (context) => const AddressSelectionScreen()),
+      );
+
+      if (selectedAddress == null || !mounted) return;
+    }
+
+    final oldShippingFee = _currentOrder.shippingFee ?? 0;
+    final newTotal = _currentOrder.total - oldShippingFee + deliveryMethodData.method.fee;
+
+    setState(() {
+      _currentOrder = _currentOrder.copyWith(
+        deliveryMethod: deliveryMethodData.method.key,
+        shippingFee: deliveryMethodData.method.fee.toDouble(),
+        combineShipments: deliveryMethodData.combineShipments,
+        addressId: selectedAddress?.id ?? _currentOrder.addressId,
+        total: newTotal,
+        address: selectedAddress != null
+            ? {
+                'label': selectedAddress.label,
+                'name': selectedAddress.name,
+                'mobile': selectedAddress.mobile,
+                'country': selectedAddress.country,
+                'city': selectedAddress.city,
+                'address': selectedAddress.address,
+                'shortAddress': selectedAddress.shortAddress,
+                'isDefault': selectedAddress.isDefault,
+              }
+            : _currentOrder.address,
+      );
+      if (selectedAddress != null) {
+        _selectedAddress = selectedAddress;
+      }
+    });
+  }
+
   Future<OrderModel?> _syncOrderDetails() async {
-    if (_selectedAddress == null) {
+    if (_currentOrder.deliveryMethod != 'PICKUP' && _selectedAddress == null) {
       _showErrorSnackBar(AppStrings.selectAddress.tr());
       return null;
     }
 
+    if (_currentOrder.deliveryMethod == null) {
+      _showErrorSnackBar('Please select a delivery method');
+      return null;
+    }
+
     try {
+      final addressId = _selectedAddress?.id ?? _currentOrder.addressId;
       PaymentDebugLogger.info(
         'OrderDetailsScreen:syncOrderDetails:start',
         data: {
           'currentOrderId': _currentOrder.id,
-          'selectedAddressId': _selectedAddress!.id,
+          'selectedAddressId': addressId,
+          'deliveryMethod': _currentOrder.deliveryMethod,
         },
       );
       final synced = await ref
           .read(checkoutFlowCoordinatorProvider)
           .syncOrderDetails(
             order: _currentOrder,
-            addressId: _selectedAddress!.id,
+            addressId: addressId,
           );
       if (!mounted) return synced;
 
@@ -413,7 +468,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
           .read(checkoutFlowCoordinatorProvider)
           .createGeideaCheckoutSession(
             order: syncedOrder,
-            cardOnFile: _saveCardFeatureEnabled &&
+            cardOnFile:
+                _saveCardFeatureEnabled &&
                 _saveCardForFutureUse &&
                 !isUsingSavedPaymentMethod,
             savedMethodId: _selectedSavedPaymentMethodId,
@@ -802,7 +858,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             _buildStatusHeader(order),
             _buildOrderInfo(order),
             _buildProductSection(order, theme),
-            _buildShippingSection(theme),
+            _buildDeliveryMethodSection(order),
+            if (order.deliveryMethod != 'PICKUP') _buildShippingSection(theme),
             if (_showPaymentSection) _buildPaymentSection(theme),
             _buildTimelineSection(order),
             const SizedBox(height: 40),
@@ -1059,6 +1116,81 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     );
   }
 
+  Widget _buildDeliveryMethodSection(OrderModel order) {
+    if (order.deliveryMethod == null) {
+      if (order.id == 0 || order.paymentStatus != 'paid') {
+        return _buildCard(
+          title: AppStrings.deliveryMethod.tr(),
+          child: InkWell(
+            onTap: _pickDeliveryMethod,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.local_shipping,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppStrings.selectDeliveryMethod.tr(),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
+    String methodStr = order.deliveryMethod ?? '';
+    if (methodStr == 'PICKUP')
+      methodStr = AppStrings.pickupFromStore.tr();
+    else if (methodStr == 'SHIP_SA')
+      methodStr = AppStrings.shipInSa.tr();
+    else if (methodStr == 'SHIP_OUTSIDE_SA')
+      methodStr = AppStrings.shipOutsideSa.tr();
+
+    final canEdit = order.id == 0 || order.paymentStatus != 'paid';
+
+    return _buildCard(
+      title: AppStrings.deliveryMethod.tr(),
+      action: canEdit
+          ? IconButton(
+              icon: Icon(
+                Icons.edit,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              onPressed: _pickDeliveryMethod,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            )
+          : null,
+      child: Column(
+        children: [
+          _buildInfoRow(AppStrings.method.tr(), methodStr),
+          _buildInfoRow(AppStrings.shippingFee.tr(), '${order.shippingFee ?? 0} ${AppStrings.currency.tr()}'),
+          if (order.combineShipments == true)
+            _buildInfoRow(AppStrings.combineShipments.tr(), AppStrings.yes.tr()),
+        ],
+      ),
+    );
+  }
+
   Widget _buildShippingSection(ThemeData theme) {
     final selectedAddress =
         _selectedAddress ?? _addressFromOrder(_currentOrder);
@@ -1258,8 +1390,14 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildBankInfoRow('Bank', 'Al Rajhi Bank', theme),
-              _buildBankInfoRow('Account Name', 'Alturath Aljmeel Co.', theme),
-              _buildBankInfoRow('IBAN', 'SA00 0000 0000 0000 0000 0000', theme),
+              _buildBankInfoRow('Account Name', 'Alturath EST', theme),
+              _buildBankInfoRow(
+                'Account Number',
+                '4380000996608010956825',
+                theme,
+              ),
+              _buildBankInfoRow('IBAN', 'SA4380000996608010956825', theme),
+              _buildBankInfoRow('SWIFT Code', 'RJHISARIXXX', theme),
             ],
           ),
         ),
@@ -1447,7 +1585,11 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     );
   }
 
-  Widget _buildCard({required String title, required Widget child}) {
+  Widget _buildCard({
+    required String title,
+    required Widget child,
+    Widget? action,
+  }) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 12, left: 16, right: 16),
@@ -1466,9 +1608,18 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              if (action != null) action,
+            ],
           ),
           const Divider(height: 24),
           child,
@@ -1508,11 +1659,11 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+          SelectableText(
             label,
             style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
           ),
-          Text(
+          SelectableText(
             value,
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.bold,

@@ -508,5 +508,17 @@
     "couldNotAddToCart": "We could not add this item to your cart. Please try again.",
     "deleteAccountFinalWarningTitle": "Final Confirmation",
     "deleteAccountFinalWarningBody": "This action cannot be undone. Are you absolutely sure you want to proceed?",
-    "accountDeletedSuccessfully": "Account deleted successfully."
+    "accountDeletedSuccessfully": "Account deleted successfully.",
+    "deliveryMethod": "Delivery Method",
+    "free": "Free",
+    "combineShipments": "Combine Shipments",
+    "combineShipmentsMessage": "Someone from the admins will contact you.",
+    "continueText": "Continue",
+    "selectDeliveryMethod": "Select Delivery Method",
+    "pickupFromStore": "Pickup from Store",
+    "shipInSa": "Ship in Saudi Arabia",
+    "shipOutsideSa": "Ship Outside SA",
+    "method": "Method",
+    "shippingFee": "Shipping Fee",
+    "yes": "Yes"
 }

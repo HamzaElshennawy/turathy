@@ -15,6 +15,7 @@ import '../../addresses/presentation/address_selection_screen.dart';
 import '../../orders/presentation/order_details_screen.dart';
 import '../../orders/domain/order_model.dart';
 import '../../orders/domain/order_item_model.dart';
+import '../../orders/presentation/delivery_method_screen.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -417,18 +418,35 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         return sum + (item.product?.price ?? 0) * item.quantity;
       });
 
-      // Step 1: Pick an address
-      final selectedAddress = await Navigator.push<UserAddressModel>(
+      // Step 1: Delivery Method Selection
+      final deliveryMethodData = await Navigator.push<DeliveryMethodData>(
         context,
-        MaterialPageRoute(builder: (context) => const AddressSelectionScreen()),
+        MaterialPageRoute(builder: (context) => const DeliveryMethodScreen()),
       );
 
-      if (selectedAddress == null || !mounted) {
+      if (deliveryMethodData == null || !mounted) {
         setState(() => _isLoading = false);
         return;
       }
 
-      // Step 2: Navigate to OrderDetailsScreen with selected address
+      // Step 2: Address Selection (if not pickup)
+      UserAddressModel? selectedAddress;
+      if (deliveryMethodData.method.key != 'PICKUP') {
+        selectedAddress = await Navigator.push<UserAddressModel>(
+          context,
+          MaterialPageRoute(builder: (context) => const AddressSelectionScreen()),
+        );
+
+        if (selectedAddress == null || !mounted) {
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      // Add shipping fee to total
+      final orderTotal = total + deliveryMethodData.method.fee;
+
+      // Step 3: Navigate to OrderDetailsScreen
       final tempOrder = OrderModel(
         id: 0,
         userId: CachedVariables.userId!,
@@ -445,13 +463,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
             )
             .toList(),
-        total: total,
+        total: orderTotal,
         date: DateTime.now(),
-        addressId: selectedAddress.id,
+        addressId: selectedAddress?.id,
         pCs: cartItems.length,
         codAmt: '0',
         weight: '1',
         itemDesc: cartItems.map((e) => e.product?.localizedTitle('ar') ?? '').join(', '),
+        deliveryMethod: deliveryMethodData.method.key,
+        shippingFee: deliveryMethodData.method.fee.toDouble(),
+        combineShipments: deliveryMethodData.combineShipments,
       );
 
       Navigator.push(

@@ -508,5 +508,17 @@
     "couldNotAddToCart": "تعذر إضافة المنتج إلى السلة. يرجى المحاولة مرة أخرى.",
     "deleteAccountFinalWarningTitle": "تأكيد نهائي",
     "deleteAccountFinalWarningBody": "لا يمكن التراجع عن هذا الإجراء. هل أنت متأكد تمامًا أنك تريد المتابعة؟",
-    "accountDeletedSuccessfully": "تم حذف الحساب بنجاح."
+    "accountDeletedSuccessfully": "تم حذف الحساب بنجاح.",
+    "deliveryMethod": "طريقة التوصيل",
+    "free": "مجاناً",
+    "combineShipments": "تجميع الشحنات",
+    "combineShipmentsMessage": "سيقوم أحد المسؤولين بالتواصل معك.",
+    "continueText": "متابعة",
+    "selectDeliveryMethod": "اختر طريقة التوصيل",
+    "pickupFromStore": "استلام من المتجر",
+    "shipInSa": "شحن داخل السعودية",
+    "shipOutsideSa": "شحن خارج السعودية",
+    "method": "الطريقة",
+    "shippingFee": "رسوم الشحن",
+    "yes": "نعم"
 }

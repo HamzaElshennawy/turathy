@@ -32,6 +32,9 @@ class OrderModel {
   final DateTime? updatedAt;
   final String? deliveryCompany;
   final String? trackingNumber;
+  final String? deliveryMethod;
+  final double? shippingFee;
+  final bool? combineShipments;
 
   final Map<String, dynamic>? product;
   final Map<String, dynamic>? auction;
@@ -94,6 +97,9 @@ class OrderModel {
     this.updatedAt,
     this.deliveryCompany,
     this.trackingNumber,
+    this.deliveryMethod,
+    this.shippingFee,
+    this.combineShipments,
     this.product,
     this.auction,
     this.items = const [],
@@ -144,6 +150,9 @@ class OrderModel {
     DateTime? updatedAt,
     String? deliveryCompany,
     String? trackingNumber,
+    String? deliveryMethod,
+    double? shippingFee,
+    bool? combineShipments,
     Map<String, dynamic>? product,
     Map<String, dynamic>? auction,
     List<OrderItemModel>? items,
@@ -176,6 +185,9 @@ class OrderModel {
       updatedAt: updatedAt ?? this.updatedAt,
       deliveryCompany: deliveryCompany ?? this.deliveryCompany,
       trackingNumber: trackingNumber ?? this.trackingNumber,
+      deliveryMethod: deliveryMethod ?? this.deliveryMethod,
+      shippingFee: shippingFee ?? this.shippingFee,
+      combineShipments: combineShipments ?? this.combineShipments,
       product: product ?? this.product,
       auction: auction ?? this.auction,
       items: items ?? this.items,
@@ -198,6 +210,9 @@ class OrderModel {
       if (paymentId != null) 'payment_id': paymentId,
       if (deliveryCompany != null) 'deliveryCompany': deliveryCompany,
       if (trackingNumber != null) 'trackingNumber': trackingNumber,
+      if (deliveryMethod != null) 'delivery_method': deliveryMethod,
+      if (shippingFee != null) 'shipping_fee': shippingFee,
+      if (combineShipments != null) 'combine_shipments': combineShipments,
     };
   }
 
@@ -235,6 +250,9 @@ class OrderModel {
           : null,
       deliveryCompany: json['deliveryCompany'] as String?,
       trackingNumber: json['trackingNumber'] as String?,
+      deliveryMethod: json['deliveryMethod'] as String?,
+      shippingFee: json['shippingFee'] != null ? double.tryParse(json['shippingFee'].toString()) : null,
+      combineShipments: json['combineShipments'] as bool?,
       product: json['product'],
       auction: json['auction'],
       items:
