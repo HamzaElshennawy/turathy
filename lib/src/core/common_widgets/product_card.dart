@@ -1,7 +1,7 @@
 /// {@category Components}
 ///
 /// A primary list-item component representing a [ProductModel].
-/// 
+///
 /// This widget is designed for fixed-price item displays in galleries or search results.
 /// Key features include:
 /// - **Asset Handling**: Smart image resolution logic covering remote, relative, and list-based paths.
@@ -14,6 +14,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
@@ -48,7 +49,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
   }
 
   /// Calculates the absolute URL for the product's primary image.
-  /// 
+  ///
   /// Logic heuristic:
   /// 1. Check `product.images` list; take the first entry if available.
   /// 2. If empty, fallback to the single `product.imageUrl` field.
@@ -122,9 +123,12 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                         imageUrl: _imageUrl,
                         memCacheHeight: 400,
                         fit: BoxFit.cover,
-                        progressIndicatorBuilder: (context, url, progress) => Center(
-                          child: CircularProgressIndicator(value: progress.progress),
-                        ),
+                        progressIndicatorBuilder: (context, url, progress) =>
+                            Center(
+                              child: CircularProgressIndicator(
+                                value: progress.progress,
+                              ),
+                            ),
                         errorWidget: (context, url, error) => Container(
                           color: Colors.grey[200],
                           child: const Icon(Icons.image, size: 50),
@@ -140,11 +144,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                   ),
                   if (widget.product.hasDiscount &&
                       !widget.product.isPreorderContact)
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: _buildDiscountBadge(),
-                    ),
+                    Positioned(top: 12, left: 12, child: _buildDiscountBadge()),
                 ],
               ),
             ),
@@ -168,10 +168,16 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                   ),
                   gapH4,
                   Text(
-                    widget.product.localizedDescription(context.locale.languageCode),
+                    widget.product.localizedDescription(
+                      context.locale.languageCode,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      height: 1.3,
+                    ),
                   ),
                   gapH8,
                   _buildStockChip(),
@@ -194,10 +200,15 @@ class _ProductCardState extends ConsumerState<ProductCard> {
         final user = ref.read(authControllerProvider).value;
         if (user == null) {
           // Ensure valid session before allowing wishlist mutations
-          Navigator.push(context, MaterialPageRoute(builder: (_) => SignInScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => SignInScreen()),
+          );
           return;
         }
-        ref.read(favoritesControllerProvider.notifier).toggleLikeProduct(widget.product);
+        ref
+            .read(favoritesControllerProvider.notifier)
+            .toggleLikeProduct(widget.product);
       },
       child: Container(
         padding: const EdgeInsets.all(8),
@@ -234,28 +245,62 @@ class _ProductCardState extends ConsumerState<ProductCard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              isPreorder
-                  ? AppStrings.preorder.tr()
-                  : "${AppStrings.buyNow.tr()} :$priceText ${AppStrings.currency.tr()}",
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
+            isPreorder
+                ? Text(
+                    AppStrings.preorder.tr(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "${AppStrings.buyNow.tr()} :$priceText ",
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SvgPicture.asset(
+                        'assets/icons/RSA.svg',
+                        height: 15,
+                        width: 15,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF1B5E20),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ],
+                  ),
             if (isPreorder)
               Text(
                 AppStrings.priceOnRequest.tr(),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
               )
             else if (widget.product.hasDiscount)
-              Text(
-                "${originalPrice.toStringAsFixed(0)} ${AppStrings.currency.tr()}",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[600],
-                  decoration: TextDecoration.lineThrough,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "${originalPrice.toStringAsFixed(0)} ",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[600],
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                  SvgPicture.asset(
+                    'assets/icons/RSA.svg',
+                    height: 15,
+                    width: 15,
+                    colorFilter: ColorFilter.mode(
+                      Colors.grey[600]!,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
@@ -305,23 +350,24 @@ class _ProductCardState extends ConsumerState<ProductCard> {
       );
     }
 
-    final bool isLowStock = widget.product.stock > 0 && widget.product.stock <= 3;
+    final bool isLowStock =
+        widget.product.stock > 0 && widget.product.stock <= 3;
     final bool isOutOfStock = widget.product.stock <= 0;
     final Color backgroundColor = isOutOfStock
         ? const Color(0xFFFFEBEE)
         : isLowStock
-            ? const Color(0xFFFFF3E0)
-            : const Color(0xFFE8F5E9);
+        ? const Color(0xFFFFF3E0)
+        : const Color(0xFFE8F5E9);
     final Color foregroundColor = isOutOfStock
         ? const Color(0xFFC62828)
         : isLowStock
-            ? const Color(0xFFEF6C00)
-            : const Color(0xFF2E7D32);
+        ? const Color(0xFFEF6C00)
+        : const Color(0xFF2E7D32);
     final String text = isOutOfStock
         ? AppStrings.outOfStock.tr()
         : isLowStock
-            ? AppStrings.onlyLeft.tr(args: [widget.product.stock.toString()])
-            : AppStrings.inStock.tr();
+        ? AppStrings.onlyLeft.tr(args: [widget.product.stock.toString()])
+        : AppStrings.inStock.tr();
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -353,4 +399,3 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     );
   }
 }
-
