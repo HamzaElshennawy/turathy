@@ -1,12 +1,13 @@
 /// {@category Presentation}
 ///
 /// Starting screen for the "Forgot Password" flow.
-/// 
+///
 /// This screen prompts the user to enter their registered phone number
 /// (currently limited to KSA +966) to receive a password reset code.
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/common_widgets/white_rounded_text_form_field.dart';
 import '../../../../core/common_widgets/primary_button.dart';
 import '../../../../core/common_widgets/responsive_center.dart';
 import '../../../../core/constants/app_images/app_images.dart';
@@ -33,11 +34,14 @@ class InputPhoneForgotPasswordScreen extends ConsumerStatefulWidget {
 class _InputPhoneForgotPasswordScreenState
     extends ConsumerState<InputPhoneForgotPasswordScreen> {
   final TextEditingController _phoneLocalController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isEmailMode = false;
 
   @override
   void dispose() {
     _phoneLocalController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -77,60 +81,121 @@ class _InputPhoneForgotPasswordScreenState
                       child: Column(
                         children: [
                           Text(
-                            AppStrings.enterYourPhoneToResetPassword.tr(),
+                            _isEmailMode
+                                ? AppStrings.enterYourEmailToResetPassword.tr()
+                                : AppStrings.enterYourPhoneToResetPassword.tr(),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 10),
-                          
-                          PhoneNumberField(
-                            controller: _phoneLocalController,
-                            initialCountryCode: countryCode,
-                            onCountryChanged: (country) {
-                              if (country.dialCode != null) {
-                                ref.read(countryCodeProvider.notifier).setCountryCode(country.dialCode!);
-                              }
+
+                          if (_isEmailMode)
+                            WhiteRoundedTextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              hintText: AppStrings.emailAddress.tr(),
+                              validator: Validators.emailValidator,
+                            )
+                          else
+                            PhoneNumberField(
+                              controller: _phoneLocalController,
+                              initialCountryCode: countryCode,
+                              onCountryChanged: (country) {
+                                if (country.dialCode != null) {
+                                  ref
+                                      .read(countryCodeProvider.notifier)
+                                      .setCountryCode(country.dialCode!);
+                                }
+                              },
+                              validator: Validators.required,
+                              hintText: '5XXXXXXXXXX',
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _isEmailMode = !_isEmailMode;
+                              });
                             },
-                            validator: Validators.required,
-                            hintText: '5XXXXXXXXXX',
-                            borderSide: BorderSide(color: Colors.grey.shade300),
+                            child: Text(
+                              _isEmailMode
+                                  ? AppStrings.usePhoneInstead.tr()
+                                  : AppStrings.useEmailInstead.tr(),
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          
+
                           // Action Button
                           PrimaryButton(
                             onPressed: () async {
                               if (_formKey.currentState!.validate()) {
-                                final e164 = '$countryCode${_phoneLocalController.text.trim()}';
-                                
-                                // Request the verification code.
-                                final challengeToken = await ref
-                                    .read(forgotPasswordControllerProvider.notifier)
-                                    .requestOtp(e164Phone: e164);
-                                
+                                String? challengeToken;
+                                String destination;
+
+                                if (_isEmailMode) {
+                                  destination = _emailController.text.trim();
+                                  challengeToken = await ref
+                                      .read(
+                                        forgotPasswordControllerProvider
+                                            .notifier,
+                                      )
+                                      .requestOtpByEmail(email: destination);
+                                } else {
+                                  destination =
+                                      '$countryCode${_phoneLocalController.text.trim()}';
+                                  challengeToken = await ref
+                                      .read(
+                                        forgotPasswordControllerProvider
+                                            .notifier,
+                                      )
+                                      .requestOtp(e164Phone: destination);
+                                }
+
                                 if (!mounted) return;
-                                
+
                                 if (challengeToken != null) {
-                                  final deliveryMessage = e164.startsWith('+966')
-                                      ? AppStrings.otpWillBeSentBySms.tr()
-                                      : AppStrings
-                                          .otpWillBeSentByWhatsappWithSmsFallback
-                                          .tr();
-                                  AppFunctions.showSnackBar(
-                                    context: context,
-                                    message: deliveryMessage,
-                                  );
-                                  // Pass the phone number back to the login state for continuity
-                                  ref.read(authControllerProvider.notifier).phoneController.text = _phoneLocalController.text.trim();
+                                  if (!_isEmailMode) {
+                                    final deliveryMessage =
+                                        destination.startsWith('+966')
+                                        ? AppStrings.otpWillBeSentBySms.tr()
+                                        : AppStrings
+                                              .otpWillBeSentByWhatsappWithSmsFallback
+                                              .tr();
+                                    AppFunctions.showSnackBar(
+                                      context: context,
+                                      message: deliveryMessage,
+                                    );
+                                  }
+
+                                  // Pass the identifier back to the login state for continuity
+                                  if (_isEmailMode) {
+                                    ref
+                                            .read(
+                                              authControllerProvider.notifier,
+                                            )
+                                            .emailController
+                                            .text =
+                                        destination;
+                                  } else {
+                                    ref
+                                        .read(authControllerProvider.notifier)
+                                        .phoneController
+                                        .text = _phoneLocalController.text
+                                        .trim();
+                                  }
 
                                   // Navigate to OTP verification & password reset screen.
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => ResetPasswordScreen(
-                                        phone_number: e164,
-                                        challengeToken: challengeToken,
+                                        phone_number: destination,
+                                        challengeToken: challengeToken!,
                                       ),
                                     ),
                                   );
@@ -138,7 +203,9 @@ class _InputPhoneForgotPasswordScreenState
                               }
                             },
                             text: AppStrings.sendCode.tr(),
-                            isLoading: ref.watch(forgotPasswordControllerProvider).isLoading,
+                            isLoading: ref
+                                .watch(forgotPasswordControllerProvider)
+                                .isLoading,
                           ),
                         ],
                       ),

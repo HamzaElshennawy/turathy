@@ -71,13 +71,15 @@ class AuthRepository {
   ///
   /// Throws [AuthException] on failure.
   static Future<Map<String, dynamic>> signIn(
-    String phone,
-    String password,
-  ) async {
+    String? phone,
+    String password, {
+    String? email,
+  }) async {
     final result = await DioHelper.postData(
       url: EndPoints.login,
       data: {
-        'phone_number': phone,
+        if (phone != null) 'phone_number': phone,
+        if (email != null) 'email': email,
         'password': password,
         'platform': _currentPlatformLabel(),
       },
@@ -347,11 +349,15 @@ class AuthRepository {
 
   /// Triggers the OTP flow (e.g. for registration or password reset).
   static Future<Map<String, dynamic>> requestOtp({
-    required String number,
+    String? number,
+    String? email,
   }) async {
     final result = await DioHelper.postData(
       url: EndPoints.requestOTP,
-      data: {'number': number},
+      data: {
+        if (number != null) 'number': number,
+        if (email != null) 'email': email,
+      },
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       final body = _ensureMap(result.data);

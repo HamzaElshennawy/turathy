@@ -41,6 +41,12 @@ class AppStrings {
   /// Key for "Email" input field.
   static const String email = "email";
   
+  static const String emailAddress = "emailAddress";
+  static const String emailRequired = "emailRequired";
+  static const String invalidEmail = "invalidEmail";
+  static const String useEmailInstead = "useEmailInstead";
+  static const String usePhoneInstead = "usePhoneInstead";
+  
   /// Key for "Password" input field.
   static const String password = "password";
   

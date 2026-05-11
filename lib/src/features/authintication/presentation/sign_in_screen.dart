@@ -40,6 +40,7 @@ class SignInScreen extends ConsumerStatefulWidget {
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
+  bool _isEmailMode = false;
 
   @override
   void initState() {
@@ -67,24 +68,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           isError: true,
         );
       } else if (next.value != null) {
-        final isGoogle = ref
-            .read(authControllerProvider.notifier)
-            .isGoogleSignInProcessing;
-
-        if (isGoogle) {
-          // Google Sign-In: Check if the user needs to complete their profile.
-          if (next.value!.missingFields != null &&
-              next.value!.missingFields!.isNotEmpty) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
-              (route) => false,
-            );
-          } else {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainScreen()),
-              (route) => false,
-            );
-          }
+        // Sign-In complete without OTP (e.g. Google, Apple, or Apple Support Bypass)
+        // Check if the user needs to complete their profile.
+        if (next.value!.missingFields != null &&
+            next.value!.missingFields!.isNotEmpty) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+            (route) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+            (route) => false,
+          );
         }
       }
     });
@@ -152,25 +148,51 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              AppStrings.mobileNumber.tr(),
+                              _isEmailMode
+                                  ? AppStrings.emailAddress.tr()
+                                  : AppStrings.mobileNumber.tr(),
                               textAlign: TextAlign.start,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: 8),
-                            PhoneNumberField(
-                              controller: controller.phoneController,
-                              initialCountryCode: countryCode,
-                              onCountryChanged: (country) {
-                                if (country.dialCode != null) {
-                                  ref
-                                      .read(countryCodeProvider.notifier)
-                                      .setCountryCode(country.dialCode!);
-                                }
+                            if (_isEmailMode)
+                              WhiteRoundedTextFormField(
+                                controller: controller.emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                hintText: AppStrings.emailAddress.tr(),
+                                validator: Validators.emailValidator,
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              )
+                            else
+                              PhoneNumberField(
+                                controller: controller.phoneController,
+                                initialCountryCode: countryCode,
+                                onCountryChanged: (country) {
+                                  if (country.dialCode != null) {
+                                    ref
+                                        .read(countryCodeProvider.notifier)
+                                        .setCountryCode(country.dialCode!);
+                                  }
+                                },
+                                validator: Validators.required,
+                                hintText: '5XXXXXXXXXX',
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isEmailMode = !_isEmailMode;
+                                });
                               },
-                              validator: Validators.required,
-                              hintText: '5XXXXXXXXXX',
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
+                              child: Text(
+                                _isEmailMode
+                                    ? AppStrings.usePhoneInstead.tr()
+                                    : AppStrings.useEmailInstead.tr(),
                               ),
                             ),
 
@@ -230,16 +252,26 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 onPressed: () async {
                                   setState(() => _errorMessage = null);
                                   if (_formKey.currentState!.validate()) {
-                                    final local = controller
-                                        .phoneController
-                                        .text
-                                        .trim();
-                                    final e164 = '$countryCode$local';
+                                    String? phone;
+                                    String? email;
+
+                                    if (_isEmailMode) {
+                                      email = controller.emailController.text
+                                          .trim();
+                                    } else {
+                                      final local = controller
+                                          .phoneController
+                                          .text
+                                          .trim();
+                                      phone = '$countryCode$local';
+                                    }
+
                                     final result = await ref
                                         .read(authControllerProvider.notifier)
                                         .signIn(
-                                          e164,
+                                          phone,
                                           controller.passwordController.text,
+                                          email: email,
                                         );
                                     if (!context.mounted) return;
                                     if (result['status'] == 'success' &&
@@ -265,7 +297,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                       Navigator.of(context).pushReplacement(
                                         MaterialPageRoute(
                                           builder: (_) => OtpScreen(
-                                            phone_number: e164,
+                                            phone_number: email ?? phone!,
                                             challengeToken:
                                                 result['challengeToken']
                                                     as String,

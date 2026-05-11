@@ -78,6 +78,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     text: CachedVariables.password,
   );
   final nameController = TextEditingController();
+  final emailController = TextEditingController();
   late final TextEditingController phoneController;
 
   /// Root form key for validation in signup/login flows.
@@ -117,20 +118,26 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   ///
   /// Triggers [FCMService] registration and clears notification state on success.
   Future<Map<String, dynamic>> signIn(
-    String fullphone_number,
-    String password,
-  ) async {
+    String? fullphone_number,
+    String password, {
+    String? email,
+  }) async {
     state = const AsyncValue.loading();
     try {
-      final result = await AuthRepository.signIn(fullphone_number, password);
+      final result = await AuthRepository.signIn(
+        fullphone_number,
+        password,
+        email: email,
+      );
       if (result['requiresOtp'] == true) {
         state = const AsyncValue.data(null);
         return result;
       }
       final user = result['user'] as UserModel;
       state = AsyncValue.data(user);
-      await AnalyticsService.setUser(user, authMethod: 'phone');
-      await AnalyticsService.logLogin(method: 'phone');
+      final authMethod = email != null ? 'email' : 'phone';
+      await AnalyticsService.setUser(user, authMethod: authMethod);
+      await AnalyticsService.logLogin(method: authMethod);
 
       // Post-login side effects
       await FCMService().registerAfterLogin();
@@ -182,6 +189,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
     await AuthRepository.clearLocalDetails();
     phoneController.clear();
     nameController.clear();
+    emailController.clear();
     passwordController.clear();
     await AnalyticsService.clearUser();
     state = const AsyncValue.data(null);
@@ -204,6 +212,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
         }
         phoneController.clear();
         nameController.clear();
+        emailController.clear();
         passwordController.clear();
         await AnalyticsService.clearUser();
         state = const AsyncValue.data(null);

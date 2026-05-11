@@ -37,6 +37,26 @@ class ForgotPasswordController extends StateNotifier<AsyncValue<void>> {
     return result.value?['challengeToken'] as String?;
   }
 
+  /// Requests a password reset OTP for the specified email address.
+  ///
+  /// Returns a challenge token if the request was successful.
+  Future<String?> requestOtpByEmail({required String email}) async {
+    state = const AsyncValue.loading();
+    final result = await AsyncValue.guard(
+        () => AuthRepository.requestOtp(email: email));
+
+    if (result.hasError) {
+      AppFunctions.logPrint(
+          message: 'requestOtpByEmail error: ${result.error} ${result.stackTrace}');
+      state = AsyncValue.error(
+          result.error.toString(), result.stackTrace ?? StackTrace.empty);
+      return null;
+    }
+
+    state = const AsyncValue.data(null);
+    return result.value?['challengeToken'] as String?;
+  }
+
   /// Verifies the [otp] and resets the user's password to [password].
   /// 
   /// Requires the [e164Phone] associated with the account.
