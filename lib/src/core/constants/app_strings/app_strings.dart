@@ -471,6 +471,7 @@ class AppStrings {
   static const String cardSavedSuccessfully = 'cardSavedSuccessfully';
   static const String savedPaymentMethodsRefreshed =
       'savedPaymentMethodsRefreshed';
+  static const String savedCards = 'savedCards';
 
   // ── Order Tracking ────────────────────────────────────────────────────────
   

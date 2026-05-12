@@ -351,6 +351,7 @@
     "defaultCard": "Default",
     "cardSavedSuccessfully": "Card saved successfully",
     "savedPaymentMethodsRefreshed": "Saved cards refreshed",
+    "savedCards": "Saved Cards",
     "shipped": "Shipped",
     "delivered": "Delivered",
     "confirmed": "Confirmed",

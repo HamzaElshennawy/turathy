@@ -8,6 +8,7 @@ import 'package:turathy/src/features/favorites/presentation/likes_screen.dart';
 import 'package:turathy/src/features/profile/presentation/profile_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/my_payments_screen.dart';
 import 'package:turathy/src/features/settings/presentation/settings_screen.dart';
+import 'package:turathy/src/features/payment/presentation/saved_cards_screen.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -147,6 +148,16 @@ class MoreScreen extends ConsumerWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.credit_card),
+          title: Text(AppStrings.savedCards.tr()),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const SavedCardsScreen()),
             );
           },
         ),

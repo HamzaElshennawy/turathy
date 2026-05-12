@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings/app_strings.dart';
 import '../../domain/saved_payment_method_model.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CardCheckoutSection extends StatelessWidget {
   const CardCheckoutSection({
@@ -139,7 +140,7 @@ class CardCheckoutSection extends StatelessWidget {
                                           : Colors.grey,
                                     ),
                                     const SizedBox(width: 8),
-                                    const Icon(Icons.credit_card, size: 18),
+                                    _buildProviderLogo(method.brand),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
@@ -254,5 +255,30 @@ class CardCheckoutSection extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildProviderLogo(String? brandName) {
+    final brand = brandName?.toLowerCase() ?? '';
+    String assetPath = '';
+
+    if (brand.contains('visa')) {
+      assetPath = 'assets/icons/payment/visa.svg';
+    } else if (brand.contains('mastercard') || brand.contains('master')) {
+      assetPath = 'assets/icons/payment/mastercard.svg';
+    } else if (brand.contains('mada')) {
+      assetPath = 'assets/icons/payment/mada.svg';
+    } else if (brand.contains('apple')) {
+      assetPath = 'assets/icons/payment/apple_pay.svg';
+    }
+
+    if (assetPath.isNotEmpty) {
+      return SvgPicture.asset(
+        assetPath,
+        height: 20,
+        colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+      );
+    }
+
+    return const Icon(Icons.credit_card, size: 20, color: Colors.black87);
   }
 }

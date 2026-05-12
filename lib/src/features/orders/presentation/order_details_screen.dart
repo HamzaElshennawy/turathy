@@ -331,16 +331,18 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
 
       setState(() {
         _currentOrder = synced.copyWith(
-          address: {
-            'label': _selectedAddress!.label,
-            'name': _selectedAddress!.name,
-            'mobile': _selectedAddress!.mobile,
-            'country': _selectedAddress!.country,
-            'city': _selectedAddress!.city,
-            'address': _selectedAddress!.address,
-            'shortAddress': _selectedAddress!.shortAddress,
-            'isDefault': _selectedAddress!.isDefault,
-          },
+          address: _selectedAddress != null
+              ? {
+                  'label': _selectedAddress!.label,
+                  'name': _selectedAddress!.name,
+                  'mobile': _selectedAddress!.mobile,
+                  'country': _selectedAddress!.country,
+                  'city': _selectedAddress!.city,
+                  'address': _selectedAddress!.address,
+                  'shortAddress': _selectedAddress!.shortAddress,
+                  'isDefault': _selectedAddress!.isDefault,
+                }
+              : synced.address ?? _currentOrder.address,
         );
       });
       ref.invalidate(getUserOrdersProvider);
