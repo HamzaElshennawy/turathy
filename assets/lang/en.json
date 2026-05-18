@@ -526,5 +526,6 @@
     "shipOutsideSa": "Ship Outside SA",
     "method": "Method",
     "shippingFee": "Shipping Fee",
-    "yes": "Yes"
+    "yes": "Yes",
+    "pleaseSelectADeliveryMethod": "Please select a delivery method"
 }

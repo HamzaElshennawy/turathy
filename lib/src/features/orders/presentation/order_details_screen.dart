@@ -54,6 +54,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   PlatformFile? _selectedFile;
   UnifiedPaymentMethod _paymentMethod = UnifiedPaymentMethod.bankTransfer;
   bool _isSubmitting = false;
+  bool _highlightDeliveryMethod = false;
   bool _isUploading = false;
   bool _isCheckingGeideaStatus = false;
   bool _isLoadingSavedPaymentMethods = false;
@@ -272,7 +273,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
 
     final oldShippingFee = _currentOrder.shippingFee ?? 0;
-    final newTotal = _currentOrder.total - oldShippingFee + deliveryMethodData.method.fee;
+    final newTotal =
+        _currentOrder.total - oldShippingFee + deliveryMethodData.method.fee;
 
     setState(() {
       _currentOrder = _currentOrder.copyWith(
@@ -307,7 +309,8 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     }
 
     if (_currentOrder.deliveryMethod == null) {
-      _showErrorSnackBar('Please select a delivery method');
+      _showErrorSnackBar(AppStrings.pleaseSelectADeliveryMethod.tr());
+      setState(() => _highlightDeliveryMethod = true);
       return null;
     }
 
@@ -323,10 +326,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       );
       final synced = await ref
           .read(checkoutFlowCoordinatorProvider)
-          .syncOrderDetails(
-            order: _currentOrder,
-            addressId: addressId,
-          );
+          .syncOrderDetails(order: _currentOrder, addressId: addressId);
       if (!mounted) return synced;
 
       setState(() {
@@ -1124,14 +1124,20 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
         return _buildCard(
           title: AppStrings.deliveryMethod.tr(),
           child: InkWell(
-            onTap: _pickDeliveryMethod,
+            onTap: () {
+              setState(() => _highlightDeliveryMethod = false);
+              _pickDeliveryMethod();
+            },
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  color: _highlightDeliveryMethod
+                      ? Colors.red
+                      : Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  width: _highlightDeliveryMethod ? 2 : 1,
                 ),
               ),
               child: Row(
@@ -1185,9 +1191,15 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       child: Column(
         children: [
           _buildInfoRow(AppStrings.method.tr(), methodStr),
-          _buildInfoRow(AppStrings.shippingFee.tr(), '${order.shippingFee ?? 0} ${AppStrings.currency.tr()}'),
+          _buildInfoRow(
+            AppStrings.shippingFee.tr(),
+            '${order.shippingFee ?? 0} ${AppStrings.currency.tr()}',
+          ),
           if (order.combineShipments == true)
-            _buildInfoRow(AppStrings.combineShipments.tr(), AppStrings.yes.tr()),
+            _buildInfoRow(
+              AppStrings.combineShipments.tr(),
+              AppStrings.yes.tr(),
+            ),
         ],
       ),
     );

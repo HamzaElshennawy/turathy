@@ -526,5 +526,6 @@
     "shipOutsideSa": "شحن خارج السعودية",
     "method": "الطريقة",
     "shippingFee": "رسوم الشحن",
-    "yes": "نعم"
+    "yes": "نعم",
+    "pleaseSelectADeliveryMethod": "يرجى اختيار طريقة التوصيل"
 }
