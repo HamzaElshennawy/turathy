@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "214584571316-51i6cbqjfvjrqnn8s629hlakvuqr4vs6.apps.googleusercontent.com",
+          "client_id": "214584571316-an7jrs9e6ae7p5tovtgakd2p86bljr5c.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.deepblue.turathi",
-            "certificate_hash": "aa43264eddf52c39c8957d845d1416f631b45ef7"
+            "certificate_hash": "f2f94bae303aa7a1398566c91f6ecb1d6a33ee4f"
           }
         },
         {

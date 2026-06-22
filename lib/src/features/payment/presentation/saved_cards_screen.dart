@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/orders/data/geidea_sdk_service.dart';
 import 'package:turathy/src/features/payment/presentation/widgets/payment_card_widget.dart';
 import 'package:turathy/src/features/payment/presentation/saved_cards_controller.dart';
 import 'package:turathy/src/features/orders/data/payments_repository.dart';
-import 'package:turathy/src/core/helper/dio/end_points.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SavedCardsScreen extends ConsumerWidget {
   const SavedCardsScreen({super.key});
+
+  static const GeideaSdkService _geideaSdkService = GeideaSdkService();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -130,33 +131,37 @@ class SavedCardsScreen extends ConsumerWidget {
   }
 
   Future<void> _addNewCard(BuildContext context, WidgetRef ref) async {
+    var isLoadingDialogOpen = false;
     try {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => const Center(child: CircularProgressIndicator()),
       );
+      isLoadingDialogOpen = true;
 
       final session = await ref
           .read(paymentsRepositoryProvider)
           .createGeideaSaveCardSession(language: context.locale.languageCode);
       if (context.mounted) {
         Navigator.pop(context); // close loader
+        isLoadingDialogOpen = false;
       }
+      if (!context.mounted) return;
 
-      final url = Uri.parse(
-        '${EndPoints.baseUrl}/api/payments/geidea/save-card/redirect?sessionId=${session.sessionId}',
+      final outcome = await _geideaSdkService.startCheckout(
+        context: context,
+        session: session,
+        theme: Theme.of(context),
       );
 
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.inAppWebView);
-        // Refresh cards when they come back
+      if (outcome.status == GeideaPaymentOutcomeStatus.success) {
         ref.read(savedCardsControllerProvider.notifier).fetchCards();
-      } else {
+      } else if (outcome.status == GeideaPaymentOutcomeStatus.failure) {
         if (context.mounted) {
           AppFunctions.showSnackBar(
             context: context,
-            message: AppStrings.couldNotStartPayment.tr(),
+            message: outcome.message ?? AppStrings.couldNotStartPayment.tr(),
             isError: true,
             icon: Icons.error,
           );
@@ -164,7 +169,9 @@ class SavedCardsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // close loader
+        if (isLoadingDialogOpen) {
+          Navigator.pop(context); // close loader
+        }
         AppFunctions.showSnackBar(
           context: context,
           message: AppStrings.couldNotStartPayment.tr(),
