@@ -28,7 +28,9 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   late TextEditingController _nameController;
   late TextEditingController _mobileController;
   late TextEditingController _addressController;
+  late TextEditingController _cityController;
   late TextEditingController _shortAddressController;
+  /// Nationality ISO (e.g. SA, JO) — not legacy KSA/UAE codes.
   String? _selectedCountryCode;
   String? _selectedCityValue;
   String _mobileCountryCode = '+966';
@@ -38,7 +40,13 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   SaudiAddress? _decodedAddress;
 
   bool get _isEditing => widget.address != null;
-  bool get _isSaudiArabia => _selectedCountryCode == 'KSA';
+  bool get _isSaudiArabia => isSaudiAddressIso(_selectedCountryCode);
+
+  GovernateOption? get _selectedGovernate =>
+      governateForAddressIso(_selectedCountryCode);
+
+  bool get _hasCityList =>
+      _selectedGovernate != null && _selectedGovernate!.cities.isNotEmpty;
 
   @override
   void initState() {
@@ -56,7 +64,8 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       const knownCodes = [
         '+966', '+971', '+965', '+974', '+973', '+968', '+962', '+961', '+963',
         '+964', '+970', '+967', '+249', '+218', '+216', '+213', '+212', '+222',
-        '+252', '+253', '+269', '+20',
+        '+252', '+253', '+269', '+20', '+1', '+44', '+33', '+49', '+90', '+91',
+        '+92', '+880', '+63', '+62', '+60', '+86',
       ];
       bool matched = false;
       for (final code in knownCodes) {
@@ -78,6 +87,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     _mobileController = TextEditingController(text: initialMobile);
 
     _addressController = TextEditingController(text: addr?.address ?? '');
+    _cityController = TextEditingController(text: addr?.city ?? '');
     _shortAddressController = TextEditingController(
       text: addr?.shortAddress ?? '',
     );
@@ -85,20 +95,19 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     _isDefault = addr?.isDefault ?? false;
 
     if (addr != null) {
-      // Match country
-      final gov = kGovernates
-          .where((g) => g.title == addr.country || g.code == addr.country)
-          .firstOrNull;
-      if (gov != null) {
-        _selectedCountryCode = gov.code;
-        // Match city
+      _selectedCountryCode = resolveAddressCountryIso(addr.country);
+      final gov = governateForAddressIso(_selectedCountryCode);
+      if (gov != null && addr.city != null && addr.city!.isNotEmpty) {
         final city = gov.cities
             .where((c) => c.title == addr.city || c.value == addr.city)
             .firstOrNull;
         _selectedCityValue = city?.value;
+        if (city == null) {
+          // Keep free-text city for unmatched stored values
+          _cityController.text = addr.city!;
+        }
       }
 
-      // Decode short address if available
       if (addr.shortAddress != null && addr.shortAddress!.isNotEmpty) {
         _decodedAddress = SaudiAddressDecoder.decode(addr.shortAddress!);
       }
@@ -111,6 +120,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     _nameController.dispose();
     _mobileController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
     _shortAddressController.dispose();
     super.dispose();
   }
@@ -127,8 +137,19 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     }
   }
 
+  String _fullMobile() {
+    final local = _mobileController.text.trim();
+    if (local.isEmpty) return local;
+    if (local.startsWith('+')) return local;
+    final dial = _mobileCountryCode.startsWith('+')
+        ? _mobileCountryCode
+        : '+$_mobileCountryCode';
+    return '$dial$local';
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedCountryCode == null) return;
 
     setState(() {
       _isSaving = true;
@@ -137,17 +158,13 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
 
     try {
       final userId = CachedVariables.userId!;
-      final countryTitle = kGovernates
-          .firstWhere((g) => g.code == _selectedCountryCode)
-          .title;
+      final countryTitle = addressCountryTitleAr(_selectedCountryCode!);
 
       String cityTitle;
       if (_isSaudiArabia && _decodedAddress != null) {
-        // Match the decoded region name against the KSA city list
         final regionName =
             _decodedAddress!.regionName ?? _decodedAddress!.regionCode;
         final ksaCities = kGovernates.firstWhere((g) => g.code == 'KSA').cities;
-        // Try matching by value first (e.g., 'Riyadh'), then by title
         final matchedCity = ksaCities
             .where(
               (c) =>
@@ -156,12 +173,12 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
             )
             .firstOrNull;
         cityTitle = matchedCity?.title ?? regionName;
-      } else {
-        cityTitle = kGovernates
-            .firstWhere((g) => g.code == _selectedCountryCode)
-            .cities
+      } else if (_hasCityList && _selectedCityValue != null) {
+        cityTitle = _selectedGovernate!.cities
             .firstWhere((c) => c.value == _selectedCityValue)
             .title;
+      } else {
+        cityTitle = _cityController.text.trim();
       }
 
       final payload = <String, dynamic>{
@@ -169,7 +186,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
             ? _labelController.text.trim()
             : null,
         'name': _nameController.text.trim(),
-        'mobile': _mobileController.text.trim(),
+        'mobile': _fullMobile(),
         'country': countryTitle,
         'city': cityTitle,
         'address': _isSaudiArabia && _decodedAddress != null
@@ -178,7 +195,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         'isDefault': _isDefault,
       };
 
-      // Include short address for Saudi Arabia
       if (_isSaudiArabia && _shortAddressController.text.trim().isNotEmpty) {
         payload['shortAddress'] = _shortAddressController.text
             .trim()
@@ -237,7 +253,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Label (optional)
               _buildTextField(
                 controller: _labelController,
                 label: AppStrings.addressLabel.tr(),
@@ -246,7 +261,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Recipient name
               _buildTextField(
                 controller: _nameController,
                 label: AppStrings.recipientName.tr(),
@@ -254,7 +268,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Mobile
               PhoneNumberField(
                 controller: _mobileController,
                 initialCountryCode: _mobileCountryCode,
@@ -278,20 +291,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Country
               _buildCountryDropdown(theme),
               const SizedBox(height: 16),
 
-              // Saudi Short Address Code (only when KSA is selected)
               if (_isSaudiArabia) ...[
                 _buildShortAddressField(theme),
                 const SizedBox(height: 16),
-
-                // Decoded city/region (non-editable)
                 if (_decodedAddress != null) _buildDecodedCityField(theme),
                 if (_decodedAddress != null) const SizedBox(height: 16),
-
-                // District code (non-editable, 3rd+4th letters)
                 if (_decodedAddress != null)
                   _buildReadOnlyField(
                     theme,
@@ -301,8 +308,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                     key: 'district_${_decodedAddress!.districtCode}',
                   ),
                 if (_decodedAddress != null) const SizedBox(height: 16),
-
-                // Building number (non-editable, last 4 digits)
                 if (_decodedAddress != null)
                   _buildReadOnlyField(
                     theme,
@@ -314,14 +319,21 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                 if (_decodedAddress != null) const SizedBox(height: 16),
               ],
 
-              // City dropdown (only for non-KSA countries)
               if (!_isSaudiArabia) ...[
-                _buildCityDropdown(theme),
+                if (_hasCityList)
+                  _buildCityDropdown(theme)
+                else
+                  TextFormField(
+                    controller: _cityController,
+                    decoration: _inputDecoration(
+                      AppStrings.city.tr(),
+                      Icons.location_city,
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? AppStrings.cityRequired.tr()
+                        : null,
+                  ),
                 const SizedBox(height: 16),
-              ],
-
-              // Address (only for non-KSA countries)
-              if (!_isSaudiArabia) ...[
                 _buildTextField(
                   controller: _addressController,
                   label: AppStrings.address.tr(),
@@ -331,7 +343,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Default toggle
               SwitchListTile(
                 title: Text(AppStrings.setAsDefault.tr()),
                 subtitle: Text(
@@ -432,17 +443,30 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   }
 
   Widget _buildCountryDropdown(ThemeData theme) {
+    final isAr = context.locale.languageCode == 'ar';
+    // Ensure value exists in items (legacy/unknown → null)
+    final codes = countries.map((c) => c.code).toSet();
+    final value =
+        _selectedCountryCode != null && codes.contains(_selectedCountryCode)
+            ? _selectedCountryCode
+            : null;
+
     return DropdownButtonFormField<String>(
-      value: _selectedCountryCode,
+      value: value,
       decoration: _inputDecoration(AppStrings.country.tr(), Icons.public),
-      items: kGovernates
-          .map((g) => DropdownMenuItem(value: g.code, child: Text(g.title)))
+      items: countries
+          .map(
+            (c) => DropdownMenuItem(
+              value: c.code,
+              child: Text(isAr ? c.nameAr : c.nameEn),
+            ),
+          )
           .toList(),
       onChanged: (v) => setState(() {
         _selectedCountryCode = v;
         _selectedCityValue = null;
-        // Reset short address if switching away from KSA
-        if (v != 'KSA') {
+        _cityController.clear();
+        if (!isSaudiAddressIso(v)) {
           _shortAddressController.clear();
           _decodedAddress = null;
         }
@@ -452,11 +476,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
   }
 
   Widget _buildCityDropdown(ThemeData theme) {
-    final gov = kGovernates
-        .where((g) => g.code == _selectedCountryCode)
-        .firstOrNull;
-
-    debugPrint('gov: ${gov?.title}');
+    final gov = _selectedGovernate;
     final cities = gov?.cities ?? [];
 
     if (_selectedCityValue != null &&
@@ -477,7 +497,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     );
   }
 
-  /// Short address code input field for Saudi Arabia
   Widget _buildShortAddressField(ThemeData theme) {
     return TextFormField(
       controller: _shortAddressController,
@@ -505,7 +524,6 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     );
   }
 
-  /// Generic non-editable text field for decoded short address components
   Widget _buildReadOnlyField(
     ThemeData theme, {
     required String label,
@@ -531,9 +549,7 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     );
   }
 
-  /// Non-editable display of the decoded city/region from the short address
   Widget _buildDecodedCityField(ThemeData theme) {
-    // Look up the Arabic title from the KSA city list for display consistency
     final regionName =
         _decodedAddress?.regionName ?? _decodedAddress?.regionCode ?? '';
     final ksaCities =

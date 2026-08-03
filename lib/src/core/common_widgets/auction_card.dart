@@ -24,6 +24,7 @@ import '../../features/auctions/data/auction_access_service.dart';
 import '../../features/auctions/domain/auction_model.dart';
 import '../../features/auctions/presentation/auction_screen/auction_screen.dart';
 import '../../features/auctions/presentation/auction_screen/live_auction_screen.dart';
+import '../../features/auctions/presentation/auction_screen/profile_auction_gate.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
@@ -101,6 +102,9 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
       );
       return;
     }
+
+    final ready = await ensureProfileCompleteForAuction(context, ref);
+    if (!ready || !mounted) return;
     
     setState(() => _isAccessLoading = true);
     
@@ -119,6 +123,9 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
           context: context, 
           message: AppStrings.accessPending.tr(),
         );
+      } else if (status == 'ERROR' || status == 'PROFILE_INCOMPLETE') {
+        // Incomplete profile often surfaces as request error from API.
+        await ensureProfileCompleteForAuction(context, ref);
       }
     }
   }
@@ -452,18 +459,30 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
     if (isGranted && isLiveStarted) {
       buttonText = AppStrings.joinNow.tr();
       buttonColor = Colors.green;
-      onPressed = () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => LiveAuctionScreen(
-                      auctionId: widget.auction.id ?? 0,
-                      isAdmin: widget.auction.userId == CachedVariables.userId,
-                    )),
-          );
+      onPressed = () async {
+        final ready = await ensureProfileCompleteForAuction(context, ref);
+        if (!ready || !mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LiveAuctionScreen(
+              auctionId: widget.auction.id ?? 0,
+              isAdmin: widget.auction.userId == CachedVariables.userId,
+            ),
+          ),
+        );
+      };
     } else if (isGranted) {
       buttonText = AppStrings.bidNow.tr();
       buttonColor = const Color(0xFF1B5E20);
-      onPressed = () => Navigator.push(context, MaterialPageRoute(builder: (_) => AuctionScreen(widget.auction)));
+      onPressed = () async {
+        final ready = await ensureProfileCompleteForAuction(context, ref);
+        if (!ready || !mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => AuctionScreen(widget.auction)),
+        );
+      };
     } else if (isPending) {
       buttonText = AppStrings.accessPending.tr();
       buttonColor = Colors.orange;

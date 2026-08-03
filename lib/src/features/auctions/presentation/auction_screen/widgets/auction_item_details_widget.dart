@@ -1,12 +1,16 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/helper/share/item_share_helper.dart';
+import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_gallery_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_info_table_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 
-class AuctionItemDetailsWidget extends StatelessWidget {
+class AuctionItemDetailsWidget extends ConsumerWidget {
   final AuctionModel auction;
   final AuctionProducts? activeProduct;
   final bool isAuctionEnded;
@@ -24,7 +28,7 @@ class AuctionItemDetailsWidget extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -162,6 +166,64 @@ class AuctionItemDetailsWidget extends StatelessWidget {
             return Stack(
               children: [
                 AuctionGalleryWidget(images: imagesToShow),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Row(
+                    children: [
+                      Material(
+                        color: Colors.black54,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: AppStrings.shareItem.tr(),
+                          icon: const Icon(Icons.share, color: Colors.white),
+                          onPressed: () {
+                            final auctionId = auction.id ?? 0;
+                            final title = activeProduct?.displayName ??
+                                auction.displayTitle;
+                            final url = ItemShareHelper.auctionLotUrl(
+                              auctionId: auctionId,
+                              lotNumber: activeProduct?.lotNumber,
+                              productId: activeProduct?.id,
+                            );
+                            showItemShareSheet(
+                              context: context,
+                              title: title,
+                              url: url,
+                            );
+                          },
+                        ),
+                      ),
+                      if (activeProduct?.id != null) ...[
+                        const SizedBox(width: 8),
+                        Material(
+                          color: Colors.black54,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            tooltip: AppStrings.watchlist.tr(),
+                            icon: Icon(
+                              ref
+                                      .watch(favoritesControllerProvider)
+                                      .maybeWhen(
+                                        data: (d) => d.watchedLotIds
+                                            .contains(activeProduct!.id),
+                                        orElse: () => false,
+                                      )
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              ref
+                                  .read(favoritesControllerProvider.notifier)
+                                  .toggleWatchLot(activeProduct!);
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
                 // SOLD Badge Logic for Main Image
                 if (statusLabel != null)
                   Positioned(

@@ -29,6 +29,7 @@ import 'widgets/auction_images_slider_widget.dart';
 import 'widgets/auction_bids_history_widget.dart';
 import 'package:turathy/src/core/helper/socket/socket_providers.dart';
 import 'package:turathy/src/core/helper/socket/socket_models.dart';
+import 'package:turathy/src/core/helper/auction_price_helpers.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class AuctionScreen extends ConsumerStatefulWidget {
@@ -91,6 +92,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   // Filtering & Sorting State
   ProductSortOption _currentSortOption = ProductSortOption.none;
   bool _filterBiddedOnly = false;
+  /// Customer stage tabs: all / my bids / winning / losing
+  int _customerStageTab = 0;
 
   String? _accessStatus;
   bool _isAccessLoading = true;
@@ -621,18 +624,35 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         }).toList();
       }
 
-      // 2. Bidded Items Filter
-      if (_filterBiddedOnly) {
+      // 2. Customer stage / legacy bidded filter
+      if (_customerStageTab == 1 || _filterBiddedOnly) {
+        // My bids
         results = results.where((product) {
           return product.id != null && _userBidProductIds.contains(product.id!);
         }).toList();
+      } else if (_customerStageTab == 2) {
+        // Winning — user has highest bid
+        results = results.where((product) {
+          if (product.id == null || !_userBidProductIds.contains(product.id!)) {
+            return false;
+          }
+          return _highestBids[product.id!]?.userId == CachedVariables.userId;
+        }).toList();
+      } else if (_customerStageTab == 3) {
+        // Losing — bid but not highest
+        results = results.where((product) {
+          if (product.id == null || !_userBidProductIds.contains(product.id!)) {
+            return false;
+          }
+          final highest = _highestBids[product.id!];
+          return highest != null &&
+              highest.userId != CachedVariables.userId;
+        }).toList();
       }
 
-      // 3. Sorting Helper
+      // 3. Sorting Helper — public floor is bidPrice (starting), never reserve.
       num getProductPrice(AuctionProducts p) {
-        final highestBid = _highestBids[p.id]?.bid;
-        if (highestBid != null) return highestBid;
-        return num.tryParse(p.minBidPrice ?? '0') ?? 0;
+        return displayLotPrice(p, highestBid: _highestBids[p.id]?.bid);
       }
 
       // 4. Sorting
@@ -649,8 +669,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           (a, b) => getProductPrice(b).compareTo(getProductPrice(a)),
         );
       } else {
-        // Default sort by ID to maintain stability
-        processedResults.sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+        // Default: lot_number, then id
+        processedResults.sort((a, b) {
+          final lotCmp = (a.lotNumber ?? 1 << 30).compareTo(
+            b.lotNumber ?? 1 << 30,
+          );
+          if (lotCmp != 0) return lotCmp;
+          return (a.id ?? 0).compareTo(b.id ?? 0);
+        });
       }
 
       _filteredProducts = processedResults;
@@ -941,6 +967,28 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         style: TextStyle(fontWeight: FontWeight.bold, color: buttonTextColor),
       ),
     );
+  }
+
+  int _fallbackItemIndex(AuctionProducts product) {
+    return (_currentAuction.auctionProducts?.indexWhere(
+              (p) => p.id == product.id,
+            ) ??
+            -1) +
+        1;
+  }
+
+  int _lotLabel(AuctionProducts product) {
+    return displayLotNumber(
+      product,
+      fallbackIndex: _fallbackItemIndex(product),
+    );
+  }
+
+  String _lotPriceLabel(AuctionProducts product) {
+    return displayLotPrice(
+      product,
+      highestBid: _highestBids[product.id]?.bid,
+    ).toString();
   }
 
   void _showItemBottomSheet(
@@ -1644,6 +1692,30 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   /// Right-side content: search/filter toolbar + items grid or list.
   /// On tablets this is placed in a scrollable column; on phones it's
   /// rendered inline inside the single-column scroll view.
+  Widget _stageChip(int index, String label) {
+    final selected = _customerStageTab == index;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) {
+        setState(() {
+          _customerStageTab = index;
+          if (index == 1) {
+            _filterBiddedOnly = true;
+          } else {
+            _filterBiddedOnly = false;
+          }
+        });
+        _applyFiltersAndSort();
+      },
+      selectedColor: Theme.of(context).primaryColor,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : Colors.black87,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
   Widget _buildItemsPanel() {
     // On tablets the items panel needs its own scroll; wrap with
     // SingleChildScrollView only when in tablet mode.
@@ -1652,6 +1724,22 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Customer stage tabs (Items / My bids / Winning / Losing)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _stageChip(0, AppStrings.tabAllItems.tr()),
+                gapW8,
+                _stageChip(1, AppStrings.tabMyBids.tr()),
+                gapW8,
+                _stageChip(2, AppStrings.tabWinning.tr()),
+                gapW8,
+                _stageChip(3, AppStrings.tabLosing.tr()),
+              ],
+            ),
+          ),
+          gapH12,
           // Search & Filter row
           Row(
             children: [
@@ -1777,11 +1865,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       ? () => _showItemBottomSheet(
                           context,
                           product,
-                          (_currentAuction.auctionProducts?.indexWhere(
-                                    (p) => p.id == product.id,
-                                  ) ??
-                                  -1) +
-                              1,
+                          _lotLabel(product),
                         )
                       : null,
                   child: Container(
@@ -1835,7 +1919,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${AppStrings.itemNumber.tr()}: ${(_currentAuction.auctionProducts?.indexWhere((p) => p.id == product.id) ?? -1) + 1}',
+                                '${AppStrings.itemNumber.tr()}: ${_lotLabel(product)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               gapH4,
@@ -1855,9 +1939,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               Row(
                                 children: [
                                   Text(
-                                    (_highestBids[product.id]?.bid ??
-                                            product.minBidPrice)
-                                        .toString(),
+                                    _lotPriceLabel(product),
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleMedium
@@ -1911,11 +1993,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       ? () => _showItemBottomSheet(
                           context,
                           product,
-                          (_currentAuction.auctionProducts?.indexWhere(
-                                    (p) => p.id == product.id,
-                                  ) ??
-                                  -1) +
-                              1,
+                          _lotLabel(product),
                         )
                       : null,
                   child: Container(
@@ -1960,7 +2038,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${AppStrings.itemNumber.tr()}: ${(_currentAuction.auctionProducts?.indexWhere((p) => p.id == product.id) ?? -1) + 1}',
+                                  '${AppStrings.itemNumber.tr()}: ${_lotLabel(product)}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                                 gapH4,
@@ -1991,9 +2069,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  (_highestBids[product.id]?.bid ??
-                                          product.minBidPrice)
-                                      .toString(),
+                                  _lotPriceLabel(product),
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(fontWeight: FontWeight.bold),
                                 ),

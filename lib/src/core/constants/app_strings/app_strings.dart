@@ -390,6 +390,7 @@ class AppStrings {
   static const String actualPrice = 'actualPrice';
   static const String minBidPriceLabel = 'minBidPriceLabel';
   static const String bidIncrement = 'bidIncrement';
+  static const String reservePriceLabel = 'reservePriceLabel';
   static const String auctionQuantity = 'auctionQuantity';
   static const String expiryDate = 'expiryDate';
   static const String startDate = 'startDate';
@@ -403,6 +404,21 @@ class AppStrings {
   static const String youAreAuctionOwner = 'youAreAuctionOwner';
   static const String yourProduct = 'yourProduct';
   static const String likes = 'likes';
+  static const String watchlist = 'watchlist';
+  static const String shareItem = 'shareItem';
+  static const String shareWhatsApp = 'shareWhatsApp';
+  static const String shareSms = 'shareSms';
+  static const String copyLink = 'copyLink';
+  static const String linkCopied = 'linkCopied';
+  static const String shareMore = 'shareMore';
+  static const String swipeToBid = 'swipeToBid';
+  static const String tabAllItems = 'tabAllItems';
+  static const String tabMyBids = 'tabMyBids';
+  static const String tabWinning = 'tabWinning';
+  static const String tabLosing = 'tabLosing';
+  static const String completeProfileToEnterAuction =
+      'completeProfileToEnterAuction';
+  static const String notificationSettings = 'notificationSettings';
   static const String nextItem = 'nextItem';
   static const String welcomeBackMessage = 'welcomeBackMessage';
   static const String letsWinAuctions = 'letsWinAuctions';

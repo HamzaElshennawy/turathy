@@ -416,3 +416,77 @@ const List<({String code, String nameEn, String nameAr})> countries = [
   (code: 'MY', nameEn: 'Malaysia', nameAr: 'ماليزيا'),
   (code: 'CN', nameEn: 'China', nameAr: 'الصين'),
 ];
+
+/// Maps nationality ISO codes → legacy [kGovernates] codes (city lists).
+const Map<String, String> kAddressIsoToGovernate = {
+  'SA': 'KSA',
+  'AE': 'UAE',
+  'BH': 'Bahrain',
+  'EG': 'Egypt',
+  'OM': 'Oman',
+  'KW': 'Kuwait',
+  'QA': 'Qatar',
+};
+
+/// Countries available when adding a shipping address (full nationality list).
+List<({String code, String nameEn, String nameAr})> get addressCountries =>
+    List.unmodifiable(countries);
+
+bool isSaudiAddressIso(String? iso) => iso == 'SA' || iso == 'KSA';
+
+GovernateOption? governateForAddressIso(String? iso) {
+  if (iso == null) return null;
+  final govCode = kAddressIsoToGovernate[iso] ?? (iso == 'KSA' ? 'KSA' : null);
+  if (govCode == null) return null;
+  for (final g in kGovernates) {
+    if (g.code == govCode) return g;
+  }
+  return null;
+}
+
+/// Resolve stored country string (Arabic/English/ISO/legacy) to nationality ISO.
+String? resolveAddressCountryIso(String? stored) {
+  if (stored == null || stored.trim().isEmpty) return null;
+  final s = stored.trim();
+
+  // Direct ISO / legacy codes
+  if (kAddressIsoToGovernate.containsKey(s)) return s;
+  if (s == 'KSA') return 'SA';
+  if (s == 'UAE') return 'AE';
+  if (s == 'Bahrain') return 'BH';
+  if (s == 'Egypt') return 'EG';
+  if (s == 'Oman') return 'OM';
+  if (s == 'Kuwait') return 'KW';
+  if (s == 'Qatar') return 'QA';
+
+  for (final c in countries) {
+    if (c.code == s || c.nameAr == s || c.nameEn == s) return c.code;
+  }
+
+  // Legacy Arabic titles from kGovernates (spelling variants)
+  for (final g in kGovernates) {
+    if (g.title == s || g.code == s) {
+      for (final e in kAddressIsoToGovernate.entries) {
+        if (e.value == g.code) return e.key;
+      }
+    }
+  }
+
+  // Common spelling variants
+  if (s == 'الامارات' || s == 'الإمارات') return 'AE';
+  if (s == 'عمان' || s == 'عُمان') {
+    // Prefer Oman over Jordan capital confusion: if exact legacy governate title
+    return 'OM';
+  }
+  if (s.contains('أردن') || s.toLowerCase() == 'jordan') return 'JO';
+
+  return null;
+}
+
+String addressCountryTitleAr(String iso) {
+  for (final c in countries) {
+    if (c.code == iso) return c.nameAr;
+  }
+  final gov = governateForAddressIso(iso);
+  return gov?.title ?? iso;
+}

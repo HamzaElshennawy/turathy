@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 
 class AuctionMainImageWidget extends StatelessWidget {
   final List<String> images;
@@ -33,11 +34,20 @@ class AuctionMainImageWidget extends StatelessWidget {
               itemCount: images.length,
               onPageChanged: onPageChanged,
               itemBuilder: (context, index) {
-                return Image.network(
-                  images[index],
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.error),
+                return GestureDetector(
+                  onTap: () {
+                    AppFunctions.showImageDialog(
+                      context: context,
+                      imageUrl: images[index],
+                      id: images[index].hashCode,
+                    );
+                  },
+                  child: Image.network(
+                    images[index],
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.error),
+                  ),
                 );
               },
             ),

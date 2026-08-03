@@ -35,7 +35,16 @@ import 'country_code_provider.dart';
 
 /// Screen for completing user profile details.
 class CompleteProfileScreen extends ConsumerStatefulWidget {
-  const CompleteProfileScreen({super.key});
+  /// When true (auction entry), highlight missing fields in red and return
+  /// to previous route after save instead of replacing with MainScreen.
+  final bool auctionEntryMode;
+  final bool highlightRequired;
+
+  const CompleteProfileScreen({
+    super.key,
+    this.auctionEntryMode = false,
+    this.highlightRequired = false,
+  });
 
   @override
   ConsumerState<CompleteProfileScreen> createState() =>
@@ -155,7 +164,14 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         message: 'profileUpdatedSuccessfully'.tr(),
       );
 
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
+      if (widget.auctionEntryMode) {
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
+      }
     } else {
       AppFunctions.showSnackBar(
         context: context,
@@ -227,6 +243,22 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     final addressesAsync = ref.watch(userAddressesProvider);
     final countryCode = ref.watch(countryCodeProvider);
     final missingFields = user?.missingFields ?? [];
+    final Color missingColor =
+        (widget.highlightRequired || widget.auctionEntryMode)
+            ? Colors.red
+            : Colors.orange;
+    final Color bannerColor =
+        (widget.highlightRequired || widget.auctionEntryMode)
+            ? Colors.red.shade50
+            : Colors.orange.shade50;
+    final Color bannerBorder =
+        (widget.highlightRequired || widget.auctionEntryMode)
+            ? Colors.red.shade200
+            : Colors.orange.shade200;
+    final Color bannerIcon =
+        (widget.highlightRequired || widget.auctionEntryMode)
+            ? Colors.red
+            : Colors.orange;
     final themeColor = Theme.of(context).primaryColor;
 
     return Scaffold(
@@ -299,17 +331,19 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
+                            color: bannerColor,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange.shade300),
+                            border: Border.all(color: bannerBorder),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                              Icon(Icons.warning_amber_rounded, color: bannerIcon),
                               gapW8,
                               Expanded(
                                 child: Text(
-                                  'missingFieldsBanner'.tr(),
+                                  widget.auctionEntryMode
+                                      ? AppStrings.completeProfileToEnterAuction.tr()
+                                      : 'missingFieldsBanner'.tr(),
                                   style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.w500),
                                 ),
                               ),
@@ -345,7 +379,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     validator: (v) => null,
                                     // Highlight missing fields with orange borders
                                     borderSide: BorderSide(
-                                      color: missingFields.contains('name') ? Colors.orange : Colors.grey.shade300,
+                                      color: missingFields.contains('name') ? missingColor : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,
@@ -362,7 +396,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     validator: (v) => null,
                                     hintText: '5XXXXXXXXXX',
                                     borderSide: BorderSide(
-                                      color: missingFields.contains('phone_number') ? Colors.orange : Colors.grey.shade300,
+                                      color: missingFields.contains('phone_number') ? missingColor : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,
@@ -374,7 +408,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                     hintText: 'email',
                                     validator: (v) => null,
                                     borderSide: BorderSide(
-                                      color: missingFields.contains('email') ? Colors.orange : Colors.grey.shade300,
+                                      color: missingFields.contains('email') ? missingColor : Colors.grey.shade300,
                                     ),
                                   ),
                                   gapH12,
@@ -439,7 +473,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: Text(
                                     'noAddressesYet'.tr(),
-                                    style: TextStyle(color: Colors.orange.shade700, fontSize: 13),
+                                    style: TextStyle(color: missingColor, fontSize: 13),
                                   ),
                                 ),
                               gapH8,

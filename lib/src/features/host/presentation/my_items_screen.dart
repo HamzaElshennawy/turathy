@@ -105,7 +105,7 @@ class _MyAuctionsList extends ConsumerWidget {
                     children: [
                       Text('${AppStrings.startPrice.tr()}: '),
                       Text(
-                        '${auction.minBidPrice ?? 0} ',
+                        '${auction.bidPrice ?? 0} ',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       SvgPicture.asset('assets/icons/RSA.svg', height: 14),

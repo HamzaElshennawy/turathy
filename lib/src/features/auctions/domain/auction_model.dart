@@ -376,6 +376,8 @@ class AuctionProducts {
   String? bidPrice;
   String? minBidPrice;
   String? actualPrice;
+  /// Item Number from Excel / API (`lot_number`). Null when absent.
+  int? lotNumber;
   int? auctionId;
   String? createdAt;
   String? updatedAt;
@@ -425,6 +427,7 @@ class AuctionProducts {
     this.bidPrice,
     this.minBidPrice,
     this.actualPrice,
+    this.lotNumber,
     this.auctionId,
     this.createdAt,
     this.updatedAt,
@@ -464,6 +467,7 @@ class AuctionProducts {
           bidPrice == other.bidPrice &&
           minBidPrice == other.minBidPrice &&
           actualPrice == other.actualPrice &&
+          lotNumber == other.lotNumber &&
           auctionId == other.auctionId &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt &&
@@ -498,6 +502,7 @@ class AuctionProducts {
       bidPrice.hashCode ^
       minBidPrice.hashCode ^
       actualPrice.hashCode ^
+      lotNumber.hashCode ^
       auctionId.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode ^
@@ -528,9 +533,17 @@ class AuctionProducts {
     productEn = json['product_en'];
     descriptionAr = json['description_ar'] ?? json['description'];
     descriptionEn = json['description_en'];
-    bidPrice = json['bidPrice'];
-    minBidPrice = json['minBidPrice'];
-    actualPrice = json['actualPrice'];
+    bidPrice = json['bidPrice']?.toString();
+    minBidPrice = json['minBidPrice']?.toString();
+    actualPrice = json['actualPrice']?.toString();
+    final rawLot =
+        json['lot_number'] ??
+        json['lotNumber'] ??
+        json['item_number'] ??
+        json['itemNumber'];
+    if (rawLot != null) {
+      lotNumber = rawLot is int ? rawLot : int.tryParse(rawLot.toString());
+    }
     auctionId = json['auction_id'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
@@ -583,6 +596,7 @@ class AuctionProducts {
     data['bidPrice'] = bidPrice;
     data['minBidPrice'] = minBidPrice;
     data['actualPrice'] = actualPrice;
+    data['lot_number'] = lotNumber;
     data['auction_id'] = auctionId;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;

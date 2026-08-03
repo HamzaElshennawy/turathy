@@ -222,6 +222,9 @@ abstract class EndPoints {
   /// Endpoint to fetch auctions favorited by the user.
   static const String likedAuctions = 'likes/auctions';
 
+  /// Endpoint to fetch watched auction lots (auction_products).
+  static const String likedLots = 'likes/lots';
+
   // ── Financial Records ───────────────────────────────────────────────────────
   
   /// Endpoint to upload proof of payment for an auction win.

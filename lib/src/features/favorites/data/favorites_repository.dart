@@ -26,6 +26,23 @@ class FavoritesRepository {
     }
   }
 
+  Future<List<AuctionProducts>> getWatchedLots() async {
+    try {
+      final response = await _dio.get(
+        EndPoints.likedLots,
+        queryParameters: {'userId': CachedVariables.userId},
+      );
+
+      if (response.data['data'] == null) return [];
+
+      final List<dynamic> data = response.data['data'];
+      return data.map((json) => AuctionProducts.fromJson(json)).toList();
+    } catch (e) {
+      log('Error getting watched lots: $e');
+      return [];
+    }
+  }
+
   Future<List<ProductModel>> getLikedProducts() async {
     try {
       final response = await _dio.get(

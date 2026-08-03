@@ -71,6 +71,30 @@ class _ProductCardState extends ConsumerState<ProductCard> {
     return '${EndPoints.baseUrl}$url';
   }
 
+  List<String> get _allImageUrls {
+    List<String> raw = [];
+    if (widget.product.images != null && widget.product.images!.isNotEmpty) {
+      raw = List<String>.from(widget.product.images!);
+    } else if (widget.product.imageUrl != null &&
+        widget.product.imageUrl!.isNotEmpty) {
+      raw = [widget.product.imageUrl!];
+    }
+    return raw.map((url) {
+      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+      return '${EndPoints.baseUrl}$url';
+    }).where((u) => u.isNotEmpty).toList();
+  }
+
+  void _openZoom() {
+    final urls = _allImageUrls;
+    if (urls.isEmpty) return;
+    AppFunctions.showImageDialog(
+      context: context,
+      images: urls,
+      id: widget.product.id,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Sync with the global reactive favorites state
@@ -96,14 +120,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _navigateToDetails(),
-        onLongPress: () {
-          // Visual-first feature: Inspect the product image in a fullscreen dialog
-          AppFunctions.showImageDialog(
-            context: context,
-            imageUrl: _imageUrl,
-            id: widget.product.id,
-          );
-        },
+        onLongPress: _openZoom,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -141,6 +158,27 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                     top: 12,
                     right: 12,
                     child: _buildHeartIcon(isLiked),
+                  ),
+                  // Zoom — discoverable without long-press
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: _openZoom,
+                        child: const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.zoom_in,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                   if (widget.product.hasDiscount &&
                       !widget.product.isPreorderContact)

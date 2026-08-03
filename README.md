@@ -1,16 +1,41 @@
-# turathy
+# Turathy Mobile (Flutter)
 
-A new Flutter project.
+Customer app for **التراث الجميل** — package `com.deepblue.turathi`.
 
-## Getting Started
+## Path
 
-This project is a starting point for a Flutter application.
+`mobile_app/Mobile/` (this folder). Production API: `https://api.alturathaljmeel.com.sa/`
 
-A few resources to get you started if this is your first Flutter project:
+## Price & Item Number
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+| UI | Field |
+|----|--------|
+| List / opening price | `bidPrice` (starting) |
+| Reserve | `minBidPrice` — hidden on public API; not for visitor list |
+| بند رقم | `lot_number` |
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Helpers: `lib/src/core/helper/auction_price_helpers.dart`  
+Skill: `.cursor/skills/turathy-mobile-flutter/SKILL.md`
+
+## Setup (this machine — E: drive)
+
+Paths live on **E:** — see [`../DEV_ENV_E_DRIVE.md`](../DEV_ENV_E_DRIVE.md).
+
+```properties
+sdk.dir=E:\\dev\\Android\\Sdk
+flutter.sdk=E:\\dev\\flutter
+```
+
+```powershell
+# one-time user env
+..\..\scripts\setup-mobile-paths-e.ps1
+flutter pub get
+flutter test
+flutter run
+```
+
+## Architecture notes
+
+- REST via Dio (`end_points.dart`)
+- Live room via Socket.IO (`socket_config.dart` / `socket_providers.dart`)
+- Bid increment = client ladder (`_getIncrementForPrice`), not a product DB field

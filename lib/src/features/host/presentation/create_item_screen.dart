@@ -168,8 +168,9 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
           'title': _titleController.text,
           'description': _descriptionController.text,
           'actualPrice': int.tryParse(_actualPriceController.text) ?? 0,
-          'minBidPrice': int.tryParse(_minBidPriceController.text) ?? 0,
-          'bidPrice': int.tryParse(_bidPriceController.text) ?? 0,
+          // Platform: bidPrice = starting (فتح الباب), minBidPrice = reserve (سعر التحفظ).
+          'bidPrice': int.tryParse(_minBidPriceController.text) ?? 0,
+          'minBidPrice': int.tryParse(_bidPriceController.text) ?? 0,
           'quantity': int.tryParse(_quantityController.text) ?? 1,
           'expiryDate': _expiryDate!.toIso8601String(),
           'category_id': _selectedCategoryId,
@@ -459,7 +460,7 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
                 ),
                 gapH16,
 
-                // Min Bid Price (فتح الباب)
+                // Opening / starting price → API bidPrice
                 TextFormField(
                   controller: _minBidPriceController,
                   decoration: InputDecoration(
@@ -479,11 +480,11 @@ class _CreateItemScreenState extends ConsumerState<CreateItemScreen> {
                 ),
                 gapH16,
 
-                // Bid Increment (فرق السوم)
+                // Reserve price → API minBidPrice (was wrongly labeled bid increment)
                 TextFormField(
                   controller: _bidPriceController,
                   decoration: InputDecoration(
-                    labelText: AppStrings.bidIncrement.tr(),
+                    labelText: AppStrings.reservePriceLabel.tr(),
                     border: const OutlineInputBorder(),
                     prefix: Padding(
                       padding: const EdgeInsets.only(left: 4, right: 4),

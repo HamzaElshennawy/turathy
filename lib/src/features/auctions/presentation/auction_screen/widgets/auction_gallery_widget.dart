@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 
 class AuctionGalleryWidget extends StatefulWidget {
@@ -44,11 +45,20 @@ class _AuctionGalleryWidgetState extends State<AuctionGalleryWidget> {
                     });
                   },
                   itemBuilder: (context, index) {
-                    return Image.network(
-                      widget.images[index],
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.error),
+                    return GestureDetector(
+                      onTap: () {
+                        AppFunctions.showImageDialog(
+                          context: context,
+                          imageUrl: widget.images[index],
+                          id: widget.images[index].hashCode,
+                        );
+                      },
+                      child: Image.network(
+                        widget.images[index],
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.error),
+                      ),
                     );
                   },
                 ),

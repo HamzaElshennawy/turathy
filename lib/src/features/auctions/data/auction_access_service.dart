@@ -25,6 +25,11 @@ class AuctionAccessService {
       return null;
     }
 
+    final missing = currentUser.missingFields ?? const <String>[];
+    if (currentUser.isProfileComplete == false || missing.isNotEmpty) {
+      return 'PROFILE_INCOMPLETE';
+    }
+
     final nickname = currentUser.nickname?.trim() ?? '';
     if (nickname.isEmpty) {
       return 'NICKNAME_REQUIRED';

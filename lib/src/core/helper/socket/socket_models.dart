@@ -325,12 +325,19 @@ class AuctionProductChangeEvent {
   });
 
   /// Parses product change metadata from server broadcast.
+  /// Backend may emit only `{ product }` — prices are optional/legacy.
   factory AuctionProductChangeEvent.fromJson(Map<String, dynamic> json) {
+    num asNum(dynamic v) {
+      if (v == null) return 0;
+      if (v is num) return v;
+      return num.tryParse(v.toString()) ?? 0;
+    }
+
     return AuctionProductChangeEvent(
-      product: json['product'] as String,
-      bidPrice: json['bidPrice'] as num,
-      minBidPrice: json['minBidPrice'] as num,
-      actualPrice: json['actualPrice'] as num,
+      product: (json['product'] ?? '').toString(),
+      bidPrice: asNum(json['bidPrice']),
+      minBidPrice: asNum(json['minBidPrice']),
+      actualPrice: asNum(json['actualPrice']),
     );
   }
 

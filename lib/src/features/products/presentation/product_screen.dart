@@ -227,6 +227,16 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
     );
   }
 
+  void _openImageZoom([int? index]) {
+    if (_images.isEmpty) return;
+    AppFunctions.showImageDialog(
+      context: context,
+      images: _images,
+      initialIndex: index ?? _currentPage,
+      id: widget.product.id,
+    );
+  }
+
   Widget _buildImageCarousel() {
     if (_images.isEmpty) {
       return Container(
@@ -253,24 +263,48 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
                 });
               },
               itemBuilder: (context, index) {
-                return CachedNetworkImage(
-                  imageUrl: _images[index],
-                  memCacheHeight: 800,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  progressIndicatorBuilder: (context, url, progress) => Center(
-                    child: CircularProgressIndicator(value: progress.progress),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[200],
-                    child: const Icon(
-                      Icons.image,
-                      size: 50,
-                      color: Colors.grey,
+                return GestureDetector(
+                  onTap: () => _openImageZoom(index),
+                  child: CachedNetworkImage(
+                    imageUrl: _images[index],
+                    memCacheHeight: 800,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    progressIndicatorBuilder: (context, url, progress) =>
+                        Center(
+                      child: CircularProgressIndicator(
+                        value: progress.progress,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child: const Icon(
+                        Icons.image,
+                        size: 50,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 );
               },
+            ),
+            // Zoom affordance — bottom-start, clear of arrows & heart
+            Positioned(
+              bottom: _images.length > 1 ? 40 : 12,
+              left: 12,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.45),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  tooltip: 'Zoom',
+                  icon: const Icon(
+                    Icons.zoom_in,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                  onPressed: () => _openImageZoom(),
+                ),
+              ),
             ),
             // Left Arrow
             if (_images.length > 1)
@@ -382,6 +416,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
                 curve: Curves.easeInOut,
               );
             },
+            onLongPress: () => _openImageZoom(index),
             child: Container(
               width: 64,
               margin: const EdgeInsets.only(right: 8),

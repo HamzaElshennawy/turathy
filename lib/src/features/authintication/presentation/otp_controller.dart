@@ -19,9 +19,9 @@ class OtpController extends StateNotifier<AsyncValue<void>> {
         challengeToken: challengeToken,
         otp: otpController.text.trim(),
       );
-      
+
       await ref.read(authControllerProvider.notifier).completePhoneAuth(user);
-      
+
       state = const AsyncValue.data(null);
       return true;
     } catch (e, st) {

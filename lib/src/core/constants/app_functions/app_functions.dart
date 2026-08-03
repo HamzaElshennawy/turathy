@@ -13,6 +13,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../breakpoints.dart';
@@ -188,41 +189,126 @@ abstract class AppFunctions {
     return format12.format(time);
   }
 
-  /// Displays a fullscreen interactive image viewer with zoom support.
+  /// Displays a fullscreen interactive image viewer with pinch-to-zoom.
+  ///
+  /// Pass [images] + [initialIndex] for a swipeable gallery (store / product
+  /// details). Single [imageUrl] remains supported for cards and legacy calls.
   static void showImageDialog({
     required BuildContext context,
-    required String imageUrl,
+    String? imageUrl,
+    List<String>? images,
+    int initialIndex = 0,
     required int id,
   }) {
+    final urls = <String>[
+      if (images != null && images.isNotEmpty)
+        ...images.where((u) => u.trim().isNotEmpty)
+      else if (imageUrl != null && imageUrl.trim().isNotEmpty)
+        imageUrl.trim(),
+    ];
+    if (urls.isEmpty) return;
+
+    final start = initialIndex.clamp(0, urls.length - 1);
+
     Navigator.push(
       context,
       MaterialPageRoute(
         barrierDismissible: true,
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          body: PhotoView(
-            heroAttributes: PhotoViewHeroAttributes(
-              tag: id,
-              transitionOnUserGestures: true,
-            ),
-            backgroundDecoration: const BoxDecoration(
-              color: Colors.transparent,
-            ),
-            imageProvider: CachedNetworkImageProvider(imageUrl),
-            minScale: PhotoViewComputedScale.contained,
-            initialScale: PhotoViewComputedScale.contained,
-          ),
+        builder: (context) => _ZoomableImageViewer(
+          urls: urls,
+          initialIndex: start,
+          heroTagBase: id,
         ),
       ),
+    );
+  }
+}
+
+/// Fullscreen dark viewer: pinch zoom, pan, and swipe across product images.
+class _ZoomableImageViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+  final int heroTagBase;
+
+  const _ZoomableImageViewer({
+    required this.urls,
+    required this.initialIndex,
+    required this.heroTagBase,
+  });
+
+  @override
+  State<_ZoomableImageViewer> createState() => _ZoomableImageViewerState();
+}
+
+class _ZoomableImageViewerState extends State<_ZoomableImageViewer> {
+  late final PageController _pageController;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final multi = widget.urls.length > 1;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: multi
+            ? Text(
+                '${_index + 1} / ${widget.urls.length}',
+                style: const TextStyle(fontSize: 16, color: Colors.white70),
+              )
+            : null,
+        centerTitle: true,
+      ),
+      body: multi
+          ? PhotoViewGallery.builder(
+              pageController: _pageController,
+              itemCount: widget.urls.length,
+              onPageChanged: (i) => setState(() => _index = i),
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              builder: (context, index) {
+                return PhotoViewGalleryPageOptions(
+                  imageProvider: CachedNetworkImageProvider(widget.urls[index]),
+                  heroAttributes: PhotoViewHeroAttributes(
+                    tag: '${widget.heroTagBase}_zoom_$index',
+                    transitionOnUserGestures: true,
+                  ),
+                  minScale: PhotoViewComputedScale.contained,
+                  maxScale: PhotoViewComputedScale.covered * 4,
+                  initialScale: PhotoViewComputedScale.contained,
+                );
+              },
+            )
+          : PhotoView(
+              heroAttributes: PhotoViewHeroAttributes(
+                tag: widget.heroTagBase,
+                transitionOnUserGestures: true,
+              ),
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              imageProvider: CachedNetworkImageProvider(widget.urls.first),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.covered * 4,
+              initialScale: PhotoViewComputedScale.contained,
+            ),
     );
   }
 }

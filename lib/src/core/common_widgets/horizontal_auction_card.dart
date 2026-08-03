@@ -236,7 +236,7 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${widget.product.minBidPrice ?? 0} ${AppStrings.currency.tr()}',
+          '${widget.product.bidPrice ?? 0} ${AppStrings.currency.tr()}',
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,

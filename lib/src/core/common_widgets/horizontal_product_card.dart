@@ -14,6 +14,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
@@ -52,6 +53,29 @@ class HorizontalProductCard extends ConsumerWidget {
     return '${EndPoints.baseUrl}$url';
   }
 
+  List<String> get _allImageUrls {
+    List<String> raw = [];
+    if (product.images != null && product.images!.isNotEmpty) {
+      raw = List<String>.from(product.images!);
+    } else if (product.imageUrl != null && product.imageUrl!.isNotEmpty) {
+      raw = [product.imageUrl!];
+    }
+    return raw.map((url) {
+      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+      return '${EndPoints.baseUrl}$url';
+    }).where((u) => u.isNotEmpty).toList();
+  }
+
+  void _openZoom(BuildContext context) {
+    final urls = _allImageUrls;
+    if (urls.isEmpty) return;
+    AppFunctions.showImageDialog(
+      context: context,
+      images: urls,
+      id: product.id,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Sync with the global wishlist/favorites state
@@ -77,6 +101,7 @@ class HorizontalProductCard extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _navigateToDetails(context),
+        onLongPress: () => _openZoom(context),
         child: Row(
           children: [
             // ── Primary Media Layer ─────────────────────────────────────────
@@ -106,6 +131,26 @@ class HorizontalProductCard extends ConsumerWidget {
                     top: 8,
                     left: 8,
                     child: _buildHeartIcon(context, ref, isLiked),
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => _openZoom(context),
+                        child: const Padding(
+                          padding: EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.zoom_in,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

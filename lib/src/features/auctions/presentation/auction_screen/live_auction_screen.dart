@@ -308,7 +308,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     final lastAuctionProduct = ref.read(auctionProductChangeProvider);
 
     if (currentBid ==
-            (lastAuctionProduct?.minBidPrice ?? auction.minBidPrice) &&
+            (lastAuctionProduct?.bidPrice ?? auction.bidPrice) &&
         isMinBid) {
       socketActions.placeBid(
         auction.id ?? 0,
@@ -394,6 +394,38 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
               _safePlay('sounds/lose_notification.wav');
             }
           }
+
+          // Clear result overlay for the ended lot (win / lose / sold).
+          final endedWinner = event.winner!;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (_) => AuctionResultDialog(
+                winnerId: endedWinner.id,
+                winnerName: endedWinner.name,
+                finalPrice: auction.actualPrice ?? auction.bidPrice,
+                currentUserId: CachedVariables.userId,
+                auction: auction,
+              ),
+            );
+          });
+        } else {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (_) => AuctionResultDialog(
+                winnerId: null,
+                winnerName: null,
+                finalPrice: null,
+                currentUserId: CachedVariables.userId,
+                auction: auction,
+              ),
+            );
+          });
         }
 
         if (event.nextItem != null) {

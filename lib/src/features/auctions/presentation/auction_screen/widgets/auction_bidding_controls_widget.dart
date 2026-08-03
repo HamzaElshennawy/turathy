@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,6 +18,7 @@ import 'package:turathy/src/features/orders/data/order_repository.dart';
 
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/helper/auction_price_helpers.dart';
 
 class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -215,21 +217,14 @@ class _AuctionBiddingControlsWidgetState
       currentProductId = match.id;
     }
 
-    // bidPrice is the minimum bid increment, not the current price
-    num bidIncrement = widget.auction.bidPrice ?? 0;
-    // minBidPrice is the opening price (starting price)
-    num openingPrice = widget.auction.minBidPrice ?? 0;
-
-    if (widget.selectedProduct != null) {
-      if (widget.selectedProduct!.bidPrice != null) {
-        bidIncrement =
-            num.tryParse(widget.selectedProduct!.bidPrice!) ?? bidIncrement;
-      }
-      if (widget.selectedProduct!.minBidPrice != null) {
-        openingPrice =
-            num.tryParse(widget.selectedProduct!.minBidPrice!) ?? openingPrice;
-      }
-    }
+    // Platform contract: bidPrice = public starting/opening; minBidPrice = reserve.
+    // Increment always comes from _getIncrementForPrice (ladder), not a product field.
+    num openingPrice = openingPriceFromAuction(
+      auctionBidPrice: widget.auction.bidPrice,
+      selectedProduct: widget.selectedProduct,
+      auctionMinBidPriceLegacy: widget.auction.minBidPrice,
+    );
+    num bidIncrement = 0;
 
     // Determine the latest bid from either real-time update or initial data
     // Filter initial bids by the current product to avoid using bids from previous items
@@ -282,8 +277,10 @@ class _AuctionBiddingControlsWidgetState
     }
 
     if (auctionProduct != null && widget.selectedProduct == null) {
-      bidIncrement = auctionProduct.bidPrice;
-      openingPrice = auctionProduct.minBidPrice;
+      // Socket change event: prefer bidPrice as opening (may be current top on some payloads).
+      openingPrice = auctionProduct.bidPrice > 0
+          ? auctionProduct.bidPrice
+          : auctionProduct.minBidPrice;
       // If product changed, reset to opening price unless there's a new bid
       if (lastBid == null) {
         currentPrice = openingPrice;
@@ -1048,7 +1045,7 @@ class _AuctionBiddingControlsWidgetState
     );
   }
 
-  /// One-step bid button: places a bid of currentPrice + bidIncrement.
+  /// One-step bid: swipe-to-bid during live countdown; tap fallback when disabled.
   Widget _buildOneStepBidButton({
     required bool auctionNotStarted,
     required num currentPrice,
@@ -1056,45 +1053,37 @@ class _AuctionBiddingControlsWidgetState
     required int? currentProductId,
   }) {
     final num nextBid = currentPrice + bidIncrement;
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: auctionNotStarted
-            ? null
-            : () {
-                widget.onPlaceBid(1, nextBid, currentProductId);
-              },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2D4739),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          elevation: 0,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              auctionNotStarted
-                  ? AppStrings.willStartSoon.tr()
-                  : '${AppStrings.bidNow.tr()} — ${nextBid.toStringAsFixed(0)} ',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+    final bool canBid = !auctionNotStarted && !widget.isAuctionEnded;
+
+    if (!canBid) {
+      return SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          onPressed: null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D4739),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            elevation: 0,
+          ),
+          child: Text(
+            auctionNotStarted
+                ? AppStrings.willStartSoon.tr()
+                : AppStrings.ended.tr(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            if (!auctionNotStarted)
-              SvgPicture.asset(
-                'assets/icons/RSA.svg',
-                height: 14,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
-                ),
-              ),
-          ],
+          ),
         ),
-      ),
+      );
+    }
+
+    return _SwipeToBidBar(
+      label:
+          '${AppStrings.swipeToBid.tr()} — ${nextBid.toStringAsFixed(0)} ${AppStrings.currency.tr()}',
+      onBid: () => widget.onPlaceBid(1, nextBid, currentProductId),
     );
   }
 
@@ -1444,4 +1433,108 @@ class _AuctionBiddingControlsWidgetState
   //    ),
   //  );
   //}
+}
+
+/// Horizontal swipe control that confirms a one-step bid when dragged past 70%.
+class _SwipeToBidBar extends StatefulWidget {
+  final String label;
+  final VoidCallback onBid;
+
+  const _SwipeToBidBar({required this.label, required this.onBid});
+
+  @override
+  State<_SwipeToBidBar> createState() => _SwipeToBidBarState();
+}
+
+class _SwipeToBidBarState extends State<_SwipeToBidBar> {
+  double _drag = 0;
+  bool _fired = false;
+  static const double _thumb = 52;
+
+  void _reset() {
+    setState(() {
+      _drag = 0;
+      _fired = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxDrag = (constraints.maxWidth - _thumb).clamp(0.0, 400.0);
+        final progress = maxDrag == 0 ? 0.0 : (_drag / maxDrag).clamp(0.0, 1.0);
+
+        return Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2D4739).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFF2D4739), width: 1.5),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 56),
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color.lerp(
+                      const Color(0xFF2D4739),
+                      Colors.white,
+                      progress * 0.35,
+                    ),
+                  ),
+                ),
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (details) {
+                    setState(() {
+                      _drag = (_drag + details.delta.dx).clamp(0.0, maxDrag);
+                    });
+                    if (!_fired && progress >= 0.72) {
+                      _fired = true;
+                      widget.onBid();
+                      Future.delayed(const Duration(milliseconds: 350), _reset);
+                    }
+                  },
+                  onHorizontalDragEnd: (_) {
+                    if (!_fired) _reset();
+                  },
+                  child: Transform.translate(
+                    offset: Offset(
+                      Directionality.of(context) == ui.TextDirection.rtl
+                          ? -_drag
+                          : _drag,
+                      0,
+                    ),
+                    child: Container(
+                      width: _thumb,
+                      height: _thumb,
+                      margin: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2D4739),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

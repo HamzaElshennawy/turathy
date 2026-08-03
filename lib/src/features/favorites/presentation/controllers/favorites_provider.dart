@@ -6,23 +6,34 @@ import 'package:turathy/src/features/products/domain/product_model.dart';
 class FavoritesState {
   final List<ProductModel> likedProducts;
   final List<AuctionModel> likedAuctions;
+  final List<AuctionProducts> watchedLots;
   final Set<int> likedProductIds;
   final Set<int> likedAuctionIds;
+  final Set<int> watchedLotIds;
 
-  FavoritesState({this.likedProducts = const [], this.likedAuctions = const []})
-    : likedProductIds = likedProducts.map((e) => e.id).toSet(),
-      likedAuctionIds = likedAuctions
-          .where((e) => e.id != null)
-          .map((e) => e.id!)
-          .toSet();
+  FavoritesState({
+    this.likedProducts = const [],
+    this.likedAuctions = const [],
+    this.watchedLots = const [],
+  })  : likedProductIds = likedProducts.map((e) => e.id).toSet(),
+        likedAuctionIds = likedAuctions
+            .where((e) => e.id != null)
+            .map((e) => e.id!)
+            .toSet(),
+        watchedLotIds = watchedLots
+            .where((e) => e.id != null)
+            .map((e) => e.id!)
+            .toSet();
 
   FavoritesState copyWith({
     List<ProductModel>? likedProducts,
     List<AuctionModel>? likedAuctions,
+    List<AuctionProducts>? watchedLots,
   }) {
     return FavoritesState(
       likedProducts: likedProducts ?? this.likedProducts,
       likedAuctions: likedAuctions ?? this.likedAuctions,
+      watchedLots: watchedLots ?? this.watchedLots,
     );
   }
 }
@@ -38,8 +49,13 @@ class FavoritesController extends StateNotifier<AsyncValue<FavoritesState>> {
     try {
       final products = await _repository.getLikedProducts();
       final auctions = await _repository.getLikedAuctions();
+      final lots = await _repository.getWatchedLots();
       state = AsyncValue.data(
-        FavoritesState(likedProducts: products, likedAuctions: auctions),
+        FavoritesState(
+          likedProducts: products,
+          likedAuctions: auctions,
+          watchedLots: lots,
+        ),
       );
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -60,6 +76,13 @@ class FavoritesController extends StateNotifier<AsyncValue<FavoritesState>> {
     );
   }
 
+  bool isLotWatched(int id) {
+    return state.maybeWhen(
+      data: (data) => data.watchedLotIds.contains(id),
+      orElse: () => false,
+    );
+  }
+
   Future<void> toggleLikeProduct(ProductModel product) async {
     final currentState = state.value;
     if (currentState == null) return;
@@ -75,13 +98,11 @@ class FavoritesController extends StateNotifier<AsyncValue<FavoritesState>> {
       newProducts.add(product);
     }
 
-    // Optimistic update
     state = AsyncValue.data(currentState.copyWith(likedProducts: newProducts));
 
     try {
       await _repository.toggleLike(itemId: product.id, type: 'product');
     } catch (e) {
-      // Revert on error
       state = AsyncValue.data(currentState);
     }
   }
@@ -102,13 +123,34 @@ class FavoritesController extends StateNotifier<AsyncValue<FavoritesState>> {
       newAuctions.add(auction);
     }
 
-    // Optimistic update
     state = AsyncValue.data(currentState.copyWith(likedAuctions: newAuctions));
 
     try {
       await _repository.toggleLike(itemId: auction.id!, type: 'auction');
     } catch (e) {
-      // Revert on error
+      state = AsyncValue.data(currentState);
+    }
+  }
+
+  Future<void> toggleWatchLot(AuctionProducts lot) async {
+    if (lot.id == null) return;
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    final isWatched = currentState.watchedLotIds.contains(lot.id!);
+    final List<AuctionProducts> newLots = List.from(currentState.watchedLots);
+
+    if (isWatched) {
+      newLots.removeWhere((element) => element.id == lot.id);
+    } else {
+      newLots.add(lot);
+    }
+
+    state = AsyncValue.data(currentState.copyWith(watchedLots: newLots));
+
+    try {
+      await _repository.toggleLike(itemId: lot.id!, type: 'auction_product');
+    } catch (e) {
       state = AsyncValue.data(currentState);
     }
   }
