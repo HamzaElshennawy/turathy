@@ -20,6 +20,7 @@ import '../../core/constants/app_images/app_images.dart';
 import '../../core/constants/app_strings/app_strings.dart';
 import '../../core/helper/cache/cached_variables.dart';
 import '../../core/helper/fcm/fcm_service.dart';
+import '../../core/helper/locale/app_locale_sync.dart';
 import '../../routing/rout_constants.dart';
 import '../authintication/data/auth_repository.dart';
 import '../authintication/presentation/auth_controller.dart';
@@ -89,6 +90,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         authMethod: _currentAuthMethod(),
       );
       ref.read(authControllerProvider.notifier).updateUser(user);
+      await AppLocaleSync.syncPreferredLanguageToBackend(
+        profilePreferredLanguage: user.preferredLanguage,
+      );
       await FCMService().registerAfterLogin();
 
       if (user.missingFields != null && user.missingFields!.isNotEmpty) {
@@ -117,6 +121,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         authMethod: _currentAuthMethod(),
       );
       ref.read(authControllerProvider.notifier).updateUser(user);
+      await AppLocaleSync.syncPreferredLanguageToBackend(
+        profilePreferredLanguage: user.preferredLanguage,
+      );
       await FCMService().registerAfterLogin();
 
       if (user.missingFields != null && user.missingFields!.isNotEmpty) {

@@ -14,7 +14,6 @@ import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 // import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
-import 'package:turathy/src/features/orders/data/order_repository.dart';
 
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
@@ -25,10 +24,11 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
-import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bids_history_widget.dart';
-import 'package:turathy/src/features/orders/domain/order_model.dart';
-import '../../domain/winning_auction_model.dart';
+import 'package:turathy/src/core/helper/share/item_share_helper.dart';
+import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
+import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
+import 'package:turathy/src/core/helper/locale/app_locale_sync.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
 
@@ -374,9 +374,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         if (event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
             _safePlay('sounds/win_bid_notification.wav');
+            final lang = AppLocaleSync.uiLanguageCode;
+            String productName = auction.localizedTitle(lang);
+            final match = auction.auctionProducts
+                ?.where((p) => p.id == endedProductId)
+                .toList();
+            if (match != null && match.isNotEmpty) {
+              final name = match.first.localizedName(lang);
+              if (name.isNotEmpty) productName = name;
+            }
             FCMService().showLocalNotification(
               title: AppStrings.youWon.tr(),
-              body: '${AppStrings.youWon.tr()} ${auction.currentProduct ?? ""}',
+              body: '${AppStrings.youWon.tr()} $productName',
             );
           } else {
             // Bid-participation check runs here (before setState) so it
@@ -395,37 +404,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             }
           }
 
-          // Clear result overlay for the ended lot (win / lose / sold).
-          final endedWinner = event.winner!;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (_) => AuctionResultDialog(
-                winnerId: endedWinner.id,
-                winnerName: endedWinner.name,
-                finalPrice: auction.actualPrice ?? auction.bidPrice,
-                currentUserId: CachedVariables.userId,
-                auction: auction,
-              ),
-            );
-          });
-        } else {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (_) => AuctionResultDialog(
-                winnerId: null,
-                winnerName: null,
-                finalPrice: null,
-                currentUserId: CachedVariables.userId,
-                auction: auction,
-              ),
-            );
-          });
+          // No blocking win/lose/"منتهي" popup — badges + bottom controls
+          // already show outcome; popups interrupt live bidding flow.
         }
 
         if (event.nextItem != null) {
@@ -521,7 +501,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           _safePlay('sounds/win_bid_notification.wav');
           FCMService().showLocalNotification(
             title: AppStrings.youWon.tr(),
-            body: '${AppStrings.youWon.tr()} ${auction.displayTitle}',
+            body:
+                '${AppStrings.youWon.tr()} ${auction.localizedTitle(AppLocaleSync.uiLanguageCode)}',
           );
         } else {
           // Check if current user actually participated in the final item
@@ -1074,6 +1055,38 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                               },
                               statusLabel: badge.label,
                               statusColor: badge.color,
+                              onShare: () {
+                                final title = activeProduct?.displayName ??
+                                    auction.displayTitle;
+                                final url = ItemShareHelper.auctionLotUrl(
+                                  auctionId: auction.id ?? widget.auctionId,
+                                  lotNumber: activeProduct?.lotNumber,
+                                  productId: activeProduct?.id,
+                                );
+                                showItemShareSheet(
+                                  context: context,
+                                  title: title,
+                                  url: url,
+                                );
+                              },
+                              onWatch: activeProduct?.id == null
+                                  ? null
+                                  : () {
+                                      ref
+                                          .read(
+                                            favoritesControllerProvider
+                                                .notifier,
+                                          )
+                                          .toggleWatchLot(activeProduct!);
+                                    },
+                              isWatched: activeProduct?.id != null &&
+                                  ref
+                                      .watch(favoritesControllerProvider)
+                                      .maybeWhen(
+                                        data: (d) => d.watchedLotIds
+                                            .contains(activeProduct!.id),
+                                        orElse: () => false,
+                                      ),
                             ),
                             AuctionItemTitleWidget(
                               auction: auction,
@@ -1296,273 +1309,5 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     _cancelFailSafeTimer();
     // Refresh the provider to get latest data from backend
     ref.invalidate(auctionDetailsProvider(widget.auctionId));
-  }
-}
-
-class AuctionResultDialog extends ConsumerWidget {
-  final int? winnerId;
-  final String? winnerName;
-  final num? finalPrice;
-  final int? currentUserId;
-  final AuctionModel auction;
-
-  const AuctionResultDialog({
-    super.key,
-    this.winnerId,
-    this.winnerName,
-    this.finalPrice,
-    this.currentUserId,
-    required this.auction,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Determine status
-    bool isWinner = winnerId != null && winnerId == currentUserId;
-    bool hasWinner = winnerId != null;
-
-    IconData icon;
-    Color color;
-    String title;
-    String message;
-
-    if (isWinner) {
-      icon = Icons.emoji_events_rounded;
-      color = const Color(0xFFFFD700); // Gold
-      title = AppStrings.youWon.tr();
-      message = '${'winner'.tr()}: ${winnerName ?? 'Unknown'}';
-    } else if (hasWinner) {
-      // User lost
-      icon = Icons.sentiment_dissatisfied_rounded;
-      color = const Color(0xFFE53935); // Red
-      title = AppStrings.youLost.tr();
-      message = '${'winner'.tr()}: ${winnerName ?? 'Unknown'}';
-    } else {
-      // No winner / Ended
-      icon = Icons.timer_off_rounded;
-      color = Colors.grey;
-      title = AppStrings.ended.tr();
-      message = AppStrings.noBidsYet.tr();
-    }
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Icon Circle
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 64, color: color),
-            ),
-            gapH24,
-
-            // Title
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            gapH12,
-
-            // Message (Winner Name)
-            if (winnerName != null)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-
-            gapH16,
-
-            // Final Price
-            if (finalPrice != null)
-              Column(
-                children: [
-                  Text(
-                    AppStrings.finalPrice.tr(),
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
-                  gapH4,
-                  Text(
-                    '$finalPrice ${AppStrings.currency.tr()}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF2D4739),
-                    ),
-                  ),
-                ],
-              ),
-
-            gapH32,
-
-            // Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: isWinner
-                  ? ElevatedButton.icon(
-                      onPressed: () async {
-                        final currentProductId =
-                            auction.currentProductId ??
-                            auction.auctionProducts
-                                ?.firstWhere(
-                                  (p) =>
-                                      p.displayName == auction.currentProduct,
-                                  orElse: () => AuctionProducts(),
-                                )
-                                .id ??
-                            0;
-
-                        Navigator.of(context).pop();
-
-                        // Check existing orders directly from provider state
-                        final ordersValue = ref.read(
-                          getUserOrdersProvider(currentUserId ?? 0).future,
-                        );
-
-                        try {
-                          final orders = await ordersValue;
-                          final existingOrder = orders.firstWhere(
-                            (o) =>
-                                o.auctionId == auction.id &&
-                                o.items.any(
-                                  (item) =>
-                                      item.productId == currentProductId ||
-                                      item.auctionProductId == currentProductId,
-                                ),
-                            orElse: () => OrderModel(
-                              id: -1,
-                              userId: -1,
-                              total: 0,
-                              itemDesc: '',
-                              items: const [],
-                              createdAt: DateTime.now(),
-                              auctionId: -1,
-                              pCs: 0,
-                              codAmt: "0",
-                              weight: "0",
-                              date: DateTime.now(),
-                            ),
-                          );
-
-                          if (existingOrder.id != -1 && context.mounted) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    OrderDetailsScreen(order: existingOrder),
-                              ),
-                            );
-                            return;
-                          }
-                        } catch (e) {
-                          debugPrint("Error fetching orders: $e");
-                        }
-
-                        if (!context.mounted) return;
-
-                        final winningModel = WinningAuctionModel(
-                          id: 0,
-                          userId: currentUserId ?? 0,
-                          auctionId: auction.id ?? 0,
-                          product: auction.currentProduct ?? '',
-                          productId: currentProductId,
-                          price: (finalPrice ?? 0).toDouble(),
-                          sold: false,
-                          createdAt: DateTime.now(),
-                          updatedAt: DateTime.now(),
-                          auctionTitle: auction.displayTitle,
-                          auctionStartDate: auction.startDate ?? DateTime.now(),
-                          winnerName: winnerName ?? '',
-                        );
-
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => OrderDetailsScreen(
-                              order: OrderModel.fromWinningAuction(
-                                winningModel,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.receipt_long, color: Colors.white),
-                      label: Text(
-                        AppStrings.continueToOrder.tr(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D4739),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                    )
-                  : ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D4739),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        AppStrings.ok.tr(),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

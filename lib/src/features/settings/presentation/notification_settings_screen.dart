@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/helper/fcm/notification_prefs.dart';
 
 /// Simple local toggles for push categories (device-side until server prefs exist).
 class NotificationSettingsScreen extends StatefulWidget {
@@ -14,8 +14,6 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
-  static const _storage = FlutterSecureStorage();
-
   bool _newAuction = true;
   bool _auctionStarted = true;
   bool _countdown = true;
@@ -31,17 +29,17 @@ class _NotificationSettingsScreenState
 
   Future<void> _load() async {
     Future<bool> read(String key, {bool def = true}) async {
-      final v = await _storage.read(key: key);
+      final v = await NotificationPrefs.storage.read(key: key);
       if (v == null) return def;
       return v == '1';
     }
 
     final results = await Future.wait([
-      read('notif_new_auction'),
-      read('notif_auction_started'),
-      read('notif_countdown'),
-      read('notif_outbid'),
-      read('notif_watch'),
+      read(NotificationPrefs.keyNewAuction),
+      read(NotificationPrefs.keyAuctionStarted),
+      read(NotificationPrefs.keyCountdown),
+      read(NotificationPrefs.keyOutbid),
+      read(NotificationPrefs.keyWatch),
     ]);
     if (!mounted) return;
     setState(() {
@@ -55,7 +53,7 @@ class _NotificationSettingsScreenState
   }
 
   Future<void> _set(String key, bool value) async {
-    await _storage.write(key: key, value: value ? '1' : '0');
+    await NotificationPrefs.storage.write(key: key, value: value ? '1' : '0');
   }
 
   @override
@@ -71,7 +69,7 @@ class _NotificationSettingsScreenState
                   value: _newAuction,
                   onChanged: (v) {
                     setState(() => _newAuction = v);
-                    _set('notif_new_auction', v);
+                    _set(NotificationPrefs.keyNewAuction, v);
                   },
                 ),
                 SwitchListTile(
@@ -79,7 +77,7 @@ class _NotificationSettingsScreenState
                   value: _auctionStarted,
                   onChanged: (v) {
                     setState(() => _auctionStarted = v);
-                    _set('notif_auction_started', v);
+                    _set(NotificationPrefs.keyAuctionStarted, v);
                   },
                 ),
                 SwitchListTile(
@@ -87,7 +85,7 @@ class _NotificationSettingsScreenState
                   value: _countdown,
                   onChanged: (v) {
                     setState(() => _countdown = v);
-                    _set('notif_countdown', v);
+                    _set(NotificationPrefs.keyCountdown, v);
                   },
                 ),
                 SwitchListTile(
@@ -95,7 +93,7 @@ class _NotificationSettingsScreenState
                   value: _outbid,
                   onChanged: (v) {
                     setState(() => _outbid = v);
-                    _set('notif_outbid', v);
+                    _set(NotificationPrefs.keyOutbid, v);
                   },
                 ),
                 SwitchListTile(
@@ -103,7 +101,7 @@ class _NotificationSettingsScreenState
                   value: _watchActivity,
                   onChanged: (v) {
                     setState(() => _watchActivity = v);
-                    _set('notif_watch', v);
+                    _set(NotificationPrefs.keyWatch, v);
                   },
                 ),
               ],

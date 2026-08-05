@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
@@ -19,6 +18,7 @@ import 'package:turathy/src/features/orders/data/order_repository.dart';
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/core/helper/auction_price_helpers.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/swipe_to_bid_bar.dart';
 
 class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -1080,10 +1080,11 @@ class _AuctionBiddingControlsWidgetState
       );
     }
 
-    return _SwipeToBidBar(
-      label:
-          '${AppStrings.swipeToBid.tr()} — ${nextBid.toStringAsFixed(0)} ${AppStrings.currency.tr()}',
-      onBid: () => widget.onPlaceBid(1, nextBid, currentProductId),
+    return SwipeToBidBar(
+      amountText: nextBid.toStringAsFixed(0),
+      hintText: AppStrings.swipeToBid.tr(),
+      somLabel: AppStrings.som.tr(),
+      onConfirmed: () => widget.onPlaceBid(1, nextBid, currentProductId),
     );
   }
 
@@ -1435,106 +1436,3 @@ class _AuctionBiddingControlsWidgetState
   //}
 }
 
-/// Horizontal swipe control that confirms a one-step bid when dragged past 70%.
-class _SwipeToBidBar extends StatefulWidget {
-  final String label;
-  final VoidCallback onBid;
-
-  const _SwipeToBidBar({required this.label, required this.onBid});
-
-  @override
-  State<_SwipeToBidBar> createState() => _SwipeToBidBarState();
-}
-
-class _SwipeToBidBarState extends State<_SwipeToBidBar> {
-  double _drag = 0;
-  bool _fired = false;
-  static const double _thumb = 52;
-
-  void _reset() {
-    setState(() {
-      _drag = 0;
-      _fired = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxDrag = (constraints.maxWidth - _thumb).clamp(0.0, 400.0);
-        final progress = maxDrag == 0 ? 0.0 : (_drag / maxDrag).clamp(0.0, 1.0);
-
-        return Container(
-          height: 56,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D4739).withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFF2D4739), width: 1.5),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 56),
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color.lerp(
-                      const Color(0xFF2D4739),
-                      Colors.white,
-                      progress * 0.35,
-                    ),
-                  ),
-                ),
-              ),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: GestureDetector(
-                  onHorizontalDragUpdate: (details) {
-                    setState(() {
-                      _drag = (_drag + details.delta.dx).clamp(0.0, maxDrag);
-                    });
-                    if (!_fired && progress >= 0.72) {
-                      _fired = true;
-                      widget.onBid();
-                      Future.delayed(const Duration(milliseconds: 350), _reset);
-                    }
-                  },
-                  onHorizontalDragEnd: (_) {
-                    if (!_fired) _reset();
-                  },
-                  child: Transform.translate(
-                    offset: Offset(
-                      Directionality.of(context) == ui.TextDirection.rtl
-                          ? -_drag
-                          : _drag,
-                      0,
-                    ),
-                    child: Container(
-                      width: _thumb,
-                      height: _thumb,
-                      margin: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2D4739),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_forward,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}

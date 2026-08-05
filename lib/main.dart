@@ -47,6 +47,13 @@ void main() async {
       child: EasyLocalization(
         supportedLocales: const [Locale('en', ''), Locale('ar', '')],
         path: 'assets/lang',
+        startLocale: Locale(
+          (CachedVariables.lang ?? 'ar').toLowerCase().startsWith('en')
+              ? 'en'
+              : 'ar',
+          '',
+        ),
+        fallbackLocale: const Locale('ar', ''),
         child: const App(),
       ),
     ),

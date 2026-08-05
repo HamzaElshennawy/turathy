@@ -6,78 +6,63 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../core/helper/cache/cache_helper.dart';
 import '../../../../../core/helper/cache/cached_keys.dart';
 import '../../../../../core/helper/cache/cached_variables.dart';
+import '../../../../../core/helper/locale/app_locale_sync.dart';
 import '../../../../authintication/presentation/auth_controller.dart';
-import '../../../data/profile_repository.dart';
 import '../../../controller/language_controller.dart';
 
 class LanguageWidget extends ConsumerWidget {
   const LanguageWidget({super.key});
 
-  Future<void> _persistLanguagePreference(
+  Future<void> _applyLanguage(
+    BuildContext context,
     WidgetRef ref,
     String languageCode,
   ) async {
+    final cubit = ref.read(languageControllerProvider.notifier);
+    cubit.changeLanguage(languageCode);
+    final localization = EasyLocalization.of(context);
+    if (localization == null) return;
+
+    await context.setLocale(Locale(languageCode, ''));
+    await CacheHelper.setData(key: CachedKeys.lang, value: languageCode);
+    CachedVariables.lang = languageCode;
+
     final user = ref.read(authControllerProvider).valueOrNull;
-    final userId = user?.id ?? CachedVariables.userId;
-    if (userId == null) return;
-
-    final preferredLanguage = languageCode == 'ar' ? 'AR' : 'EN';
-    final success = await ProfileRepository.updateUser(
-      userId: userId,
-      preferredLanguage: preferredLanguage,
-    );
-
-    if (success && user != null) {
+    final ok = await AppLocaleSync.syncPreferredLanguageToBackend(force: true);
+    if (ok && user != null) {
       ref.read(authControllerProvider.notifier).updateUser(
-        user.copyWith(preferredLanguage: preferredLanguage),
-      );
+            user.copyWith(
+              preferredLanguage: AppLocaleSync.preferredLanguageApi,
+            ),
+          );
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cubit = ref.watch(languageControllerProvider.notifier);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
       decoration: ShapeDecoration(
         shape: const StadiumBorder(),
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(1),
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(
+              alpha: 1,
+            ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           itemWidget(
             text: 'English',
-            onTap: () async {
-              cubit.changeLanguage('en');
-              final localization = EasyLocalization.of(context);
-              if (localization != null) {
-                context.setLocale(const Locale("en", ""));
-                await CacheHelper.setData(key: CachedKeys.lang, value: "en");
-                CachedVariables.lang = await CacheHelper.getData(key: "lang");
-                await _persistLanguagePreference(ref, 'en');
-              }
-            },
-            isSelected:
-                ref.read(languageControllerProvider) == 'en' ? true : false,
+            onTap: () => _applyLanguage(context, ref, 'en'),
+            isSelected: ref.read(languageControllerProvider) == 'en',
             context: context,
           ),
           itemWidget(
             text: 'العربية',
-            onTap: () async {
-              cubit.changeLanguage('ar');
-              final localization = EasyLocalization.of(context);
-              if (localization != null) {
-                context.setLocale(const Locale("ar", ""));
-                await CacheHelper.setData(key: CachedKeys.lang, value: "ar");
-                CachedVariables.lang = await CacheHelper.getData(key: "lang");
-                await _persistLanguagePreference(ref, 'ar');
-              }
-            },
-            isSelected:
-                ref.read(languageControllerProvider) == 'en' ? false : true,
+            onTap: () => _applyLanguage(context, ref, 'ar'),
+            isSelected: ref.read(languageControllerProvider) != 'en',
             context: context,
-          )
+          ),
         ],
       ),
     );
@@ -94,15 +79,18 @@ class LanguageWidget extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: ShapeDecoration(
-              shape: const StadiumBorder(),
-              color: isSelected ? Theme.of(context).colorScheme.primary : null),
+            shape: const StadiumBorder(),
+            color: isSelected ? Theme.of(context).colorScheme.primary : null,
+          ),
           child: Text(
             text,
             style: GoogleFonts.inter(
-                color:
-                    isSelected ? Theme.of(context).colorScheme.onPrimary : null,
-                fontWeight: FontWeight.w500,
-                fontSize: 14),
+              color: isSelected
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : null,
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
           ),
         ),
       );

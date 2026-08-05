@@ -22,6 +22,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../features/notifications/data/notifications_repository.dart';
 import '../cache/cached_variables.dart';
 import '../analytics/analytics_service.dart';
+import '../locale/app_locale_sync.dart';
+import 'notification_prefs.dart';
 import 'package:turathy/src/routing/app_router.dart';
 import 'package:turathy/src/routing/rout_constants.dart';
 import 'dart:convert';
@@ -231,16 +233,31 @@ class FCMService {
   /// triggers a local 'Heads-up' notification for immediate visibility.
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     log('Received foreground message: ${message.messageId}');
-    
+
     _messageController.add(message);
 
     final notification = message.notification;
-    if (notification == null) return;
+    final data = Map<String, dynamic>.from(message.data);
+
+    // Prefer bilingual data payload resolved by current app language.
+    final localized = AppLocaleSync.resolvePushText(
+      data: data,
+      fallbackTitle: notification?.title,
+      fallbackBody: notification?.body,
+    );
+    if (localized.title.isEmpty && localized.body.isEmpty) return;
+
+    final type = NotificationPrefs.resolveType(data);
+    final allowed = await NotificationPrefs.shouldShowType(type);
+    if (!allowed) {
+      log('Suppressed foreground notification type=$type by user prefs');
+      return;
+    }
 
     await _localNotifications.show(
       message.hashCode,
-      notification.title,
-      notification.body,
+      localized.title,
+      localized.body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           'turathy_notifications',
@@ -256,7 +273,7 @@ class FCMService {
           presentSound: true,
         ),
       ),
-      payload: message.data.toString(),
+      payload: jsonEncode(data),
     );
   }
 
@@ -416,6 +433,7 @@ class FCMService {
   /// Typically called after a successful login event to ensure the user's
   /// active account is linked to the current device's push token.
   Future<void> registerAfterLogin() async {
+    await AppLocaleSync.syncPreferredLanguageToBackend(force: false);
     if (_fcmToken != null) {
       await _registerTokenWithBackend(_fcmToken!);
     } else {

@@ -17,6 +17,9 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/helper/share/item_share_helper.dart';
+import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
+import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
@@ -1256,6 +1259,49 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                                 onPageChanged: onPageChanged,
                                                 statusLabel: badge.label,
                                                 statusColor: badge.color,
+                                                onShare: () {
+                                                  showItemShareSheet(
+                                                    context: context,
+                                                    title: product.displayName.isNotEmpty
+                                                        ? product.displayName
+                                                        : _currentAuction
+                                                            .displayTitle,
+                                                    url: ItemShareHelper
+                                                        .auctionLotUrl(
+                                                      auctionId:
+                                                          _currentAuction.id ??
+                                                              0,
+                                                      lotNumber:
+                                                          product.lotNumber,
+                                                      productId: product.id,
+                                                    ),
+                                                  );
+                                                },
+                                                onWatch: product.id == null
+                                                    ? null
+                                                    : () {
+                                                        ref
+                                                            .read(
+                                                              favoritesControllerProvider
+                                                                  .notifier,
+                                                            )
+                                                            .toggleWatchLot(
+                                                              product,
+                                                            );
+                                                      },
+                                                isWatched: product.id != null &&
+                                                    ref
+                                                        .watch(
+                                                          favoritesControllerProvider,
+                                                        )
+                                                        .maybeWhen(
+                                                          data: (d) => d
+                                                              .watchedLotIds
+                                                              .contains(
+                                                                product.id,
+                                                              ),
+                                                          orElse: () => false,
+                                                        ),
                                               ),
                                               AuctionItemTitleWidget(
                                                 auction: _currentAuction,
@@ -1325,6 +1371,41 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                           onPageChanged: onPageChanged,
                                           statusLabel: badge.label,
                                           statusColor: badge.color,
+                                          onShare: () {
+                                            showItemShareSheet(
+                                              context: context,
+                                              title: product.displayName.isNotEmpty
+                                                  ? product.displayName
+                                                  : _currentAuction.displayTitle,
+                                              url: ItemShareHelper
+                                                  .auctionLotUrl(
+                                                auctionId:
+                                                    _currentAuction.id ?? 0,
+                                                lotNumber: product.lotNumber,
+                                                productId: product.id,
+                                              ),
+                                            );
+                                          },
+                                          onWatch: product.id == null
+                                              ? null
+                                              : () {
+                                                  ref
+                                                      .read(
+                                                        favoritesControllerProvider
+                                                            .notifier,
+                                                      )
+                                                      .toggleWatchLot(product);
+                                                },
+                                          isWatched: product.id != null &&
+                                              ref
+                                                  .watch(
+                                                    favoritesControllerProvider,
+                                                  )
+                                                  .maybeWhen(
+                                                    data: (d) => d.watchedLotIds
+                                                        .contains(product.id),
+                                                    orElse: () => false,
+                                                  ),
                                         ),
                                         AuctionItemTitleWidget(
                                           auction: _currentAuction,

@@ -411,7 +411,9 @@ class AppStrings {
   static const String copyLink = 'copyLink';
   static const String linkCopied = 'linkCopied';
   static const String shareMore = 'shareMore';
+  static const String shareOpenedSystem = 'shareOpenedSystem';
   static const String swipeToBid = 'swipeToBid';
+  static const String som = 'som';
   static const String tabAllItems = 'tabAllItems';
   static const String tabMyBids = 'tabMyBids';
   static const String tabWinning = 'tabWinning';

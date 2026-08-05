@@ -12,6 +12,8 @@ import '../../../core/constants/app_functions/app_functions.dart';
 import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/dio/end_points.dart';
+import '../../../core/helper/share/item_share_helper.dart';
+import '../../../core/helper/share/item_share_sheet.dart';
 import '../../cart/data/cart_repository.dart';
 import '../../cart/presentation/cart_screen.dart';
 import '../../preorders/data/preorder_repository.dart';
@@ -135,6 +137,29 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            key: const Key('product_share_button'),
+            tooltip: AppStrings.shareItem.tr(),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: const Icon(
+                Icons.ios_share_rounded,
+                color: Colors.black,
+                size: 20,
+              ),
+            ),
+            onPressed: () {
+              showItemShareSheet(
+                context: context,
+                title: _productTitle,
+                url: ItemShareHelper.productUrl(productId: widget.product.id),
+              );
+            },
+          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(8),
