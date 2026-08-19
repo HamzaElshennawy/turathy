@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +16,11 @@ import 'package:turathy/src/features/orders/data/order_repository.dart';
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/core/helper/auction_price_helpers.dart';
+import 'package:turathy/src/core/helper/bid_steps.dart';
+import 'package:turathy/src/core/helper/lot_result_status.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_result_banner.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/swipe_to_bid_bar.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_expiry_clock.dart';
 
 class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -55,8 +57,6 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
 
 class _AuctionBiddingControlsWidgetState
     extends ConsumerState<AuctionBiddingControlsWidget> {
-  Timer? _timer;
-  Duration _remainingTime = Duration.zero;
   //double _selectedMultiplier = 1.0; // 1.0, 1.5, or 2.0
   final TextEditingController _customBidController = TextEditingController();
   final FocusNode _customBidFocus = FocusNode();
@@ -64,11 +64,17 @@ class _AuctionBiddingControlsWidgetState
   // 0 = Max Bid list, 1 = One Step Bid (pre-auction only)
   int _preAuctionTab = 0;
   int _selectedMaxBidIndex = 0;
+  FixedExtentScrollController? _maxBidScrollController;
+  List<num> _memoizedBidSteps = const [];
+  num? _memoizedBidStepsBase;
+  DateTime? _effectiveExpiry;
+  bool _lotExpired = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeTimer();
+    _maxBidScrollController = FixedExtentScrollController(initialItem: 0);
+    _syncExpiryFromWidget();
   }
 
   @override
@@ -78,92 +84,60 @@ class _AuctionBiddingControlsWidgetState
         oldWidget.expiryDate != widget.expiryDate ||
         oldWidget.auction.liveStartDate != widget.auction.liveStartDate ||
         oldWidget.auction.isPreAuction != widget.auction.isPreAuction) {
-      _initializeTimer();
+      _syncExpiryFromWidget();
     }
   }
 
-  void _initializeTimer() {
-    _timer?.cancel();
-
-    DateTime? expiry;
+  void _syncExpiryFromWidget() {
     if (widget.auction.isPreAuction && widget.auction.liveStartDate != null) {
-      expiry = widget.auction.liveStartDate;
+      _effectiveExpiry = widget.auction.liveStartDate;
     } else {
-      // In case the widget is rebuilt, we check if the newBidEventProvider
-      // has a newer expiryDate, although we usually listen to it in build().
-      // For initialization, we rely on the passed widget.expiryDate or widget.auction.expiryDate.
-      expiry = widget.expiryDate ?? widget.auction.expiryDate;
+      _effectiveExpiry = widget.expiryDate ?? widget.auction.expiryDate;
     }
-
-    if (expiry != null) {
-      final expiryDateTime = expiry;
-      _updateRemainingTime(expiryDateTime);
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        _updateRemainingTime(expiryDateTime);
-      });
-    }
+    _lotExpired = _computeLotExpired();
   }
 
-  void _updateRemainingTime(DateTime expiryDateTime) {
-    final now = DateTime.now();
-    final difference = expiryDateTime.difference(now);
-
-    if (mounted) {
-      setState(() {
-        _remainingTime = difference.isNegative ? Duration.zero : difference;
-      });
-    }
-
-    if (difference.inSeconds <= 0) {
-      _timer?.cancel();
-    }
+  bool _computeLotExpired() {
+    if (widget.auction.isPreAuction) return false;
+    final expiry = _effectiveExpiry;
+    if (expiry == null) return true;
+    return !DateTime.now().isBefore(expiry);
   }
 
-  String _formatDuration(Duration duration) {
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-
-    if (duration.inHours > 0) {
-      final hours = duration.inHours.toString().padLeft(2, '0');
-      return '$hours:$minutes:$seconds';
-    } else if (duration.inMinutes > 0) {
-      return '$minutes:$seconds';
-    } else {
-      return '${duration.inSeconds} sec';
+  List<num> _bidStepsFor(num basePrice) {
+    if (_memoizedBidStepsBase == basePrice && _memoizedBidSteps.length == 50) {
+      return _memoizedBidSteps;
     }
+    _memoizedBidStepsBase = basePrice;
+    _memoizedBidSteps = buildBidSteps(basePrice, 50);
+    final maxIndex = _memoizedBidSteps.isEmpty
+        ? 0
+        : _memoizedBidSteps.length - 1;
+    if (_selectedMaxBidIndex > maxIndex) {
+      _selectedMaxBidIndex = maxIndex;
+      _jumpPickerIfNeeded();
+    }
+    return _memoizedBidSteps;
+  }
+
+  void _jumpPickerIfNeeded() {
+    final controller = _maxBidScrollController;
+    if (controller == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!controller.hasClients) return;
+      if (controller.selectedItem != _selectedMaxBidIndex) {
+        controller.jumpToItem(_selectedMaxBidIndex);
+      }
+    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _maxBidScrollController?.dispose();
     _customBidController.dispose();
     _customBidFocus.dispose();
     super.dispose();
-  }
-
-  /// Returns the correct bid increment for a given price, matching the
-  /// server-side thresholds so the bid list never proposes an invalid step.
-  static num _getIncrementForPrice(num price) {
-    if (price < 500) return 10;
-    if (price < 1500) return 20;
-    if (price < 3000) return 50;
-    if (price < 5000) return 100;
-    if (price < 7500) return 200;
-    return 500;
-  }
-
-  /// Builds a list of [count] bid amounts starting from [basePrice],
-  /// recalculating the increment at each step so threshold crossings are
-  /// respected (e.g. 1480 +20 = 1500, then 1500 +50 = 1550, not +20).
-  static List<num> _buildBidSteps(num basePrice, int count) {
-    final steps = <num>[];
-    num running = basePrice;
-    for (int i = 0; i < count; i++) {
-      final inc = _getIncrementForPrice(running);
-      running += inc;
-      steps.add(running);
-    }
-    return steps;
   }
 
   @override
@@ -179,27 +153,31 @@ class _AuctionBiddingControlsWidgetState
     ref.listen(newBidEventProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event?.expiryDate != null) {
-        _timer?.cancel();
-        final expiryDateTime = event!.expiryDate!;
-        _updateRemainingTime(expiryDateTime);
-        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-          _updateRemainingTime(expiryDateTime);
+        setState(() {
+          _effectiveExpiry = event!.expiryDate;
+          _lotExpired = _computeLotExpired();
         });
       }
+    });
+    ref.listen(timerExtendedEventProvider, (previous, next) {
+      final expiryDateTime = next.valueOrNull?.expiryDate;
+      if (expiryDateTime == null) return;
+      setState(() {
+        _effectiveExpiry = expiryDateTime;
+        _lotExpired = _computeLotExpired();
+      });
     });
 
     // Check if the timer needs to be refreshed using the latest known global expiry date
     // from the socket, if the bottom sheet was just opened and we missed the event.
-    if (latestExpiry != null && _remainingTime == Duration.zero) {
-      // Only run this once to pick up the missed expiry
+    if (latestExpiry != null && latestExpiry != _effectiveExpiry) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _timer?.cancel();
-          _updateRemainingTime(latestExpiry);
-          _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-            _updateRemainingTime(latestExpiry);
-          });
-        }
+        if (!mounted) return;
+        if (latestExpiry == _effectiveExpiry) return;
+        setState(() {
+          _effectiveExpiry = latestExpiry;
+          _lotExpired = _computeLotExpired();
+        });
       });
     }
 
@@ -218,11 +196,10 @@ class _AuctionBiddingControlsWidgetState
     }
 
     // Platform contract: bidPrice = public starting/opening; minBidPrice = reserve.
-    // Increment always comes from _getIncrementForPrice (ladder), not a product field.
+    // Increment always comes from getIncrementForPrice (ladder), not a product field.
     num openingPrice = openingPriceFromAuction(
       auctionBidPrice: widget.auction.bidPrice,
       selectedProduct: widget.selectedProduct,
-      auctionMinBidPriceLegacy: widget.auction.minBidPrice,
     );
     num bidIncrement = 0;
 
@@ -277,10 +254,10 @@ class _AuctionBiddingControlsWidgetState
     }
 
     if (auctionProduct != null && widget.selectedProduct == null) {
-      // Socket change event: prefer bidPrice as opening (may be current top on some payloads).
-      openingPrice = auctionProduct.bidPrice > 0
-          ? auctionProduct.bidPrice
-          : auctionProduct.minBidPrice;
+      // Socket change event: opening is bidPrice only — never reserve.
+      if (auctionProduct.bidPrice > 0) {
+        openingPrice = auctionProduct.bidPrice;
+      }
       // If product changed, reset to opening price unless there's a new bid
       if (lastBid == null) {
         currentPrice = openingPrice;
@@ -292,7 +269,7 @@ class _AuctionBiddingControlsWidgetState
     }
 
     // Dynamic bid increment logic based on the current price
-    bidIncrement = _getIncrementForPrice(currentPrice);
+    bidIncrement = getIncrementForPrice(currentPrice);
 
     // Determine if the auction has truly ended based on explicit flags.
     // The parent widget (LiveAuctionScreen) sets isAuctionEnded via socket events.
@@ -307,7 +284,7 @@ class _AuctionBiddingControlsWidgetState
     // shows when isAuctionEnded is true (from socket events).
     final bool isBiddingDisabled =
         isAuctionEnded ||
-        (!widget.auction.isPreAuction && _remainingTime == Duration.zero);
+        (!widget.auction.isPreAuction && _lotExpired);
 
     // Check if the auction has actually started (reached startDate)
     final bool hasStarted =
@@ -379,6 +356,9 @@ class _AuctionBiddingControlsWidgetState
         hasParticipated && !isHighestActiveBidder && !isHighestBidderInactive;
 
     final int bidNumber = currentProductBids.length;
+
+    final num stepsBase = highestActiveBid?.bid ?? currentPrice;
+    final List<num> bidSteps = _bidStepsFor(stepsBase);
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -515,67 +495,13 @@ class _AuctionBiddingControlsWidgetState
 
           // Timer pill with progress bar for last 30 seconds
           if (!isAuctionEnded && !widget.auction.isPreAuction) ...[
-            Builder(
-              builder: (context) {
-                final num durationThreshold = widget.auction.itemDuration ?? 30;
-                final bool showProgressBar =
-                    _remainingTime.inSeconds <= durationThreshold &&
-                    _remainingTime.inSeconds > 0;
-                final double progress = showProgressBar
-                    ? _remainingTime.inSeconds / durationThreshold.toDouble()
-                    : 0.0;
-
-                return Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Progress bar (only visible in last 30 seconds)
-                      if (showProgressBar)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 500),
-                          width: MediaQuery.of(context).size.width * progress,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: _remainingTime.inSeconds <= 10
-                                  ? [
-                                      const Color(0xFFD32F2F).withAlpha(180),
-                                      const Color(0xFFFF5252).withAlpha(150),
-                                    ]
-                                  : [
-                                      const Color(0xFF2D4739).withAlpha(180),
-                                      const Color(0xFF4CAF50).withAlpha(150),
-                                    ],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      // Timer text
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Center(
-                          child: Text(
-                            _formatDuration(_remainingTime),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: showProgressBar
-                                  ? Colors.black
-                                  : (isAuctionEnded
-                                        ? Colors.red
-                                        : Colors.black87),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+            AuctionExpiryClock(
+              expiry: _effectiveExpiry,
+              durationThreshold: widget.auction.itemDuration ?? 30,
+              isAuctionEnded: isAuctionEnded,
+              onExpired: () {
+                if (!mounted || _lotExpired) return;
+                setState(() => _lotExpired = true);
               },
             ),
             gapH16,
@@ -589,10 +515,18 @@ class _AuctionBiddingControlsWidgetState
                 final currentUserId = CachedVariables.userId;
                 final productId = widget.selectedProduct?.id;
 
-                if (productId != null && widget.auction.auctionBids != null) {
-                  final productBids = widget.auction.auctionBids!
-                      .where((b) => b.productId == productId)
-                      .toList();
+                if (productId != null) {
+                  final productBids = widget.auction.auctionBids
+                          ?.where((b) => b.productId == productId)
+                          .toList() ??
+                      [];
+                  final isSold = lotWasSold(
+                    productIsSold: widget.selectedProduct?.isSold,
+                  );
+
+                  if (!isSold) {
+                    return const LotResultBanner(kind: LotResultKind.unsold);
+                  }
 
                   if (productBids.isNotEmpty) {
                     productBids.sort(
@@ -910,9 +844,7 @@ class _AuctionBiddingControlsWidgetState
                     border: Border.all(color: Colors.grey.shade300),
                   ),
                   child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(
-                      initialItem: _selectedMaxBidIndex,
-                    ),
+                    scrollController: _maxBidScrollController,
                     itemExtent: 44,
                     onSelectedItemChanged: (i) {
                       setState(() => _selectedMaxBidIndex = i);
@@ -928,50 +860,43 @@ class _AuctionBiddingControlsWidgetState
                         ),
                       ),
                     ),
-                    children: (() {
-                      final steps = _buildBidSteps(
-                        (highestActiveBid?.bid ?? currentPrice),
-                        10,
+                    children: List.generate(bidSteps.length, (i) {
+                      final stepBid = bidSteps[i];
+                      return Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${AppStrings.bid.tr()} ${i + 1}  •  ${stepBid.toStringAsFixed(0)} ',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A2E22),
+                              ),
+                            ),
+                            SvgPicture.asset(
+                              'assets/icons/RSA.svg',
+                              height: 12,
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFF1A2E22),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ],
+                        ),
                       );
-                      return List.generate(steps.length, (i) {
-                        final stepBid = steps[i];
-                        return Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${AppStrings.bid.tr()} ${i + 1}  •  ${stepBid.toStringAsFixed(0)} ',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A2E22),
-                                ),
-                              ),
-                              SvgPicture.asset(
-                                'assets/icons/RSA.svg',
-                                height: 12,
-                                colorFilter: const ColorFilter.mode(
-                                  Color(0xFF1A2E22),
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      });
-                    })(),
+                    }),
                   ),
                 ),
                 gapH12,
                 // Bid button for selected amount
                 Builder(
                   builder: (context) {
-                    final steps = _buildBidSteps(
-                      (highestActiveBid?.bid ?? currentPrice),
-                      10,
-                    );
                     final selectedBid =
-                        steps[_selectedMaxBidIndex.clamp(0, steps.length - 1)];
+                        bidSteps[_selectedMaxBidIndex.clamp(
+                          0,
+                          bidSteps.length - 1,
+                        )];
                     return SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -1089,6 +1014,15 @@ class _AuctionBiddingControlsWidgetState
   }
 
   Widget _buildResultContainer(num currentPrice, List<OrderModel> orders) {
+    final isSold = lotWasSold(
+      productIsSold: widget.selectedProduct?.isSold,
+      hasWinner: widget.winnerId != null,
+    );
+
+    if (widget.isAuctionEnded && !isSold) {
+      return const LotResultBanner(kind: LotResultKind.unsold);
+    }
+
     if (widget.isAuctionEnded && widget.winnerId != null) {
       final isWinner = widget.winnerId == CachedVariables.userId;
       final finalPrice = widget.finalPrice ?? currentPrice;
@@ -1364,26 +1298,7 @@ class _AuctionBiddingControlsWidgetState
         }
       }
     } else {
-      // No winner (expired/cancelled)
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade400),
-        ),
-        child: Center(
-          child: Text(
-            AppStrings.auctionEnded.tr(),
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      );
+      return const LotResultBanner(kind: LotResultKind.unsold);
     }
   }
 

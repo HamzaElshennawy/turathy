@@ -19,6 +19,7 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
+import 'package:turathy/src/core/helper/fcm/live_room_visibility.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
@@ -29,14 +30,20 @@ import 'package:turathy/src/core/helper/share/item_share_helper.dart';
 import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 import 'package:turathy/src/core/helper/locale/app_locale_sync.dart';
+import 'package:turathy/src/core/helper/lot_result_status.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
 
 import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_result_banner.dart';
 
 class LiveAuctionScreen extends ConsumerStatefulWidget {
   final int auctionId;
   final bool isAdmin;
+
+  /// Whether this screen is currently visible. Delegates to [LiveRoomVisibility]
+  /// so FCM can suppress bid heads-up without an import cycle.
+  static ValueNotifier<bool> get isViewing => LiveRoomVisibility.isViewing;
 
   const LiveAuctionScreen({
     required this.auctionId,
@@ -86,22 +93,36 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   // Key: productId, Value: winner SocketUser
   final Map<int, SocketUser> _productWinners = {};
 
+  // Explicit isSold from auctionItemEnded / product payload. Bids never imply sold.
+  final Map<int, bool> _productSold = {};
+
   // Tracks which products the current user participated in (bid on) during
   // this live session — used for badge rendering when item.bids is stale.
   final Set<int> _productParticipants = {};
 
+  LotResultKind? _lotResult;
+  Timer? _lotResultTimer;
+
   StreamSubscription? _socketErrorSubscription;
   StreamSubscription? _bidRejectedSubscription;
+  DateTime? _scheduledFailSafeExpiry;
+  DateTime? _failSafeFiredForExpiry;
 
   @override
   void initState() {
     super.initState();
+    LiveRoomVisibility.isViewing.value = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AnalyticsService.logScreenView(
         screenName: 'live_auction',
         screenClass: 'LiveAuctionScreen',
       );
       AnalyticsService.logAuctionJoined(auctionId: widget.auctionId);
+      if (!mounted) return;
+      final loaded = ref.read(auctionDetailsProvider(widget.auctionId)).valueOrNull;
+      if (loaded?.expiryDate != null && !_isAuctionEnded) {
+        _scheduleFailSafeTimer(loaded!.expiryDate!);
+      }
     });
     _checkAccess();
 
@@ -213,10 +234,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   @override
   void dispose() {
+    LiveRoomVisibility.isViewing.value = false;
     // _cleanupEngine();
     _socketErrorSubscription?.cancel();
     _bidRejectedSubscription?.cancel();
     _cancelFailSafeTimer();
+    _lotResultTimer?.cancel();
     _audioPlayer.dispose();
     _scrollController.dispose();
     _mainImagePageController.dispose();
@@ -328,11 +351,15 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Keep socket bids alive while the parent screen is open
-    ref.watch(accumulatedBidsProvider);
-    ref.watch(latestExpiryDateStateProvider);
     // Activate rolling-sequence gap detection for this screen.
     ref.watch(auctionGapDetectedProvider);
+
+    ref.listen(auctionDetailsProvider(widget.auctionId), (previous, next) {
+      final expiry = next.valueOrNull?.expiryDate;
+      if (expiry != null && !_isAuctionEnded) {
+        _scheduleFailSafeTimer(expiry);
+      }
+    });
 
     ref.listen(userCountUpdateProvider, (previous, next) {});
 
@@ -342,10 +369,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       if (event != null) {
         setState(() {
           auction = event;
-          if (event.liveStartDate != null) {
-            _scheduleFailSafeTimer(event.liveStartDate!);
-          }
         });
+        if (event.liveStartDate != null) {
+          _scheduleFailSafeTimer(event.liveStartDate!);
+        }
         AppFunctions.showSnackBar(
           context: context,
           message: 'preAuctionPhase'.tr(),
@@ -362,16 +389,52 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         _cancelFailSafeTimer();
         //_wasLiveWhenJoined = true;
 
-        // ── Record the winner for the just-ended product so the badge
-        //    Builder can show "You Won" / "You Lost" / "Sold" correctly,
-        //    even when item.bids is stale from the initial API load. ──
-        final endedProductId = auction.currentProductId;
-        if (endedProductId != null && event.winner != null) {
-          _productWinners[endedProductId] = event.winner!;
+        // Record sale/winner for the just-ended product. Sale is isSold only —
+        // a winner is attached by the server only when reserve was met.
+        final endedProductId =
+            event.endedProductId ?? auction.currentProductId;
+        final sold = lotWasSold(
+          eventIsSold: event.isSold,
+          hasWinner: event.winner != null,
+        );
+
+        if (endedProductId != null) {
+          _productSold[endedProductId] = sold;
+          if (sold && event.winner != null) {
+            _productWinners[endedProductId] = event.winner!;
+          }
+          final products = auction.auctionProducts;
+          if (products != null) {
+            for (final p in products) {
+              if (p.id == endedProductId) {
+                p.isSold = sold;
+                p.isExpired = !sold;
+              }
+            }
+          }
         }
 
-        // Sound / notification — uses current auction state before it changes
-        if (event.winner != null) {
+        final didIParticipate =
+            (endedProductId != null &&
+                _productParticipants.contains(endedProductId)) ||
+            (auction.auctionBids?.any(
+                  (b) =>
+                      b.productId == endedProductId &&
+                      b.userId == CachedVariables.userId,
+                ) ??
+                false);
+
+        final kind = resolveLotResult(
+          isEnded: true,
+          isLive: false,
+          isSold: sold,
+          currentUserId: CachedVariables.userId,
+          winnerUserId: event.winner?.id,
+          userParticipated: didIParticipate,
+        );
+        _showLotResultBanner(kind);
+
+        if (sold && event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
             _safePlay('sounds/win_bid_notification.wav');
             final lang = AppLocaleSync.uiLanguageCode;
@@ -387,25 +450,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
               title: AppStrings.youWon.tr(),
               body: '${AppStrings.youWon.tr()} $productName',
             );
-          } else {
-            // Bid-participation check runs here (before setState) so it
-            // uses the still-current productId, keeping it out of the
-            // setState callback.
-            final didIParticipate =
-                _productParticipants.contains(endedProductId) ||
-                (auction.auctionBids?.any(
-                  (b) =>
-                      b.productId == auction.currentProductId &&
-                      b.userId == CachedVariables.userId,
-                ) ??
-                false);
-            if (didIParticipate) {
-              _safePlay('sounds/lose_notification.wav');
-            }
+          } else if (didIParticipate) {
+            _safePlay('sounds/lose_notification.wav');
           }
-
-          // No blocking win/lose/"منتهي" popup — badges + bottom controls
-          // already show outcome; popups interrupt live bidding flow.
         }
 
         if (event.nextItem != null) {
@@ -413,8 +460,6 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           // Keeping CPU work out of setState ensures the callback itself is
           // just plain field assignments — the cheapest possible rebuild.
           final nextItem = event.nextItem!;
-          final newPrice = num.tryParse(nextItem.actualPrice ?? '0') ?? 0;
-          final newMinBid = num.tryParse(nextItem.minBidPrice ?? '0') ?? 0;
           final newBidPrice = num.tryParse(nextItem.bidPrice ?? '0') ?? 0;
           final newExpiry = event.auction.expiryDate;
           final newImageUrl = nextItem.imageUrl;
@@ -434,9 +479,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
           setState(() {
             auction.currentProduct = nextItem.displayName;
             auction.currentProductId = nextItem.id;
-            auction.actualPrice = newPrice;
-            auction.minBidPrice = newMinBid;
             auction.bidPrice = newBidPrice;
+            // Live display floor = opening bidPrice. Do not copy reserve/estimate.
+            auction.actualPrice = newBidPrice;
+            auction.minBidPrice = null;
             if (newImageUrl != null) auction.imageUrl = newImageUrl;
             if (newExpiry != null) auction.expiryDate = newExpiry;
             _isAuctionEnded = false;
@@ -525,6 +571,15 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       }
     });
 
+    ref.listen(timerExtendedEventProvider, (previous, next) {
+      final expiry = next.valueOrNull?.expiryDate;
+      if (expiry == null || !mounted) return;
+      setState(() {
+        auction.expiryDate = expiry;
+      });
+      _scheduleFailSafeTimer(expiry);
+    });
+
     // Listen for new bids to update timer and price
     ref.listen(newBidEventProvider, (previous, next) {
       final event = next.valueOrNull;
@@ -562,12 +617,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         setState(() {
           if (event.expiryDate != null) {
             auction.expiryDate = event.expiryDate;
-            _scheduleFailSafeTimer(event.expiryDate!); // Reschedule fail-safe
           }
           if (event.currentPrice != null) {
             auction.actualPrice = event.currentPrice;
           }
         });
+        if (event.expiryDate != null) {
+          _scheduleFailSafeTimer(event.expiryDate!);
+        }
       }
     });
 
@@ -585,30 +642,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         orElse: () => auction.auctionProducts![0],
       );
 
-      // Update pricing fields on the main auction object for the UI to use
+      // Public opening only — never copy reserve or estimate onto live auction state.
       if (currentProductObj.productAr != null ||
           currentProductObj.productEn != null) {
-        if (currentProductObj.minBidPrice != null) {
-          auction.minBidPrice =
-              num.tryParse(currentProductObj.minBidPrice!) ??
-              auction.minBidPrice;
-        }
         if (currentProductObj.bidPrice != null) {
           auction.bidPrice =
               num.tryParse(currentProductObj.bidPrice!) ?? auction.bidPrice;
         }
-
-        if (currentProductObj.actualPrice != null) {
-          auction.actualPrice =
-              num.tryParse(currentProductObj.actualPrice!) ??
-              auction.actualPrice;
-        }
       }
-    }
-
-    // Initial Fail-Safe Schedule
-    if (auction.expiryDate != null && !_isAuctionEnded) {
-      _scheduleFailSafeTimer(auction.expiryDate!);
     }
 
     // Initialize local state if not already set (for initial load)
@@ -618,23 +659,21 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
         (auction.isExpired == true ||
             auction.isCanceled == true ||
             auction.winningUserId != null)) {
-      _isAuctionEnded = true;
-      //_apiLoadedAsEnded = true;
-      _winnerId = auction.winningUserId;
-      _winnerName = auction.user?.name;
-      _finalPrice = auction.actualPrice;
-
-      // Auto-select the last item on the products list if the auction has ended upon load
-      if (auction.auctionProducts != null &&
-          auction.auctionProducts!.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _selectedProduct == null) {
-            setState(() {
-              _selectedProduct = auction.auctionProducts!.last;
-            });
+      final endedAuction = auction;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _isAuctionEnded) return;
+        setState(() {
+          _isAuctionEnded = true;
+          _winnerId = endedAuction.winningUserId;
+          _winnerName = endedAuction.user?.name;
+          _finalPrice = endedAuction.actualPrice;
+          if (_selectedProduct == null &&
+              endedAuction.auctionProducts != null &&
+              endedAuction.auctionProducts!.isNotEmpty) {
+            _selectedProduct = endedAuction.auctionProducts!.last;
           }
         });
-      }
+      });
     }
 
     // Attempt to scroll to current item on initial load only
@@ -909,96 +948,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                                           return const SizedBox.shrink();
                                         }
 
-                                        // If we are here, it's either Past (Sold/Expired) or auction ended completely
-
-                                        late String badgeText;
-                                        Color badgeColor = Colors.grey;
-                                        final currentUserId =
-                                            CachedVariables.userId;
-
-                                        // ── Primary source: live event winner data ──
-                                        // _productWinners is populated from auctionItemEnded
-                                        // events and is always authoritative for items that
-                                        // ended during this session.
-                                        final liveWinner =
-                                            item.id != null
-                                                ? _productWinners[item.id]
-                                                : null;
-
-                                        if (liveWinner != null) {
-                                          // We have authoritative winner info from the live event
-                                          if (liveWinner.id == currentUserId) {
-                                            badgeText = AppStrings.youWon.tr();
-                                            badgeColor = Colors.green;
-                                          } else {
-                                            // Check if current user participated
-                                            final didParticipate =
-                                                (item.id != null &&
-                                                    _productParticipants
-                                                        .contains(item.id)) ||
-                                                (item.bids?.any(
-                                                      (b) =>
-                                                          b.userId ==
-                                                          currentUserId,
-                                                    ) ??
-                                                    false);
-                                            if (didParticipate) {
-                                              badgeText =
-                                                  AppStrings.youLost.tr();
-                                              badgeColor = Colors.red;
-                                            } else {
-                                              badgeText =
-                                                  AppStrings.sold.tr();
-                                              badgeColor = Colors.grey;
-                                            }
-                                          }
-                                        } else {
-                                          // ── Fallback: per-product bids from API/socket ──
-                                          final productBids =
-                                              item.bids ?? [];
-
-                                          AuctionBid? highestBid;
-                                          if (productBids.isNotEmpty) {
-                                            final sorted = [...productBids]
-                                              ..sort(
-                                                (a, b) =>
-                                                    (b.bid ?? 0).compareTo(
-                                                      a.bid ?? 0,
-                                                    ),
-                                              );
-                                            highestBid = sorted.first;
-                                          }
-
-                                          if (highestBid != null) {
-                                            if (highestBid.userId ==
-                                                currentUserId) {
-                                              badgeText =
-                                                  AppStrings.youWon.tr();
-                                              badgeColor = Colors.green;
-                                            } else {
-                                              final didParticipate =
-                                                  productBids.any(
-                                                    (b) =>
-                                                        b.userId ==
-                                                        currentUserId,
-                                                  );
-                                              if (didParticipate) {
-                                                badgeText =
-                                                    AppStrings.youLost.tr();
-                                                badgeColor = Colors.red;
-                                              } else {
-                                                badgeText =
-                                                    AppStrings.sold.tr();
-                                                badgeColor = Colors.grey;
-                                              }
-                                            }
-                                          } else {
-                                            // No bids at all - expired
-                                            badgeText =
-                                                AppStrings.expired.tr();
-                                            badgeColor = Colors.grey;
-                                          }
-                                        }
+                                        // Past lot — sold only if isSold, otherwise unsold.
+                                        final kind = _endedLotResult(item);
+                                        final badgeText =
+                                            lotResultStringKey(kind).tr();
+                                        final badgeColor = lotResultColor(kind);
 
                                         return Positioned(
                                           bottom: 0,
@@ -1040,6 +994,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                           auction: auction,
                           activeProduct: activeProduct,
                           isAuctionEnded: _isAuctionEnded,
+                          isSoldOverride: activeProduct?.id != null
+                              ? _productSold[activeProduct!.id]
+                              : null,
+                          winnerUserIdOverride: activeProduct?.id != null
+                              ? _productWinners[activeProduct!.id]?.id
+                              : null,
+                          userParticipatedOverride:
+                              activeProduct?.id != null &&
+                                  _productParticipants
+                                      .contains(activeProduct!.id)
+                              ? true
+                              : null,
                         );
 
                         return Column(
@@ -1121,6 +1087,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
                 ),
               ),
             ),
+            if (_lotResult != null && _lotResult != LotResultKind.none)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: LotResultBanner(
+                  kind: _lotResult!,
+                  onDismiss: () {
+                    _lotResultTimer?.cancel();
+                    setState(() => _lotResult = null);
+                  },
+                ),
+              ),
             // Bidding Controls (Fixed at bottom)
             AuctionBiddingControlsWidget(
               auction: auction,
@@ -1245,6 +1222,49 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     );
   }
 
+  void _showLotResultBanner(LotResultKind kind) {
+    if (kind == LotResultKind.none) return;
+    _lotResultTimer?.cancel();
+    setState(() => _lotResult = kind);
+    _lotResultTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _lotResult = null);
+    });
+  }
+
+  LotResultKind _endedLotResult(AuctionProducts item) {
+    final liveSold = item.id != null ? _productSold[item.id] : null;
+    final liveWinner = item.id != null ? _productWinners[item.id] : null;
+    final isSold = lotWasSold(
+      productIsSold: item.isSold,
+      eventIsSold: liveSold,
+      hasWinner: liveWinner != null,
+    );
+
+    int? winnerId = liveWinner?.id;
+    if (winnerId == null && isSold) {
+      final productBids = item.bids ?? [];
+      if (productBids.isNotEmpty) {
+        final sorted = [...productBids]
+          ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
+        winnerId = sorted.first.userId;
+      }
+    }
+
+    final currentUserId = CachedVariables.userId;
+    final didParticipate =
+        (item.id != null && _productParticipants.contains(item.id)) ||
+        (item.bids?.any((b) => b.userId == currentUserId) ?? false);
+
+    return resolveLotResult(
+      isEnded: true,
+      isLive: false,
+      isSold: isSold,
+      currentUserId: currentUserId,
+      winnerUserId: winnerId,
+      userParticipated: didParticipate,
+    );
+  }
+
   void _scrollToCurrentItem() {
     if (!mounted ||
         auction.auctionProducts == null ||
@@ -1280,21 +1300,35 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   Timer? _failSafeTimer;
 
   void _scheduleFailSafeTimer(DateTime expiry) {
-    _cancelFailSafeTimer(); // Cancel any existing timer
-
     final now = DateTime.now();
     // Schedule for expiry + 2 seconds
     final difference = expiry.difference(now) + const Duration(seconds: 2);
 
     if (difference.isNegative) {
-      // If already past due + 2s, trigger immediately (or maybe connection just established)
-      // But we should be careful not to trigger if we just loaded and it's old.
-      // Let's only trigger if it's "reasonably" close, effectively a poll.
-      // For now, if it's past, trigger it.
+      if (_failSafeFiredForExpiry != null &&
+          _failSafeFiredForExpiry!.isAtSameMomentAs(expiry)) {
+        return;
+      }
+      _failSafeFiredForExpiry = expiry;
+      _cancelFailSafeTimer();
       _triggerFailSafe();
-    } else {
-      _failSafeTimer = Timer(difference, _triggerFailSafe);
+      return;
     }
+
+    if (_scheduledFailSafeExpiry != null &&
+        _scheduledFailSafeExpiry!.isAtSameMomentAs(expiry) &&
+        _failSafeTimer != null &&
+        _failSafeTimer!.isActive) {
+      return;
+    }
+
+    _cancelFailSafeTimer();
+    _failSafeFiredForExpiry = null;
+    _scheduledFailSafeExpiry = expiry;
+    _failSafeTimer = Timer(difference, () {
+      _failSafeFiredForExpiry = expiry;
+      _triggerFailSafe();
+    });
   }
 
   void _cancelFailSafeTimer() {

@@ -10,6 +10,15 @@ library;
 
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
+DateTime? parseSocketDate(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value, isUtc: true).toLocal();
+  }
+  return DateTime.tryParse(value.toString());
+}
+
 /// Payload for the 'userCountUpdate' event.
 /// 
 /// Informs the UI how many users are currently 'active' in a specific auction room.
@@ -528,9 +537,7 @@ class BidPlacedEvent {
                .toList() ??
           [],
       currentPrice: json['currentPrice'] as num?,
-      expiryDate: json['expiryDate'] != null
-          ? DateTime.parse(json['expiryDate'] as String)
-          : null,
+      expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       seq: json['seq'] as int?,
     );
   }
@@ -551,6 +558,21 @@ class BidPlacedEvent {
       'BidPlacedEvent(newBid: ${newBid.bid}, expiryDate: $expiryDate, seq: $seq)';
 }
 
+/// Payload for `timerExtended` (anti-snipe or admin bump).
+class TimerExtendedEvent {
+  final DateTime? expiryDate;
+  final int? seq;
+
+  const TimerExtendedEvent({this.expiryDate, this.seq});
+
+  factory TimerExtendedEvent.fromJson(Map<String, dynamic> json) {
+    return TimerExtendedEvent(
+      expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
+      seq: json['seq'] as int?,
+    );
+  }
+}
+
 /// Payload for the 'auctionItemEnded' event.
 /// 
 /// Signifies the completion of an individual unit within a multi-item auction,
@@ -563,10 +585,20 @@ class AuctionItemEndedEvent {
   final AuctionProducts? nextItem;
   
   /// Identity of the winner for the specific unit that just closed.
+  /// Null when reserve was not met (lot unsold) even if bids existed.
   final SocketUser? winner;
   
   /// Sequence number for causality tracking.
   final int? seq;
+
+  /// Explicit sale flag from the server (`isSold` / `is_sold`).
+  final bool? isSold;
+
+  /// Product that just closed (`endedProductId` / `ended_product_id`).
+  final int? endedProductId;
+
+  /// Settlement reason (e.g. `reserve_not_met`). Never shown as a price.
+  final String? reason;
 
   /// Default constructor for multi-item sequence transitions.
   const AuctionItemEndedEvent({
@@ -574,10 +606,25 @@ class AuctionItemEndedEvent {
     this.nextItem,
     this.winner,
     this.seq,
+    this.isSold,
+    this.endedProductId,
+    this.reason,
   });
 
   /// Parses transition metadata from server emitters.
   factory AuctionItemEndedEvent.fromJson(Map<String, dynamic> json) {
+    final rawEnded =
+        json['endedProductId'] ??
+        json['ended_product_id'] ??
+        json['productId'] ??
+        json['product_id'];
+    int? endedId;
+    if (rawEnded is int) {
+      endedId = rawEnded;
+    } else if (rawEnded != null) {
+      endedId = int.tryParse(rawEnded.toString());
+    }
+
     return AuctionItemEndedEvent(
       auction: AuctionModel.fromJson(json['auction'] as Map<String, dynamic>),
       nextItem: json['nextItem'] != null
@@ -587,6 +634,9 @@ class AuctionItemEndedEvent {
           ? SocketUser.fromJson(json['winner'] as Map<String, dynamic>)
           : null,
       seq: json['seq'] as int?,
+      isSold: parseAuctionJsonBool(json['isSold'] ?? json['is_sold']),
+      endedProductId: endedId,
+      reason: json['reason'] as String?,
     );
   }
 
@@ -597,12 +647,15 @@ class AuctionItemEndedEvent {
       'nextItem': nextItem?.toJson(),
       'winner': winner?.toJson(),
       if (seq != null) 'seq': seq,
+      if (isSold != null) 'isSold': isSold,
+      if (endedProductId != null) 'endedProductId': endedProductId,
+      if (reason != null) 'reason': reason,
     };
   }
 
   @override
   String toString() =>
-      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.displayName}, winner: ${winner?.name}, seq: $seq)';
+      'AuctionItemEndedEvent(auctionId: ${auction.id}, nextItem: ${nextItem?.displayName}, winner: ${winner?.name}, isSold: $isSold, endedProductId: $endedProductId, seq: $seq)';
 }
 
 /// Server feedback when a user's local bid attempt is rejected.
@@ -688,9 +741,7 @@ class AuctionStateUpdateEvent {
   factory AuctionStateUpdateEvent.fromJson(Map<String, dynamic> json) {
     return AuctionStateUpdateEvent(
       auctionId: json['auctionId'] as int,
-      expiryDate: json['expiryDate'] != null
-          ? DateTime.parse(json['expiryDate'] as String)
-          : null,
+      expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       currentProductId: json['currentProductId'] as int?,
       products: (json['products'] as List<dynamic>?)
                ?.map((e) => StateUpdateProduct.fromJson(e as Map<String, dynamic>))

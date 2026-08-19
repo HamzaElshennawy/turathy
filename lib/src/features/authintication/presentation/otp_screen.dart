@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/common_widgets/primary_button.dart';
 import '../../../core/common_widgets/responsive_center.dart';
 import '../../../core/constants/app_functions/app_functions.dart';
+import '../../../core/helper/keyboard_focus.dart';
 import '../../../core/constants/app_images/app_images.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import 'auth_controller.dart';
@@ -62,6 +63,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     _otpFocusNode.addListener(() {
       if (mounted) {
         setState(() {});
+        if (_otpFocusNode.hasFocus) {
+          SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+        }
       }
     });
     _challengeToken = widget.challengeToken;
@@ -69,7 +73,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     _fallbackMethod = widget.fallbackMethod;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _otpFocusNode.requestFocus();
+        showKeyboardFor(_otpFocusNode);
       }
     });
   }
@@ -82,7 +86,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   void _onOtpChanged(String value) {
-    final digitsOnly = value.replaceAll(RegExp(r'\D'), '');
+    final digitsOnly = normalizeToAsciiDigits(value);
     final trimmed = digitsOnly.length > _otpLength
         ? digitsOnly.substring(0, _otpLength)
         : digitsOnly;
@@ -239,73 +243,83 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     key: controller.formKey,
                     child: Directionality(
                       textDirection: ui.TextDirection.ltr,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Positioned.fill(
-                            child: Opacity(
-                              opacity: 0.01,
-                              child: TextFormField(
-                                controller: _otpTextController,
-                                focusNode: _otpFocusNode,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                autofocus: true,
-                                autofillHints: const [AutofillHints.oneTimeCode],
-                                enableInteractiveSelection: false,
-                                showCursor: false,
-                                textDirection: ui.TextDirection.ltr,
-                                inputFormatters: [
-                                  LengthLimitingTextInputFormatter(_otpLength),
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                onChanged: _onOtpChanged,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: () => _otpFocusNode.requestFocus(),
-                            child: Row(
+                      child: SizedBox(
+                        height: 55,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: List.generate(_otpLength, (index) {
                                 final otp = _otpTextController.text;
-                                final digit = index < otp.length ? otp[index] : '';
+                                final digit =
+                                    index < otp.length ? otp[index] : '';
                                 final isActive = _otpFocusNode.hasFocus &&
                                     ((otp.length == index) ||
                                         (otp.length == _otpLength &&
                                             index == _otpLength - 1));
 
-                                return Container(
-                                  width: 45,
-                                  height: 55,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isActive
-                                          ? Theme.of(context).primaryColor
-                                          : Colors.grey.shade300,
+                                return IgnorePointer(
+                                  child: Container(
+                                    width: 45,
+                                    height: 55,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isActive
+                                            ? Theme.of(context).primaryColor
+                                            : Colors.grey.shade300,
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    digit,
-                                    textAlign: TextAlign.center,
-                                    textDirection: ui.TextDirection.ltr,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
+                                    child: Text(
+                                      digit,
+                                      textAlign: TextAlign.center,
+                                      textDirection: ui.TextDirection.ltr,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 );
                               }),
                             ),
-                          ),
-                        ],
+                            Positioned.fill(
+                              child: TextFormField(
+                                key: const Key('otp_input_field'),
+                                controller: _otpTextController,
+                                focusNode: _otpFocusNode,
+                                keyboardType: TextInputType.number,
+                                textInputAction: TextInputAction.done,
+                                autofocus: true,
+                                hintLocales: [Localizations.localeOf(context)],
+                                autofillHints: const [
+                                  AutofillHints.oneTimeCode,
+                                ],
+                                enableInteractiveSelection: false,
+                                showCursor: false,
+                                textDirection: ui.TextDirection.ltr,
+                                style: const TextStyle(
+                                  color: Colors.transparent,
+                                  fontSize: 1,
+                                ),
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(_otpLength),
+                                  AsciiDigitsInputFormatter(),
+                                ],
+                                onTap: () => showKeyboardFor(_otpFocusNode),
+                                onChanged: _onOtpChanged,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  filled: true,
+                                  fillColor: Colors.transparent,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

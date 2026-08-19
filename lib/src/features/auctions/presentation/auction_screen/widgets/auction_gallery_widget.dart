@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
+import 'package:turathy/src/core/common_widgets/cached_lot_image.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 
@@ -53,11 +54,10 @@ class _AuctionGalleryWidgetState extends State<AuctionGalleryWidget> {
                           id: widget.images[index].hashCode,
                         );
                       },
-                      child: Image.network(
-                        widget.images[index],
+                      child: CachedLotImage(
+                        imageUrl: widget.images[index],
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.error),
+                        memCacheWidth: 900,
                       ),
                     );
                   },
@@ -187,9 +187,10 @@ class _AuctionGalleryWidgetState extends State<AuctionGalleryWidget> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.network(
-                      widget.images[index],
+                    child: CachedLotImage(
+                      imageUrl: widget.images[index],
                       fit: BoxFit.cover,
+                      memCacheWidth: 200,
                     ),
                   ),
                 ),

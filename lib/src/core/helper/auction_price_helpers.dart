@@ -34,19 +34,14 @@ int displayLotNumber(AuctionProducts product, {required int fallbackIndex}) {
 }
 
 /// Opening floor for live bidding controls (auction-level or selected product).
+/// Never uses reserve (`minBidPrice`).
 num openingPriceFromAuction({
   required num? auctionBidPrice,
   AuctionProducts? selectedProduct,
-  num? auctionMinBidPriceLegacy,
 }) {
   if (selectedProduct != null) {
     final fromProduct = publicStartingPrice(selectedProduct);
     if (fromProduct > 0) return fromProduct;
-    // Admin / legacy payloads may still expose reserve; never preferred.
-    final legacy = parseMoney(selectedProduct.minBidPrice);
-    if (legacy > 0) return legacy;
   }
-  final fromAuction = auctionBidPrice ?? 0;
-  if (fromAuction > 0) return fromAuction;
-  return auctionMinBidPriceLegacy ?? 0;
+  return auctionBidPrice ?? 0;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
+import 'package:turathy/src/core/common_widgets/cached_lot_image.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 
 class AuctionMainImageWidget extends StatelessWidget {
@@ -50,11 +51,10 @@ class AuctionMainImageWidget extends StatelessWidget {
                       initialIndex: index,
                     );
                   },
-                  child: Image.network(
-                    images[index],
+                  child: CachedLotImage(
+                    imageUrl: images[index],
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.error),
+                    memCacheWidth: 900,
                   ),
                 );
               },

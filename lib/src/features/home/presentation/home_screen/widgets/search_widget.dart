@@ -22,6 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/core/helper/keyboard_focus.dart';
 import 'package:turathy/src/features/search/presentation/widgets/filter_widget/filter_widget.dart';
 import '../controllers/search_provider.dart';
 
@@ -37,6 +38,7 @@ class SearchWidget extends ConsumerStatefulWidget {
 class _SearchWidgetState extends ConsumerState<SearchWidget> {
   /// Local controller for handling standard text input.
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
 
   /// Internal timer used to throttle the [searchQueryProvider] updates.
   Timer? _debounce;
@@ -44,6 +46,7 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
   @override
   void dispose() {
     _controller.dispose();
+    _searchFocus.dispose();
     _debounce?.cancel(); // Essential: prevent timers from firing after unmount
     super.dispose();
   }
@@ -90,6 +93,10 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
                   child: TextField(
                     textAlignVertical: TextAlignVertical.center,
                     controller: _controller,
+                    focusNode: _searchFocus,
+                    keyboardType: TextInputType.text,
+                    hintLocales: [Localizations.localeOf(context)],
+                    onTap: () => showKeyboardFor(_searchFocus),
                     onChanged: (val) {
                       _onSearchChanged(val);
                       setState(() {}); // Logic: Refresh to show/hide 'clear' button

@@ -231,6 +231,9 @@ class AppStrings {
   static const String cityRequired = "cityRequired";
   static const String country = "country";
   static const String countryRequired = "countryRequired";
+  static const String selectCountry = "selectCountry";
+  static const String searchCountry = "searchCountry";
+  static const String noCountryFound = "noCountryFound";
   static const String continueToPayment = "continueToPayment";
   static const String itemDetails = "itemDetails";
   static const String itemDescription = "itemDescription";
@@ -349,6 +352,7 @@ class AppStrings {
   static const String youWon = 'youWon';
   static const String youLost = 'youLost';
   static const String sold = 'sold';
+  static const String unsold = 'unsold';
   static const String expired = 'expired';
   static const String noBidsYet = 'noBidsYet';
   static const String noResultsFound = 'noResultsFound';

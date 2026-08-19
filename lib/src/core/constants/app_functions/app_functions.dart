@@ -12,6 +12,7 @@ import 'dart:developer';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -213,13 +214,38 @@ abstract class AppFunctions {
     Navigator.push(
       context,
       MaterialPageRoute(
-        barrierDismissible: true,
+        fullscreenDialog: true,
         builder: (context) => _ZoomableImageViewer(
           urls: urls,
           initialIndex: start,
           heroTagBase: id,
         ),
       ),
+    );
+  }
+}
+
+/// Circular close control used on Android and iOS (48×48 tap target, above PhotoView).
+class ZoomCloseButton extends StatelessWidget {
+  static const buttonKey = Key('zoom_close_button');
+
+  final VoidCallback onPressed;
+
+  const ZoomCloseButton({super.key, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      key: buttonKey,
+      tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+      style: IconButton.styleFrom(
+        backgroundColor: const Color(0x99000000),
+        foregroundColor: Colors.white,
+        tapTargetSize: MaterialTapTargetSize.padded,
+        minimumSize: const Size(48, 48),
+      ),
+      icon: const Icon(Icons.close),
+      onPressed: onPressed,
     );
   }
 }
@@ -261,54 +287,71 @@ class _ZoomableImageViewerState extends State<_ZoomableImageViewer> {
   Widget build(BuildContext context) {
     final multi = widget.urls.length > 1;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: multi
-            ? Text(
-                '${_index + 1} / ${widget.urls.length}',
-                style: const TextStyle(fontSize: 16, color: Colors.white70),
-              )
-            : null,
-        centerTitle: true,
-      ),
-      body: multi
-          ? PhotoViewGallery.builder(
-              pageController: _pageController,
-              itemCount: widget.urls.length,
-              onPageChanged: (i) => setState(() => _index = i),
-              backgroundDecoration: const BoxDecoration(color: Colors.black),
-              builder: (context, index) {
-                return PhotoViewGalleryPageOptions(
-                  imageProvider: CachedNetworkImageProvider(widget.urls[index]),
-                  heroAttributes: PhotoViewHeroAttributes(
-                    tag: '${widget.heroTagBase}_zoom_$index',
-                    transitionOnUserGestures: true,
-                  ),
-                  minScale: PhotoViewComputedScale.contained,
-                  maxScale: PhotoViewComputedScale.covered * 4,
-                  initialScale: PhotoViewComputedScale.contained,
-                );
-              },
-            )
-          : PhotoView(
-              heroAttributes: PhotoViewHeroAttributes(
-                tag: widget.heroTagBase,
-                transitionOnUserGestures: true,
-              ),
-              backgroundDecoration: const BoxDecoration(color: Colors.black),
-              imageProvider: CachedNetworkImageProvider(widget.urls.first),
-              minScale: PhotoViewComputedScale.contained,
-              maxScale: PhotoViewComputedScale.covered * 4,
-              initialScale: PhotoViewComputedScale.contained,
+    final photo = multi
+        ? PhotoViewGallery.builder(
+            pageController: _pageController,
+            itemCount: widget.urls.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            builder: (context, index) {
+              return PhotoViewGalleryPageOptions(
+                imageProvider:
+                    CachedNetworkImageProvider(widget.urls[index]),
+                heroAttributes: PhotoViewHeroAttributes(
+                  tag: '${widget.heroTagBase}_zoom_$index',
+                  transitionOnUserGestures: true,
+                ),
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 4,
+                initialScale: PhotoViewComputedScale.contained,
+              );
+            },
+          )
+        : PhotoView(
+            heroAttributes: PhotoViewHeroAttributes(
+              tag: widget.heroTagBase,
+              transitionOnUserGestures: true,
             ),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            imageProvider: CachedNetworkImageProvider(widget.urls.first),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 4,
+            initialScale: PhotoViewComputedScale.contained,
+          );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.black,
+        systemNavigationBarColor: Colors.black,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          automaticallyImplyLeading: false,
+          systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.black,
+          ),
+          leading: Padding(
+            padding: const EdgeInsets.all(4),
+            child: ZoomCloseButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+          title: multi
+              ? Text(
+                  '${_index + 1} / ${widget.urls.length}',
+                  style: const TextStyle(fontSize: 16, color: Colors.white70),
+                )
+              : null,
+          centerTitle: true,
+        ),
+        body: photo,
+      ),
     );
   }
 }

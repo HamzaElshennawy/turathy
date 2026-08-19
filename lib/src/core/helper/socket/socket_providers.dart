@@ -125,6 +125,13 @@ final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   });
 });
 
+final timerExtendedEventProvider = StreamProvider.autoDispose<TimerExtendedEvent>((ref) {
+  final service = ref.watch(socketServiceProvider);
+  return service.getEventStream<TimerExtendedEvent>('timerExtended', (data) {
+    return TimerExtendedEvent.fromJson(data as Map<String, dynamic>);
+  });
+});
+
 /// Utility to reset transient bid states when navigating between distinct auctions.
 void resetNewBidStream(WidgetRef ref) {
   ref.read(currentBidStateProvider.notifier).state = null;

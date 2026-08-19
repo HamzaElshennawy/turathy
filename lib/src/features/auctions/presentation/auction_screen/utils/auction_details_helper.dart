@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/helper/lot_result_status.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
-import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 
 class AuctionStatusBadge {
   final String? label;
@@ -21,6 +21,9 @@ class AuctionDetailsHelper {
     required AuctionModel auction,
     required AuctionProducts? activeProduct,
     required bool isAuctionEnded,
+    bool? isSoldOverride,
+    int? winnerUserIdOverride,
+    bool? userParticipatedOverride,
   }) {
     String? statusLabel;
     Color? statusColor;
@@ -85,26 +88,30 @@ class AuctionDetailsHelper {
           highestBid = productBids.first;
         }
 
-        if (highestBid != null) {
-          if (highestBid.userId == currentUserId) {
-            statusLabel = AppStrings.youWon.tr();
-            statusColor = Colors.green;
-          } else {
-            final didIBid = productBids.any(
-              (b) => b.userId == currentUserId,
-            );
-            if (didIBid) {
-              statusLabel = AppStrings.youLost.tr();
-              statusColor = Colors.red;
-            } else {
-              statusLabel = AppStrings.sold.tr();
-              statusColor = Colors.red;
-            }
-          }
-        } else {
-          statusLabel = AppStrings.sold.tr();
-          statusColor = Colors.grey;
+        final isSold = lotWasSold(
+          productIsSold: activeProduct.isSold,
+          eventIsSold: isSoldOverride,
+          hasWinner: winnerUserIdOverride != null,
+        );
+
+        int? winnerId = winnerUserIdOverride;
+        if (winnerId == null && isSold) {
+          winnerId = highestBid?.userId;
         }
+
+        final didIBid = userParticipatedOverride ??
+            productBids.any((b) => b.userId == currentUserId);
+
+        final kind = resolveLotResult(
+          isEnded: true,
+          isLive: false,
+          isSold: isSold,
+          currentUserId: currentUserId,
+          winnerUserId: winnerId,
+          userParticipated: didIBid,
+        );
+        statusLabel = lotResultStringKey(kind).tr();
+        statusColor = lotResultColor(kind);
       } else {
         if (auction.isPreAuction) {
           //statusLabel = 'preAuctionPhase'.tr();
@@ -112,8 +119,9 @@ class AuctionDetailsHelper {
         } else if (!isCurrentLiveProduct) {
           statusLabel = null;
         } else {
-          statusLabel = AppStrings.live.tr();
-          statusColor = Colors.red;
+          final kind = LotResultKind.live;
+          statusLabel = lotResultStringKey(kind).tr();
+          statusColor = lotResultColor(kind);
         }
       }
     }

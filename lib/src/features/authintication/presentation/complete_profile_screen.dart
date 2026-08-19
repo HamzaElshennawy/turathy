@@ -374,7 +374,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                                   _buildFieldLabel('name'.tr()),
                                   WhiteRoundedTextFormField(
                                     controller: _nameController,
-                                    keyboardType: TextInputType.name,
+                                    keyboardType: TextInputType.text,
                                     hintText: 'name',
                                     validator: (v) => null,
                                     // Highlight missing fields with orange borders

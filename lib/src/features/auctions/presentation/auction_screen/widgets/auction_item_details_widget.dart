@@ -1,13 +1,13 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/core/helper/share/item_share_helper.dart';
 import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_gallery_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_info_table_widget.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 
 class AuctionItemDetailsWidget extends ConsumerWidget {
@@ -22,11 +22,6 @@ class AuctionItemDetailsWidget extends ConsumerWidget {
     required this.isAuctionEnded,
   }) : super(key: key);
 
-  bool _isSameProduct(String? p1, String? p2) {
-    if (p1 == null || p2 == null) return false;
-    return p1.trim().toLowerCase() == p2.trim().toLowerCase();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
@@ -35,111 +30,13 @@ class AuctionItemDetailsWidget extends ConsumerWidget {
         // Image Gallery
         Builder(
           builder: (context) {
-            String? statusLabel;
-            Color? statusColor;
-            final int? currentUserId = CachedVariables.userId;
-
-            // Use local state if ended, otherwise check model
-            // Determine status for the ACTIVE product (displayed in big view)
-            if (activeProduct != null && activeProduct!.id != null) {
-              final bool isCurrentLiveProduct =
-                  auction.currentProductId != null
-                      ? activeProduct!.id == auction.currentProductId
-                      : _isSameProduct(
-                          activeProduct!.displayName,
-                          auction.currentProduct,
-                        );
-
-              // If it's the current live product, check if the AUCTION itself is ended/expired.
-              // If auction is live and this is the current product, no special "Sold" badge needed yet (unless expired).
-
-              bool isProductEnded = false;
-
-              if (auction.isPreAuction ||
-                  auction.startDate!.isAfter(DateTime.now())) {
-                isProductEnded = false;
-              } else if (isCurrentLiveProduct) {
-                isProductEnded =
-                    isAuctionEnded ||
-                    auction.isExpired == true ||
-                    auction.isCanceled == true;
-                if (auction.expiryDate != null &&
-                    auction.expiryDate!.isBefore(DateTime.now())) {
-                  isProductEnded = true;
-                }
-              } else {
-                final currentIndex = auction.auctionProducts!.indexWhere(
-                  (p) =>
-                      auction.currentProductId != null
-                          ? p.id == auction.currentProductId
-                          : _isSameProduct(
-                                p.displayName, auction.currentProduct) ||
-                              p.id == auction.currentProductId,
-                );
-                final activeIndex = auction.auctionProducts!.indexWhere(
-                  (p) => p.id == activeProduct!.id,
-                );
-                if (currentIndex != -1 &&
-                    activeIndex > currentIndex &&
-                    !isAuctionEnded &&
-                    auction.isExpired != true &&
-                    auction.isCanceled != true) {
-                  isProductEnded = false;
-                } else {
-                  isProductEnded = true;
-                }
-              }
-
-              if (isProductEnded) {
-                // Logic to determine Won/Lost/Sold for THIS product
-                final productBids =
-                    auction.auctionBids
-                        ?.where((b) => b.productId == activeProduct!.id)
-                        .toList() ??
-                    [];
-
-                AuctionBid? highestBid;
-                if (productBids.isNotEmpty) {
-                  productBids.sort(
-                    (a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0),
-                  );
-                  highestBid = productBids.first;
-                }
-
-                if (highestBid != null) {
-                  if (highestBid.userId == currentUserId) {
-                    statusLabel = AppStrings.youWon.tr();
-                    statusColor = Colors.green;
-                  } else {
-                    // Check if current user bid on this product
-                    final didIBid = productBids.any(
-                      (b) => b.userId == currentUserId,
-                    );
-                    if (didIBid) {
-                      statusLabel = AppStrings.youLost.tr();
-                      statusColor = Colors.red;
-                    } else {
-                      statusLabel = AppStrings.sold.tr();
-                      statusColor = Colors.red;
-                    }
-                  }
-                } else {
-                  // No bids — item ended without any bids
-                  statusLabel = AppStrings.sold.tr();
-                  statusColor = Colors.grey;
-                }
-              } else {
-                if (auction.isPreAuction) {
-                  //statusLabel = 'preAuctionPhase'.tr();
-                  //statusColor = Colors.blue;
-                } else if (!isCurrentLiveProduct) {
-                  statusLabel = null;
-                } else {
-                  statusLabel = AppStrings.live.tr();
-                  statusColor = Colors.red;
-                }
-              }
-            }
+            final badge = AuctionDetailsHelper.getStatusBadge(
+              auction: auction,
+              activeProduct: activeProduct,
+              isAuctionEnded: isAuctionEnded,
+            );
+            final statusLabel = badge.label;
+            final statusColor = badge.color;
 
             final List<String> imagesToShow = [];
 

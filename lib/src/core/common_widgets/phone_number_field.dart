@@ -1,27 +1,34 @@
 /// {@category Components}
 ///
 /// A specialized, locale-aware input field for international phone numbers.
-/// 
-/// This widget is specifically designed to handle the complexities of Middle Eastern 
-/// and African phone numbering plans. It provides:
-/// - **Filtered Country Picker**: Limited to Arab League nations as per project scope.
-/// - **Smart Hinting**: Contextually updates the visual '9XXXXXXXX' placeholder based on the 
+///
+/// This widget provides:
+/// - **All-country picker**: every ISO country with its dial code (Saudi Arabia favorited).
+/// - **App-language names**: Arabic or English country names follow the in-app language
+///   (not mixed native endonyms). Dial codes stay `+966`, `+93`, …
+/// - **Smart Hinting**: Contextually updates the visual placeholder based on the
 ///   selected country prefix (e.g., SA vs. EG).
-/// - **Automatic Normalization**: Uses [LeadingZeroFormatter] to strip trunk prefixes ('0') 
+/// - **Automatic Normalization**: Uses [LeadingZeroFormatter] to strip trunk prefixes ('0')
 ///   required for clean international dialing.
-/// - **LTR Enforcement**: Wraps the input in a Left-to-Right [Directionality] even in 
+/// - **LTR Enforcement**: Wraps the input in a Left-to-Right [Directionality] even in
 ///   RTL (Arabic) locales to ensure digits remain ordered correctly.
 library;
 
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart' as ui;
 import 'package:flutter/services.dart';
 
+import '../constants/app_strings/app_strings.dart';
+import '../helper/keyboard_focus.dart';
 import 'white_rounded_text_form_field.dart';
 
 /// An integrated phone number input consisting of a country prefix picker and a text field.
 class PhoneNumberField extends StatelessWidget {
+  /// Login / signup / forgot-password / complete-profile show every country.
+  static const bool showAllCountries = true;
+
   /// The controller managing the digit-only portion of the phone number.
   final TextEditingController controller;
 
@@ -43,7 +50,7 @@ class PhoneNumberField extends StatelessWidget {
   /// If provided, overrides the default rounded style with a custom decoration.
   final InputDecoration? decoration;
 
-  /// Creates a [PhoneNumberField] with pre-configured filters and formatters.
+  /// Creates a [PhoneNumberField] with pre-configured formatters.
   const PhoneNumberField({
     super.key,
     required this.controller,
@@ -57,27 +64,32 @@ class PhoneNumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Standardized picker for Arab countries
+    final lang = context.locale.languageCode;
     final picker = CountryCodePicker(
-      key: ValueKey(initialCountryCode),
+      key: ValueKey('$initialCountryCode-$lang'),
       onChanged: onCountryChanged,
       initialSelection: initialCountryCode,
       favorite: const ['+966', 'SA'],
-      // Restricted list based on the Turathy target market (Arab League)
-      countryFilter: const [
-        'SA', 'EG', 'AE', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'SY',
-        'IQ', 'PS', 'YE', 'SD', 'LY', 'TN', 'DZ', 'MA', 'MR', 'SO',
-        'DJ', 'KM',
-      ],
       showCountryOnly: false,
       showOnlyCountryWhenClosed: false,
       alignLeft: false,
       padding: EdgeInsets.zero,
+      headerText: AppStrings.selectCountry.tr(),
+      searchDecoration: InputDecoration(
+        hintText: AppStrings.searchCountry.tr(),
+        prefixIcon: const Icon(Icons.search),
+      ),
+      emptySearchBuilder: (_) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(AppStrings.noCountryFound.tr()),
+        ),
+      ),
     );
 
     // Enforce canonical phone formats (digits only, no trunk zeros)
     final inputFormatters = [
-      FilteringTextInputFormatter.digitsOnly,
+      AsciiDigitsInputFormatter(),
       LeadingZeroFormatter(),
     ];
 

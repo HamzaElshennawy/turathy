@@ -57,6 +57,7 @@ abstract class SocketConfig {
     
     // ── Real-time Updates ─────────────────────────────────────────────────────
     'newBid',               // Incoming bid from any participant
+    'timerExtended',        // Anti-snipe / admin lot timer bump
     'userCountUpdate',      // Number of active viewers updated
     'newComment',           // Social commentary from other users
     'auctionSync',          // State synchronization for late-joiners

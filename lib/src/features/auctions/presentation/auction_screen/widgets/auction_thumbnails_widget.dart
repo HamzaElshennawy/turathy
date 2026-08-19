@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:turathy/src/core/common_widgets/cached_lot_image.dart';
 import 'package:turathy/src/core/constants/app_sizes.dart';
 
 class AuctionThumbnailsWidget extends StatelessWidget {
@@ -39,15 +40,14 @@ class AuctionThumbnailsWidget extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.network(
-                  images[index],
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.error),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: CachedLotImage(
+                    imageUrl: images[index],
+                    fit: BoxFit.cover,
+                    memCacheHeight: 160,
+                  ),
                 ),
-              ),
             ),
           );
         },

@@ -94,7 +94,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   Expanded(
                     child: Consumer(builder: (context, ref, child) {
                       return WhiteRoundedTextFormField(
-                        readOnly: true,
+                        key: const Key('auction_search_field'),
                         controller: ref
                             .read(filterWidgetControllerProvider.notifier)
                             .searchController,

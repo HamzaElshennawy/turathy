@@ -24,6 +24,7 @@ import '../cache/cached_variables.dart';
 import '../analytics/analytics_service.dart';
 import '../locale/app_locale_sync.dart';
 import 'notification_prefs.dart';
+import 'live_room_visibility.dart';
 import 'package:turathy/src/routing/app_router.dart';
 import 'package:turathy/src/routing/rout_constants.dart';
 import 'dart:convert';
@@ -248,6 +249,15 @@ class FCMService {
     if (localized.title.isEmpty && localized.body.isEmpty) return;
 
     final type = NotificationPrefs.resolveType(data);
+    final typeUpper = (type ?? '').trim().toUpperCase();
+    if (LiveRoomVisibility.isViewing.value &&
+        (typeUpper == 'NEW_BID' ||
+            typeUpper == 'OUTBID' ||
+            typeUpper == 'AUCTION_ENDING_SOON')) {
+      log('Skipped live-room heads-up type=$typeUpper');
+      return;
+    }
+
     final allowed = await NotificationPrefs.shouldShowType(type);
     if (!allowed) {
       log('Suppressed foreground notification type=$type by user prefs');

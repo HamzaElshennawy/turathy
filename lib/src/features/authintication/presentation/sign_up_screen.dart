@@ -135,7 +135,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             const SizedBox(height: 8),
                             WhiteRoundedTextFormField(
                               controller: controller.nameController,
-                              keyboardType: TextInputType.name,
+                              keyboardType: TextInputType.text,
                               validator: Validators.required,
                               hintText: AppStrings.name,
                               prefixIcon: const Icon(Icons.person),

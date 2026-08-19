@@ -2,6 +2,17 @@ import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/features/home/domain/category_model.dart';
 
+/// Parses JSON booleans that may arrive as bool, 0/1, or "true"/"false".
+bool? parseAuctionJsonBool(dynamic value) {
+  if (value == null) return null;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final s = value.toString().trim().toLowerCase();
+  if (s == 'true' || s == '1' || s == 'yes') return true;
+  if (s == 'false' || s == '0' || s == 'no') return false;
+  return null;
+}
+
 class AuctionModel {
   int? id;
   String? titleAr;
@@ -403,6 +414,9 @@ class AuctionProducts {
   List<String>? images;
   List<AuctionBid>? bids;
   num? itemDuration;
+  /// True only when reserve was met. Bids on an ended lot do not imply a sale.
+  bool? isSold;
+  bool? isExpired;
 
   /// Returns the product name for the given [locale] ('ar' or 'en').
   String localizedName(String locale) =>
@@ -452,6 +466,8 @@ class AuctionProducts {
     this.metalFineness,
     this.images,
     this.itemDuration,
+    this.isSold,
+    this.isExpired,
   });
 
   @override
@@ -490,7 +506,9 @@ class AuctionProducts {
           metalDiameter == other.metalDiameter &&
           metalThickness == other.metalThickness &&
           metalFineness == other.metalFineness &&
-          images == other.images;
+          images == other.images &&
+          isSold == other.isSold &&
+          isExpired == other.isExpired;
 
   @override
   int get hashCode =>
@@ -525,7 +543,9 @@ class AuctionProducts {
       metalDiameter.hashCode ^
       metalThickness.hashCode ^
       metalFineness.hashCode ^
-      images.hashCode;
+      images.hashCode ^
+      isSold.hashCode ^
+      isExpired.hashCode;
 
   AuctionProducts.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -584,6 +604,8 @@ class AuctionProducts {
       });
     }
     itemDuration = json['item_duration'] ?? json['duration'];
+    isSold = parseAuctionJsonBool(json['isSold'] ?? json['is_sold']);
+    isExpired = parseAuctionJsonBool(json['isExpired'] ?? json['is_expired']);
   }
 
   Map<String, dynamic> toJson() {
@@ -621,6 +643,8 @@ class AuctionProducts {
     data['metal_fineness'] = metalFineness;
     data['images'] = images;
     data['item_duration'] = itemDuration;
+    data['isSold'] = isSold;
+    data['isExpired'] = isExpired;
     return data;
   }
 }

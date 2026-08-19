@@ -8,9 +8,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
+import 'package:turathy/src/core/common_widgets/cached_lot_image.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_countdown_label.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
@@ -33,6 +35,7 @@ import 'widgets/auction_bids_history_widget.dart';
 import 'package:turathy/src/core/helper/socket/socket_providers.dart';
 import 'package:turathy/src/core/helper/socket/socket_models.dart';
 import 'package:turathy/src/core/helper/auction_price_helpers.dart';
+import 'package:turathy/src/core/helper/lot_result_status.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class AuctionScreen extends ConsumerStatefulWidget {
@@ -51,8 +54,9 @@ class _BottomSheetContentWrapper extends StatefulWidget {
     int currentIndex,
     ValueChanged<int> onPageChanged,
   ) builder;
+  final DateTime? rebuildAt;
 
-  const _BottomSheetContentWrapper({required this.builder});
+  const _BottomSheetContentWrapper({required this.builder, this.rebuildAt});
 
   @override
   State<_BottomSheetContentWrapper> createState() =>
@@ -62,15 +66,44 @@ class _BottomSheetContentWrapper extends StatefulWidget {
 class _BottomSheetContentWrapperState extends State<_BottomSheetContentWrapper> {
   late PageController _controller;
   int _currentIndex = 0;
+  Timer? _gateTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = PageController();
+    final target = widget.rebuildAt;
+    if (target != null) {
+      final delay = target.difference(DateTime.now());
+      if (!delay.isNegative && delay > Duration.zero) {
+        _gateTimer = Timer(delay, () {
+          if (mounted) setState(() {});
+        });
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _BottomSheetContentWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rebuildAt == widget.rebuildAt) return;
+    _gateTimer?.cancel();
+    _gateTimer = null;
+    final target = widget.rebuildAt;
+    if (target == null) return;
+    final delay = target.difference(DateTime.now());
+    if (!delay.isNegative && delay > Duration.zero) {
+      _gateTimer = Timer(delay, () {
+        if (mounted) setState(() {});
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _gateTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -260,10 +293,27 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         .listen((event) {
           if (!mounted) return;
           if (event.auction.id == auctionId) {
+            final endedId =
+                event.endedProductId ?? _currentAuction.currentProductId;
+            final sold = lotWasSold(
+              eventIsSold: event.isSold,
+              hasWinner: event.winner != null,
+            );
             setState(() {
               _currentAuction.currentProduct = event.auction.currentProduct;
               _currentAuction.currentProductId = event.auction.currentProductId;
               _currentAuction.expiryDate = event.auction.expiryDate;
+              if (endedId != null) {
+                final products = _currentAuction.auctionProducts;
+                if (products != null) {
+                  for (final p in products) {
+                    if (p.id == endedId) {
+                      p.isSold = sold;
+                      p.isExpired = !sold;
+                    }
+                  }
+                }
+              }
             });
           }
         });
@@ -343,10 +393,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             p.displayName == _currentAuction.currentProduct,
                       ) ??
                       false)) {
+                // Current visible price only. Do not write minimumBid into
+                // minBidPrice — that field is the private reserve, not next bid.
                 _currentAuction.actualPrice = serverPrice;
-                if (minBid != null) {
-                  _currentAuction.minBidPrice = minBid;
-                }
               }
             });
           }
@@ -497,6 +546,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           _applyFiltersAndSort();
         });
         _calculateTimeLeft();
+        _startTimer();
       }
     } catch (e) {
       debugPrint("Error fetching full auction details: $e");
@@ -686,39 +736,37 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     });
   }
 
-  void _calculateTimeLeft() {
-    if (widget.auction.startDate != null) {
-      final startDate = widget.auction.startDate!;
-      final now = DateTime.now();
-      if (startDate.isAfter(now)) {
-        setState(() {
-          _timeLeft = startDate.difference(now);
-        });
-      } else {
-        setState(() {
-          _timeLeft = Duration.zero;
-        });
-      }
-    }
-  }
+  /// Pre-auction start, or live start when [startDate] is missing.
+  DateTime? get _countdownAnchor =>
+      _currentAuction.startDate ?? _currentAuction.liveStartDate;
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _calculateTimeLeft();
+  void _calculateTimeLeft() {
+    final startDate = _countdownAnchor;
+    if (startDate == null) return;
+    final now = DateTime.now();
+    final next = startDate.isAfter(now)
+        ? startDate.difference(now)
+        : Duration.zero;
+    if (!mounted) return;
+    setState(() {
+      _timeLeft = next;
     });
   }
 
-  String _formatDuration(Duration duration) {
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-
-    if (duration.inHours > 0) {
-      final hours = duration.inHours.toString().padLeft(2, '0');
-      return '$hours:$minutes:$seconds';
-    } else if (duration.inMinutes > 0) {
-      return '$minutes:$seconds';
-    } else {
-      return '${duration.inSeconds} sec';
+  /// One-shot flip when the auction actually starts — no 1s whole-screen rebuilds.
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = null;
+    final target = _countdownAnchor;
+    if (target == null) return;
+    final delay = target.difference(DateTime.now());
+    if (!delay.isNegative && delay > Duration.zero) {
+      _timer = Timer(delay, () {
+        if (!mounted) return;
+        setState(() {
+          _timeLeft = Duration.zero;
+        });
+      });
     }
   }
 
@@ -827,9 +875,26 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     Color badgeColor;
 
     if (isProductEnded) {
-      badgeText = isHighest ? AppStrings.youWon.tr() : AppStrings.youLost.tr();
-      badgeIcon = isHighest ? Icons.emoji_events : Icons.close;
-      badgeColor = isHighest ? Colors.green.shade600 : Colors.red.shade600;
+      AuctionProducts? product;
+      final products = _currentAuction.auctionProducts;
+      if (products != null) {
+        for (final p in products) {
+          if (p.id == productId) {
+            product = p;
+            break;
+          }
+        }
+      }
+      final isSold = lotWasSold(productIsSold: product?.isSold);
+      if (!isSold) {
+        badgeText = AppStrings.unsold.tr();
+        badgeIcon = Icons.remove_circle_outline;
+        badgeColor = Colors.blueGrey;
+      } else {
+        badgeText = isHighest ? AppStrings.youWon.tr() : AppStrings.youLost.tr();
+        badgeIcon = isHighest ? Icons.emoji_events : Icons.close;
+        badgeColor = isHighest ? Colors.green.shade600 : Colors.red.shade600;
+      }
     } else {
       if (isHighest) {
         badgeText = AppStrings.highestBid.tr();
@@ -1013,6 +1078,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       ),
       builder: (sheetContext) {
         return _BottomSheetContentWrapper(
+          rebuildAt: _currentAuction.startDate,
           builder: (wrapperContext, pageController, currentIndex, onPageChanged) {
             return Consumer(
               builder: (sheetContext, ref, child) {
@@ -1022,10 +1088,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             final lastBid = ref.watch(currentBidStateProvider);
 
             final lastRejection = ref.watch(bidRejectedProvider);
-            // Watch the 2-second state broadcast to force the modal to re-render
-            // with the latest timer/price that the parent widget just saved.
-
-            final stateUpdate = ref.watch(auctionStateUpdateProvider);
 
             // Merge real-time bids into a combined list for this product
             final initialBids =
@@ -1058,6 +1120,40 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 if (currentIndex != -1 &&
                     thisIndex != -1 &&
                     thisIndex < currentIndex) {
+                  final isSold = lotWasSold(productIsSold: product.isSold);
+                  if (!isSold) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blueGrey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.remove_circle_outline,
+                            color: Colors.blueGrey.shade600,
+                            size: 28,
+                          ),
+                          gapH8,
+                          Text(
+                            AppStrings.unsold.tr(),
+                            style: TextStyle(
+                              color: Colors.blueGrey.shade700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                   final highestBid = _highestBids[product.id];
                   final soldPrice = highestBid?.bid?.toStringAsFixed(0) ?? '—';
                   return Container(
@@ -1740,17 +1836,15 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                   AppStrings.startsAt.tr(),
                   _formatDate(_currentAuction.startDate),
                 ),
-              if (_timeLeft > Duration.zero)
+              if (_countdownAnchor != null &&
+                  (_timeLeft > Duration.zero ||
+                      _countdownAnchor!.isAfter(DateTime.now())))
                 Center(
                   child: Directionality(
                     textDirection: ui.TextDirection.ltr,
-                    child: Text(
-                      '${_formatDuration(_timeLeft)} ${AppStrings.countdownStartsIn.tr()}',
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    child: AuctionCountdownLabel(
+                      target: _countdownAnchor!,
+                      suffix: AppStrings.countdownStartsIn.tr(),
                     ),
                   ),
                 ),
@@ -1972,16 +2066,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                 borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(8),
                                 ),
-                                child: Image.network(
-                                  product.imageUrl ?? '',
+                                child: CachedLotImage(
+                                  imageUrl: product.imageUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(
-                                          Icons.image_not_supported,
-                                        ),
-                                      ),
+                                  memCacheHeight: 280,
                                 ),
                               ),
                               // Bid status badge (top-right corner)
@@ -2094,22 +2182,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Product Image
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              product.imageUrl ?? '',
-                              width: 80,
-                              height: 80,
+                          SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: CachedLotImage(
+                              imageUrl: product.imageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: Colors.grey[200],
-                                    child: const Icon(
-                                      Icons.image_not_supported,
-                                    ),
-                                  ),
+                              memCacheHeight: 280,
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           gapW12,

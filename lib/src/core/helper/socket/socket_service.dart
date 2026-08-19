@@ -13,6 +13,7 @@ library;
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'socket_config.dart';
@@ -145,9 +146,11 @@ class SocketService {
     });
 
     // Debugging: Log all incoming raw traffic during development
-    _socket!.onAny((event, data) {
-      log('SocketService: [DEBUG] Incoming: $event -> $data');
-    });
+    if (kDebugMode) {
+      _socket!.onAny((event, data) {
+        log('SocketService: [DEBUG] Incoming: $event -> $data');
+      });
+    }
 
     _socket!.onDisconnect((reason) {
       log('SocketService: Disconnected (Reason: $reason)');

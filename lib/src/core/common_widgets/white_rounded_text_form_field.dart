@@ -14,8 +14,9 @@ library;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart' as ui;
 import 'package:flutter/services.dart';
+
+import '../helper/keyboard_focus.dart';
 
 /// A robust, state-aware text entry field with a customized material design.
 class WhiteRoundedTextFormField extends StatefulWidget {
@@ -92,15 +93,33 @@ class _WhiteRoundedTextFormFieldState extends State<WhiteRoundedTextFormField> {
   void initState() {
     super.initState();
     _focusNode.addListener(() {
+      final focused = _focusNode.hasFocus;
       setState(() {
-        isFocused = _focusNode.hasFocus;
+        isFocused = focused;
       });
+      if (focused) {
+        SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
   }
 
   /// Toggleable state for obfuscated text, initialized based on [widget.keyboardType].
   late bool isObscureText =
       widget.keyboardType == TextInputType.visiblePassword;
+
+  String _hintLabel() {
+    final raw = widget.hintText;
+    if (RegExp(r'[0-9X]').hasMatch(raw) && raw.contains(' ')) {
+      return raw;
+    }
+    return raw.tr();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,21 +128,29 @@ class _WhiteRoundedTextFormFieldState extends State<WhiteRoundedTextFormField> {
         maxWidth: 400, // Design constraint for form readability
       ),
       child: TextFormField(
-        // Enforce LTR for predictable digit and cursor behavior across locales.
-        textDirection: ui.TextDirection.ltr,
+        textDirection: textDirectionForField(
+          keyboardType: widget.keyboardType,
+          localeDirection: Directionality.of(context),
+        ),
+        hintLocales: [Localizations.localeOf(context)],
         focusNode: _focusNode,
         textAlign: widget.textAlign,
         onChanged: widget.onChanged,
-        onTap: widget.onTab,
+        onTap: () {
+          showKeyboardFor(_focusNode);
+          widget.onTab?.call();
+        },
         onFieldSubmitted: widget.onFieldSubmitted,
         onTapOutside: (details) {
-          _focusNode.unfocus(); // UX: Dismiss keyboard when user taps elsewhere
+          _focusNode.unfocus();
         },
         inputFormatters: widget.inputFormatters,
         readOnly: widget.readOnly,
         controller: widget.controller,
         validator: widget.validator,
         keyboardType: widget.keyboardType,
+        autocorrect: !keyboardTypeForcesLtr(widget.keyboardType),
+        enableSuggestions: !keyboardTypeForcesLtr(widget.keyboardType),
         obscureText: isObscureText,
         decoration: InputDecoration(
           prefixIconConstraints: const BoxConstraints(
@@ -144,7 +171,7 @@ class _WhiteRoundedTextFormFieldState extends State<WhiteRoundedTextFormField> {
             borderSide: widget.borderSide ?? BorderSide.none,
             borderRadius: BorderRadius.circular(8),
           ),
-          hintText: widget.hintText.tr(),
+          hintText: _hintLabel(),
           // Strategy: Auto-inject eye-icon for passwords
           suffixIcon: widget.keyboardType == TextInputType.visiblePassword
               ? IconButton(
