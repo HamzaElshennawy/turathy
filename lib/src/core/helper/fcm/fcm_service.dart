@@ -74,8 +74,14 @@ class FCMService {
   /// Usually called in `main.dart` after Firebase initialization.
   /// Sets up permissions, local channels, token listeners, and message handlers.
   Future<void> initialize() async {
-    // 1. Seek OS permission (iOS) or prompt (Android 13+)
-    await _requestPermission();
+    // 1. Seek OS permission (iOS) or prompt (Android 13+).
+    // A failure here must not abort the rest of the boot sequence —
+    // otherwise token registration would be skipped entirely.
+    try {
+      await _requestPermission();
+    } catch (e, stack) {
+      log('FCM permission request failed: $e', stackTrace: stack);
+    }
 
     // 2. Prepare local notification library (used for foreground visibility)
     await _initLocalNotifications();
@@ -92,6 +98,17 @@ class FCMService {
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleMessageOpenedApp(initialMessage);
+    }
+
+    // 6. The auth gate restores the cached user session AFTER main() runs,
+    // so registration above may have been deferred for an already-logged-in
+    // user. Re-attempt once shortly after boot to close that gap.
+    if (CachedVariables.userId == null) {
+      Future.delayed(const Duration(seconds: 10), () {
+        if (CachedVariables.userId != null && _fcmToken != null) {
+          _registerTokenWithBackend(_fcmToken!);
+        }
+      });
     }
   }
 
@@ -195,6 +212,10 @@ class FCMService {
   }
 
   /// Internal: Syncs the [token] to the Alturath Aljmeel Co. backend for the current user.
+  ///
+  /// Retries with backoff (up to 3 attempts) since a transient network error
+  /// at app start would otherwise leave the device unregistered until the
+  /// next token refresh or login.
   Future<void> _registerTokenWithBackend(String token) async {
     final userId = CachedVariables.userId;
     if (userId == null) {
@@ -202,17 +223,27 @@ class FCMService {
       return;
     }
 
-    try {
-      final platformToSend = Platform.isAndroid ? 'ANDROID' : 'IOS';
-      await NotificationsRepository.registerDevice(
-        userId: userId,
-        token: token,
-        platform: platformToSend,
-        apnsToken: Platform.isIOS ? _apnsToken : null,
-      );
-      log('FCM token registered with backend successfully');
-    } catch (e, stack) {
-      log('Error registering FCM token: $e', stackTrace: stack);
+    const maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final platformToSend = Platform.isAndroid ? 'ANDROID' : 'IOS';
+        await NotificationsRepository.registerDevice(
+          userId: userId,
+          token: token,
+          platform: platformToSend,
+          apnsToken: Platform.isIOS ? _apnsToken : null,
+        );
+        log('FCM token registered with backend successfully');
+        return;
+      } catch (e, stack) {
+        log(
+          'Error registering FCM token (attempt $attempt/$maxAttempts): $e',
+          stackTrace: stack,
+        );
+        if (attempt < maxAttempts) {
+          await Future.delayed(Duration(seconds: 2 * attempt));
+        }
+      }
     }
   }
 

@@ -105,6 +105,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   StreamSubscription? _socketErrorSubscription;
   StreamSubscription? _bidRejectedSubscription;
+  StreamSubscription? _bidAcceptedSubscription;
   DateTime? _scheduledFailSafeExpiry;
   DateTime? _failSafeFiredForExpiry;
 
@@ -177,6 +178,19 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             icon: Icons.info_outline,
           );
         });
+
+    // Per-sender ACK: the server emits 'bidAccepted' only to the bidding
+    // socket, so this is the reliable place for success feedback.
+    _bidAcceptedSubscription = socketService
+        .getEventStream<dynamic>('bidAccepted', (data) => data)
+        .listen((data) {
+          if (!mounted || data == null) return;
+          AppFunctions.showSnackBar(
+            context: context,
+            message: AppStrings.bidSentSuccessfully.tr(),
+            icon: Icons.check_circle_outline,
+          );
+        });
   }
 
   Future<void> _checkAccess() async {
@@ -238,6 +252,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
     // _cleanupEngine();
     _socketErrorSubscription?.cancel();
     _bidRejectedSubscription?.cancel();
+    _bidAcceptedSubscription?.cancel();
     _cancelFailSafeTimer();
     _lotResultTimer?.cancel();
     _audioPlayer.dispose();
@@ -325,28 +340,54 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       debugPrint(
         'LiveAuctionScreen: Cannot place bid. Product not found: ${auction.currentProduct}',
       );
+      if (mounted) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.lotNotIdentifiedSyncing.tr(),
+          icon: Icons.sync,
+        );
+      }
+      // Ask the server for an authoritative snapshot so the next attempt
+      // can resolve the product.
+      socketActions.requestSync(auction.id ?? widget.auctionId).catchError((_) {});
       return;
     }
 
     final lastAuctionProduct = ref.read(auctionProductChangeProvider);
 
-    if (currentBid ==
-            (lastAuctionProduct?.bidPrice ?? auction.bidPrice) &&
-        isMinBid) {
-      socketActions.placeBid(
+    final bool isOpeningBid =
+        currentBid == (lastAuctionProduct?.bidPrice ?? auction.bidPrice) &&
+        isMinBid;
+
+    _sendBid(productToBidOn.id!, currentBid, isOpeningBid: isOpeningBid);
+  }
+
+  /// Emits the bid and surfaces connectivity/emit failures to the user
+  /// instead of failing silently.
+  Future<void> _sendBid(
+    int productId,
+    num currentBid, {
+    required bool isOpeningBid,
+  }) async {
+    try {
+      await socketActions.placeBid(
         auction.id ?? 0,
         CachedVariables.userId!,
-        (currentBid).toDouble(),
-        productToBidOn.id!,
+        currentBid.toDouble(),
+        productId,
       );
-      return;
+    } catch (e) {
+      debugPrint('LiveAuctionScreen: placeBid failed: $e');
+      if (!mounted) return;
+      final connected = ref.read(socketServiceProvider).isConnected;
+      AppFunctions.showSnackBar(
+        context: context,
+        message: connected
+            ? AppStrings.bidSendFailed.tr()
+            : AppStrings.notConnectedToLiveRoom.tr(),
+        isError: true,
+      );
     }
-    socketActions.placeBid(
-      auction.id ?? 0,
-      CachedVariables.userId!,
-      currentBid.toDouble(),
-      productToBidOn.id!,
-    );
   }
 
   @override

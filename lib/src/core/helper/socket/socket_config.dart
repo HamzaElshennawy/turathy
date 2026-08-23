@@ -64,6 +64,7 @@ abstract class SocketConfig {
     'auctionStateUpdate',   // General metadata updates (e.g., timer sync)
     
     // ── Error Handling ────────────────────────────────────────────────────────
+    'bidAccepted',          // ACK for the current user's accepted bid
     'bidRejected',          // Validation error for the current user's bid
     'error',                // Generic server-side socket errors
   ];

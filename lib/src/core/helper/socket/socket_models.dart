@@ -708,6 +708,43 @@ class BidRejectedEvent {
       'BidRejectedEvent(currentPrice: $currentPrice, minimumBid: $minimumBid)';
 }
 
+/// Server ACK emitted to the sending socket when its bid is accepted.
+///
+/// Complements the room-wide `newBid` broadcast: this event is the per-sender
+/// confirmation used to give the bidder explicit success feedback.
+class BidAcceptedEvent {
+  /// The auction room the bid was placed in.
+  final int? auctionId;
+
+  /// The product ID the bid was placed on.
+  final int? productId;
+
+  /// The accepted bid amount.
+  final num? amount;
+
+  /// Default constructor for bid acceptance ACKs.
+  const BidAcceptedEvent({this.auctionId, this.productId, this.amount});
+
+  /// Parses the ACK payload defensively — the server may send minimal data.
+  factory BidAcceptedEvent.fromJson(Map<String, dynamic> json) {
+    int? asInt(dynamic v) {
+      if (v is int) return v;
+      if (v != null) return int.tryParse(v.toString());
+      return null;
+    }
+
+    return BidAcceptedEvent(
+      auctionId: asInt(json['auctionId'] ?? json['auction_id']),
+      productId: asInt(json['productId'] ?? json['product_id']),
+      amount: json['amount'] as num? ?? num.tryParse('${json['amount']}'),
+    );
+  }
+
+  @override
+  String toString() =>
+      'BidAcceptedEvent(auctionId: $auctionId, productId: $productId, amount: $amount)';
+}
+
 /// Payload for the authoritative 'auctionStateUpdate' broadcast.
 /// 
 /// This is the "Pulse" event, emitted frequently to reset all connected 

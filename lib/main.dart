@@ -34,8 +34,11 @@ void main() async {
   await LocalStorageThemeRepo.getTheme();
   CachedVariables.lang = await CacheHelper.getData(key: CachedKeys.lang);
 
-  // Initialize FCM service
-  fcmService.initialize();
+  // Initialize FCM service (un-awaited by design; log instead of swallowing
+  // a boot failure so token registration issues stay diagnosable).
+  fcmService.initialize().catchError((Object e) {
+    debugPrint('FCMService.initialize failed: $e');
+  });
 
   PaymentDebugLogger.info('Payment debug logging initialized', data: {
     'enabled': PaymentDebugLogger.enabled,

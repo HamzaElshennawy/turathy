@@ -37,6 +37,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- FCM notification tap routing (backend sends clickAction: FLUTTER_NOTIFICATION_CLICK) -->
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
         <!-- FCM Default Notification Channel -->
         <meta-data

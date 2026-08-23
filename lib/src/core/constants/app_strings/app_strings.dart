@@ -592,6 +592,10 @@ class AppStrings {
   static const String oneStepBid = 'oneStepBid';
   static const String bid = 'bid';
   static const String priceUpdatedRetry = 'priceUpdatedRetry';
+  static const String bidSentSuccessfully = 'bidSentSuccessfully';
+  static const String bidSendFailed = 'bidSendFailed';
+  static const String lotNotIdentifiedSyncing = 'lotNotIdentifiedSyncing';
+  static const String notConnectedToLiveRoom = 'notConnectedToLiveRoom';
 
   // ── Localization Extensions ────────────────────────────────────────────────
 

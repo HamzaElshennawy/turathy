@@ -257,6 +257,17 @@ final bidRejectedProvider = StreamProvider.autoDispose<BidRejectedEvent>((
   );
 });
 
+/// ACK stream for the current user's accepted bids (per-sender confirmation).
+final bidAcceptedProvider = StreamProvider.autoDispose<BidAcceptedEvent>((
+  ref,
+) {
+  final service = ref.watch(socketServiceProvider);
+  return service.getEventStream<BidAcceptedEvent>(
+    'bidAccepted',
+    (data) => BidAcceptedEvent.fromJson(data as Map<String, dynamic>),
+  );
+});
+
 /// Authoritative snapshot of the entire auction state.
 /// 
 /// Also seeds the rolling sequence counter [auctionSeqProvider] to facilitate 
