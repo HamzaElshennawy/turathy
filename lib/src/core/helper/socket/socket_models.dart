@@ -761,6 +761,9 @@ class AuctionStateUpdateEvent {
   
   /// Cumulative snapshot of every product's individual state in this session.
   final List<StateUpdateProduct> products;
+
+  /// Highest live bid for the current lot (not the opening bidPrice).
+  final num? currentPrice;
   
   /// State sequence ID for causality tracking in distributed networks.
   final int? seq;
@@ -771,19 +774,39 @@ class AuctionStateUpdateEvent {
     this.expiryDate,
     this.currentProductId,
     required this.products,
+    this.currentPrice,
     this.seq,
   });
 
+  /// Highest live amount from [currentPrice] or [products] top bids.
+  num? get resolvedCurrentPrice {
+    if (currentPrice != null) return currentPrice;
+    num? highest;
+    for (final product in products) {
+      for (final bid in product.topBids) {
+        final amount = bid.bid;
+        if (amount == null) continue;
+        if (highest == null || amount > highest) highest = amount;
+      }
+    }
+    return highest;
+  }
+
   /// Parses a global room state snapshot from server broadcast.
   factory AuctionStateUpdateEvent.fromJson(Map<String, dynamic> json) {
+    final idRaw = json['auctionId'] ?? json['id'];
+    final productIdRaw = json['currentProductId'];
     return AuctionStateUpdateEvent(
-      auctionId: json['auctionId'] as int,
+      auctionId: idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw') ?? 0,
       expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
-      currentProductId: json['currentProductId'] as int?,
+      currentProductId: productIdRaw is num
+          ? productIdRaw.toInt()
+          : int.tryParse('$productIdRaw'),
       products: (json['products'] as List<dynamic>?)
                ?.map((e) => StateUpdateProduct.fromJson(e as Map<String, dynamic>))
                .toList() ??
           [],
+      currentPrice: json['currentPrice'] as num?,
       seq: json['seq'] as int?,
     );
   }
@@ -795,6 +818,7 @@ class AuctionStateUpdateEvent {
       'expiryDate': expiryDate?.toIso8601String(),
       'currentProductId': currentProductId,
       'products': products.map((e) => e.toJson()).toList(),
+      if (currentPrice != null) 'currentPrice': currentPrice,
       if (seq != null) 'seq': seq,
     };
   }
@@ -850,11 +874,12 @@ class StateUpdateProduct {
       productAr: json['product_ar'] as String? ?? json['product'] as String?,
       productEn: json['product_en'] as String?,
       // Resilience: Numbers are often string-serialized in socket packets
-      bidPrice: json['bidPrice']?.toString(),
+      bidPrice: json['bidPrice']?.toString() ?? json['bidPrice']?.toString(),
       minBidPrice: json['minBidPrice']?.toString(),
       actualPrice: json['actualPrice']?.toString(),
-      auctionId: json['auction_id'] as int?,
-      topBids: (json['topBids'] as List<dynamic>?)
+      auctionId: (json['auction_id'] as num?)?.toInt() ??
+          (json['auctionId'] as num?)?.toInt(),
+      topBids: ((json['topBids'] ?? json['topBids'] ?? json['top_bids']) as List<dynamic>?)
                ?.map((e) => AuctionBid.fromJson(e as Map<String, dynamic>))
                .toList() ??
           [],

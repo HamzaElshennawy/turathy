@@ -252,6 +252,10 @@ class _AuctionBiddingControlsWidgetState
     if (rejectedServerPrice != null && rejectedServerPrice > currentPrice) {
       currentPrice = rejectedServerPrice;
     }
+    final liveActual = widget.auction.actualPrice;
+    if (liveActual != null && liveActual > currentPrice) {
+      currentPrice = liveActual;
+    }
 
     if (auctionProduct != null && widget.selectedProduct == null) {
       // Socket change event: opening is bidPrice only — never reserve.

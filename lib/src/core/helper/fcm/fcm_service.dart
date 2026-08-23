@@ -283,7 +283,6 @@ class FCMService {
     final typeUpper = (type ?? '').trim().toUpperCase();
     if (LiveRoomVisibility.isViewing.value &&
         (typeUpper == 'NEW_BID' ||
-            typeUpper == 'OUTBID' ||
             typeUpper == 'AUCTION_ENDING_SOON')) {
       log('Skipped live-room heads-up type=$typeUpper');
       return;

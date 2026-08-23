@@ -55,7 +55,8 @@ class LiveAuctionScreen extends ConsumerStatefulWidget {
   ConsumerState createState() => _LiveAuctionScreenState();
 }
 
-class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
+class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
+    with WidgetsBindingObserver {
   late SocketActions socketActions = ref.read(socketActionsProvider);
   late AuctionModel auction;
   // RtcEngine? _engine;
@@ -106,13 +107,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   StreamSubscription? _socketErrorSubscription;
   StreamSubscription? _bidRejectedSubscription;
   StreamSubscription? _bidAcceptedSubscription;
+  StreamSubscription? _auctionSyncSubscription;
   DateTime? _scheduledFailSafeExpiry;
   DateTime? _failSafeFiredForExpiry;
+  num? _liveCurrentPrice;
+  DateTime? _liveExpiryDate;
 
   @override
   void initState() {
     super.initState();
     LiveRoomVisibility.isViewing.value = true;
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AnalyticsService.logScreenView(
         screenName: 'live_auction',
@@ -191,6 +196,24 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
             icon: Icons.check_circle_outline,
           );
         });
+
+    _auctionSyncSubscription = socketService
+        .getEventStream<AuctionStateUpdateEvent>(
+          'auctionSync',
+          (data) {
+            try {
+              return AuctionStateUpdateEvent.fromJson(
+                Map<String, dynamic>.from(data as Map),
+              );
+            } catch (_) {
+              return const AuctionStateUpdateEvent(
+                auctionId: 0,
+                products: [],
+              );
+            }
+          },
+        )
+        .listen(_applyLiveSnapshot);
   }
 
   Future<void> _checkAccess() async {
@@ -201,6 +224,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       });
       socketActions.startLiveAuction(widget.auctionId, CachedVariables.userId!);
       socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
+      socketActions.requestSync(widget.auctionId);
       return;
     }
 
@@ -217,6 +241,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
       if (status == 'GRANTED') {
         socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
+        socketActions.requestSync(widget.auctionId);
       }
     }
   }
@@ -248,17 +273,62 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     LiveRoomVisibility.isViewing.value = false;
     // _cleanupEngine();
     _socketErrorSubscription?.cancel();
     _bidRejectedSubscription?.cancel();
     _bidAcceptedSubscription?.cancel();
+    _auctionSyncSubscription?.cancel();
     _cancelFailSafeTimer();
     _lotResultTimer?.cancel();
     _audioPlayer.dispose();
     _scrollController.dispose();
     _mainImagePageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      LiveRoomVisibility.isViewing.value = false;
+    }
+    if (state == AppLifecycleState.resumed) {
+      LiveRoomVisibility.isViewing.value = true;
+      _rejoinAndSync();
+    }
+  }
+
+  void _rejoinAndSync() {
+    final userId = CachedVariables.userId;
+    if (userId == null || _accessStatus != 'GRANTED') return;
+    socketActions.joinAuction(widget.auctionId, userId);
+    socketActions.requestSync(widget.auctionId);
+  }
+
+  void _applyLiveSnapshot(AuctionStateUpdateEvent event) {
+    if (!mounted) return;
+    if (event.auctionId != 0 && event.auctionId != widget.auctionId) return;
+    final price = event.resolvedCurrentPrice;
+    setState(() {
+      if (price != null) {
+        _liveCurrentPrice = price;
+        auction.actualPrice = price;
+      }
+      if (event.expiryDate != null) {
+        _liveExpiryDate = event.expiryDate;
+        auction.expiryDate = event.expiryDate;
+      }
+    });
+    if (event.expiryDate != null) {
+      _scheduleFailSafeTimer(event.expiryDate!);
+    }
+    for (final product in event.products) {
+      for (final bid in product.topBids) {
+        ref.read(accumulatedBidsProvider.notifier).addBid(bid);
+      }
+    }
   }
 
   // void _cleanupEngine() {
@@ -394,6 +464,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
   Widget build(BuildContext context) {
     // Activate rolling-sequence gap detection for this screen.
     ref.watch(auctionGapDetectedProvider);
+
+    ref.listen(auctionStateUpdateProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event != null) _applyLiveSnapshot(event);
+    });
 
     ref.listen(auctionDetailsProvider(widget.auctionId), (previous, next) {
       final expiry = next.valueOrNull?.expiryDate;
@@ -671,6 +746,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
 
     final auctionValue = ref.watch(auctionDetailsProvider(widget.auctionId));
     auction = auctionValue.valueOrNull ?? AuctionModel(isLiveAuction: true);
+    if (_liveCurrentPrice != null) {
+      auction.actualPrice = _liveCurrentPrice;
+    }
+    if (_liveExpiryDate != null) {
+      auction.expiryDate = _liveExpiryDate;
+    }
 
     // Sync auction pricing fields with the current product's pricing
     if (auction.auctionProducts != null &&
@@ -686,7 +767,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen> {
       // Public opening only — never copy reserve or estimate onto live auction state.
       if (currentProductObj.productAr != null ||
           currentProductObj.productEn != null) {
-        if (currentProductObj.bidPrice != null) {
+        if (currentProductObj.bidPrice != null && _liveCurrentPrice == null) {
           auction.bidPrice =
               num.tryParse(currentProductObj.bidPrice!) ?? auction.bidPrice;
         }
