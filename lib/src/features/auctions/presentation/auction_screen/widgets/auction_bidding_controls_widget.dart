@@ -34,6 +34,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final bool isViewOnly;
   final AuctionProducts? selectedProduct;
   final bool showOnlyMaxBid;
+  final VoidCallback? onGoToLiveLot;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -48,6 +49,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.isViewOnly = false,
     this.selectedProduct,
     this.showOnlyMaxBid = false,
+    this.onGoToLiveLot,
   });
 
   @override
@@ -83,7 +85,8 @@ class _AuctionBiddingControlsWidgetState
     if (oldWidget.auction.expiryDate != widget.auction.expiryDate ||
         oldWidget.expiryDate != widget.expiryDate ||
         oldWidget.auction.liveStartDate != widget.auction.liveStartDate ||
-        oldWidget.auction.isPreAuction != widget.auction.isPreAuction) {
+        oldWidget.auction.isPreAuction != widget.auction.isPreAuction ||
+        oldWidget.selectedProduct?.id != widget.selectedProduct?.id) {
       _syncExpiryFromWidget();
     }
   }
@@ -282,13 +285,15 @@ class _AuctionBiddingControlsWidgetState
         widget.auction.isExpired == true ||
         widget.auction.isCanceled == true;
 
-    // Also disable bidding when the local timer has hit zero (item/auction expired)
-    // but the socket event hasn't arrived yet. This prevents bids during the
-    // brief transition window between items. The full "Ended" result UI only
-    // shows when isAuctionEnded is true (from socket events).
-    final bool isBiddingDisabled =
-        isAuctionEnded ||
-        (!widget.auction.isPreAuction && _lotExpired);
+    // Hide swipe-to-bid only when the server closed this lot. A local timer
+    // of 0 must not show «لم تُبع» on the current live item.
+    final bool isBiddingDisabled = isCurrentLiveLotClosedByServer(
+      isAuctionEnded: isAuctionEnded,
+      auctionExpired: widget.auction.isExpired,
+      auctionCanceled: widget.auction.isCanceled,
+      productSold: widget.selectedProduct?.isSold,
+      productExpired: widget.selectedProduct?.isExpired,
+    );
 
     // Check if the auction has actually started (reached startDate)
     final bool hasStarted =
@@ -516,6 +521,10 @@ class _AuctionBiddingControlsWidgetState
             // Check if user won this specific past product
             Builder(
               builder: (context) {
+                if (_isUpcomingSelectedLot()) {
+                  return _viewOnlyLotMessage(AppStrings.comingSoon.tr());
+                }
+
                 final currentUserId = CachedVariables.userId;
                 final productId = widget.selectedProduct?.id;
 
@@ -529,7 +538,13 @@ class _AuctionBiddingControlsWidgetState
                   );
 
                   if (!isSold) {
-                    return const LotResultBanner(kind: LotResultKind.unsold);
+                    return Column(
+                      children: [
+                        const LotResultBanner(kind: LotResultKind.unsold),
+                        gapH8,
+                        _goToLiveLotControls(),
+                      ],
+                    );
                   }
 
                   if (productBids.isNotEmpty) {
@@ -689,25 +704,7 @@ class _AuctionBiddingControlsWidgetState
                 }
 
                 // Default: not won, show "Not currently live"
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade400),
-                  ),
-                  child: Center(
-                    child: Text(
-                      AppStrings.ended.tr(),
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
+                return _viewOnlyLotMessage(AppStrings.ended.tr());
               },
             ),
           ] else if (widget.isOwner) ...[
@@ -960,6 +957,10 @@ class _AuctionBiddingControlsWidgetState
               // ─────────────────────────────────────────────
               // LIVE AUCTION: one-step bid only
               // ─────────────────────────────────────────────
+              if (_lotExpired) ...[
+                _lotClosingBanner(),
+                gapH12,
+              ],
               _buildOneStepBidButton(
                 auctionNotStarted: auctionNotStarted,
                 currentPrice: (highestActiveBid?.bid ?? currentPrice),
@@ -1302,8 +1303,107 @@ class _AuctionBiddingControlsWidgetState
         }
       }
     } else {
-      return const LotResultBanner(kind: LotResultKind.unsold);
+      if (widget.isAuctionEnded) {
+        return const LotResultBanner(kind: LotResultKind.unsold);
+      }
+      return _lotClosingBanner();
     }
+  }
+
+  bool _isUpcomingSelectedLot() {
+    final products = widget.auction.auctionProducts;
+    if (products == null || products.isEmpty) return false;
+    return isUpcomingLiveLot(
+      productIdsInOrder: products.map((p) => p.id).toList(),
+      selectedProductId: widget.selectedProduct?.id,
+      currentProductId: widget.auction.currentProductId,
+    );
+  }
+
+  Widget _lotClosingBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Text(
+        AppStrings.lotClosingPleaseWait.tr(),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.orange.shade800,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _viewOnlyLotMessage(String title) {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade400),
+          ),
+          child: Center(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        gapH8,
+        _goToLiveLotControls(),
+      ],
+    );
+  }
+
+  Widget _goToLiveLotControls() {
+    return Column(
+      children: [
+        Text(
+          AppStrings.bidOnlyOnLiveLot.tr(),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        if (widget.onGoToLiveLot != null) ...[
+          gapH8,
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton(
+              onPressed: widget.onGoToLiveLot,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2D4739),
+                side: const BorderSide(color: Color(0xFF2D4739)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                AppStrings.goToLiveLot.tr(),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   //Widget _buildBidMultiplierButton({

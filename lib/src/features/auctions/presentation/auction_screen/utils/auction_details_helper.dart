@@ -43,14 +43,13 @@ class AuctionDetailsHelper {
           (auction.startDate != null && auction.startDate!.isAfter(DateTime.now()))) {
         isProductEnded = false;
       } else if (isCurrentLiveProduct) {
-        isProductEnded =
-            isAuctionEnded ||
-            auction.isExpired == true ||
-            auction.isCanceled == true;
-        if (auction.expiryDate != null &&
-            auction.expiryDate!.isBefore(DateTime.now())) {
-          isProductEnded = true;
-        }
+        isProductEnded = isCurrentLiveLotClosedByServer(
+          isAuctionEnded: isAuctionEnded,
+          auctionExpired: auction.isExpired,
+          auctionCanceled: auction.isCanceled,
+          productSold: activeProduct.isSold,
+          productExpired: activeProduct.isExpired,
+        );
       } else {
         final currentIndex = auction.auctionProducts!.indexWhere(
           (p) =>
@@ -62,7 +61,12 @@ class AuctionDetailsHelper {
         final activeIndex = auction.auctionProducts!.indexWhere(
           (p) => p.id == activeProduct.id,
         );
-        if (currentIndex != -1 &&
+        if (currentIndex == -1) {
+          // No current-lot pointer yet — do not stamp every lot as unsold.
+          isProductEnded = isAuctionEnded ||
+              auction.isExpired == true ||
+              auction.isCanceled == true;
+        } else if (currentIndex != -1 &&
             activeIndex > currentIndex &&
             !isAuctionEnded &&
             auction.isExpired != true &&

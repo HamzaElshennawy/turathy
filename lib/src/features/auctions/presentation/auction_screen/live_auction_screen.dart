@@ -380,6 +380,25 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     }
   }
 
+  void _jumpToLiveLot() {
+    final products = auction.auctionProducts;
+    if (products == null || products.isEmpty) return;
+    AuctionProducts? live;
+    for (final product in products) {
+      if (isCurrentLiveLot(
+        productId: product.id,
+        productName: product.displayName,
+        currentProductId: auction.currentProductId,
+        currentProductName: auction.currentProduct,
+      )) {
+        live = product;
+        break;
+      }
+    }
+    if (live == null || live.id == _selectedProduct?.id) return;
+    setState(() => _selectedProduct = live);
+  }
+
   void _placeBid(
     int quantity,
     num currentBid, {
@@ -1228,14 +1247,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
               isViewOnly:
                   !auction.isPreAuction &&
                   _selectedProduct != null &&
-                  _selectedProduct?.id !=
-                      (auction.currentProductId ??
-                          auction.auctionProducts
-                              ?.firstWhere(
-                                (p) => p.displayName == auction.currentProduct,
-                                orElse: () => AuctionProducts(),
-                              )
-                              .id),
+                  !isCurrentLiveLot(
+                    productId: _selectedProduct?.id,
+                    productName: _selectedProduct?.displayName,
+                    currentProductId: auction.currentProductId,
+                    currentProductName: auction.currentProduct,
+                  ),
+              onGoToLiveLot: _jumpToLiveLot,
               selectedProduct: _selectedProduct,
               isOwner: auction.userId == CachedVariables.userId,
               winnerId: _winnerId,

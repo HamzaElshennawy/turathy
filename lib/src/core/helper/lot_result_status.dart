@@ -105,3 +105,55 @@ IconData lotResultIcon(LotResultKind kind) {
       return Icons.remove_circle_outline;
   }
 }
+
+bool _sameLotName(String? a, String? b) {
+  if (a == null || b == null) return false;
+  return a.trim().toLowerCase() == b.trim().toLowerCase();
+}
+
+/// True when [productId]/[productName] is the lot currently open for bids.
+///
+/// If the server has not published a current-lot pointer, treat the visible
+/// lot as live so we do not lock every thumbnail behind «لم تُبع».
+bool isCurrentLiveLot({
+  required int? productId,
+  required String? productName,
+  required int? currentProductId,
+  required String? currentProductName,
+}) {
+  if (productId != null && currentProductId != null) {
+    return productId == currentProductId;
+  }
+  if (_sameLotName(productName, currentProductName)) return true;
+  final hasPointer = currentProductId != null ||
+      (currentProductName != null && currentProductName.trim().isNotEmpty);
+  return !hasPointer;
+}
+
+bool isUpcomingLiveLot({
+  required List<int?> productIdsInOrder,
+  required int? selectedProductId,
+  required int? currentProductId,
+}) {
+  if (selectedProductId == null || currentProductId == null) return false;
+  final selectedIndex = productIdsInOrder.indexOf(selectedProductId);
+  final currentIndex = productIdsInOrder.indexOf(currentProductId);
+  return selectedIndex >= 0 && currentIndex >= 0 && selectedIndex > currentIndex;
+}
+
+/// Close the current live lot only from server flags — never from the
+/// device clock hitting [expiryDate]. That race showed «لم تُبع» and hid
+/// سوم / swipe-to-bid while the worker still had the lot open.
+bool isCurrentLiveLotClosedByServer({
+  required bool isAuctionEnded,
+  bool? auctionExpired,
+  bool? auctionCanceled,
+  bool? productSold,
+  bool? productExpired,
+}) {
+  return isAuctionEnded ||
+      auctionExpired == true ||
+      auctionCanceled == true ||
+      productSold == true ||
+      productExpired == true;
+}

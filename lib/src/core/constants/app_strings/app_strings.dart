@@ -588,6 +588,9 @@ class AppStrings {
   static const String defaultSort = 'defaultSort';
   static const String itemEndedSoldFor = 'itemEndedSoldFor';
   static const String comingSoon = 'comingSoon';
+  static const String goToLiveLot = 'goToLiveLot';
+  static const String bidOnlyOnLiveLot = 'bidOnlyOnLiveLot';
+  static const String lotClosingPleaseWait = 'lotClosingPleaseWait';
   static const String maxBid = 'maxBid';
   static const String oneStepBid = 'oneStepBid';
   static const String bid = 'bid';
