@@ -674,9 +674,9 @@ class AuctionBid {
 
   AuctionBid.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    auctionId = json['auction_id'];
-    productId = json['product_id'];
-    userId = json['user_id'];
+    auctionId = json['auction_id'] ?? json['auctionId'];
+    productId = json['product_id'] ?? json['productId'];
+    userId = json['user_id'] ?? json['userId'];
     bid = json['bid'];
     if (json['is_active'] != null) {
       if (json['is_active'] is bool) {

@@ -81,7 +81,7 @@ Color lotResultColor(LotResultKind kind) {
     case LotResultKind.youWon:
       return Colors.green;
     case LotResultKind.youLost:
-      return Colors.red;
+      return const Color(0xFF8A6A32);
     case LotResultKind.sold:
       return Colors.grey;
     case LotResultKind.unsold:

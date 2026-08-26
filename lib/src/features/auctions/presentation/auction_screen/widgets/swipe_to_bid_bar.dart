@@ -14,6 +14,8 @@ class SwipeToBidBar extends StatefulWidget {
   final String amountText;
   final String hintText;
   final String somLabel;
+  final String? successText;
+  final bool showSuccess;
   final VoidCallback onConfirmed;
   final Color trackColor;
   final Color accentColor;
@@ -23,6 +25,8 @@ class SwipeToBidBar extends StatefulWidget {
     required this.amountText,
     required this.hintText,
     required this.somLabel,
+    this.successText,
+    this.showSuccess = false,
     required this.onConfirmed,
     this.trackColor = const Color(0xFF1A2E22),
     this.accentColor = const Color(0xFF2D4739),
@@ -151,6 +155,29 @@ class _SwipeToBidBarState extends State<SwipeToBidBar>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.showSuccess) {
+      return SizedBox(
+        height: _height,
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: widget.trackColor,
+            borderRadius: BorderRadius.circular(_height / 2),
+          ),
+          child: Center(
+            child: Text(
+              widget.successText ?? widget.hintText,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final textDirection = Directionality.of(context);
 
@@ -247,7 +274,7 @@ class _SwipeToBidBarState extends State<SwipeToBidBar>
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white.withValues(alpha: 0.55),
+                              color: Colors.white.withValues(alpha: 0.92),
                             ),
                           ),
                         ),

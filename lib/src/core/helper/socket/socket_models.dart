@@ -8,6 +8,7 @@
 /// or data types).
 library;
 
+import 'package:turathy/src/core/helper/live_bid_sync.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 DateTime? parseSocketDate(dynamic value) {
@@ -503,8 +504,12 @@ class AuctionEndedEvent {
 /// Emitted whenever any user successfully places a competitive bid, causing
 /// the global price and history indicators to update.
 class BidPlacedEvent {
-  /// The authoritative authoritative record of the incoming high bid.
-  final AuctionBid newBid;
+  /// The authoritative record of the incoming high bid. Null on self-max
+  /// rebid broadcasts that only refresh [currentPrice].
+  final AuctionBid? newBid;
+
+  /// Lot this event belongs to (root `productId` or nested bid).
+  final int? productId;
   
   /// The updated rolling history of bids for the current item.
   final List<AuctionBid> auctionBids;
@@ -520,23 +525,40 @@ class BidPlacedEvent {
 
   /// Default constructor for successful bid placement events.
   const BidPlacedEvent({
-    required this.newBid,
-    required this.auctionBids,
+    this.newBid,
+    this.productId,
+    this.auctionBids = const [],
     this.currentPrice,
     this.expiryDate,
     this.seq,
   });
 
+  int? get eventProductId => productId ?? newBid?.productId;
+
+  static AuctionBid? _parseBid(dynamic raw) {
+    if (raw is Map) {
+      return AuctionBid.fromJson(Map<String, dynamic>.from(raw));
+    }
+    return null;
+  }
+
+  static List<AuctionBid> _parseBids(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => AuctionBid.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
   /// Parses bid placement metadata from the socket broadcast.
   factory BidPlacedEvent.fromJson(Map<String, dynamic> json) {
+    final bid = _parseBid(json['newBid']);
+    final productId = parsePositiveInt(json['productId'] ?? json['product_id']);
     return BidPlacedEvent(
-      newBid: AuctionBid.fromJson(json['newBid'] as Map<String, dynamic>),
-      auctionBids:
-          (json['auctionBids'] as List<dynamic>?)
-               ?.map((e) => AuctionBid.fromJson(e as Map<String, dynamic>))
-               .toList() ??
-          [],
-      currentPrice: json['currentPrice'] as num?,
+      newBid: bid,
+      productId: productId ?? bid?.productId,
+      auctionBids: _parseBids(json['auctionBids']),
+      currentPrice: parseOptionalNum(json['currentPrice']),
       expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       seq: json['seq'] as int?,
     );
@@ -545,7 +567,8 @@ class BidPlacedEvent {
   /// Exports the bid event details to JSON.
   Map<String, dynamic> toJson() {
     return {
-      'newBid': newBid.toJson(),
+      if (newBid != null) 'newBid': newBid!.toJson(),
+      if (productId != null) 'productId': productId,
       'auctionBids': auctionBids.map((e) => e.toJson()).toList(),
       'currentPrice': currentPrice,
       'expiryDate': expiryDate?.toIso8601String(),
@@ -555,7 +578,7 @@ class BidPlacedEvent {
 
   @override
   String toString() =>
-      'BidPlacedEvent(newBid: ${newBid.bid}, expiryDate: $expiryDate, seq: $seq)';
+      'BidPlacedEvent(newBid: ${newBid?.bid}, expiryDate: $expiryDate, seq: $seq)';
 }
 
 /// Payload for `timerExtended` (anti-snipe or admin bump).

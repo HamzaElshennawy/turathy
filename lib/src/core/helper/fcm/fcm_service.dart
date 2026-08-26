@@ -176,14 +176,17 @@ class FCMService {
     }
   }
 
+  Timer? _apnsLateRetryTimer;
+  int _apnsLateRetries = 0;
+
   /// Internal: Fetches the FCM token with specialized retry logic for iOS APNs readiness.
-  Future<void> _getToken() async {
+  Future<void> _getToken({bool fromLateRetry = false}) async {
     try {
       if (Platform.isIOS) {
         // iOS requires a valid APNs token before Firebase can generate an FCM token.
-        // We retry for up to 10 seconds to account for network/handshake delay.
         int retries = 0;
-        while (retries < 5) {
+        final maxAttempts = fromLateRetry ? 3 : 5;
+        while (retries < maxAttempts) {
           _apnsToken = await _messaging.getAPNSToken();
           if (_apnsToken != null) break;
           await Future.delayed(const Duration(seconds: 2));
@@ -191,17 +194,36 @@ class FCMService {
         }
         if (_apnsToken == null) {
           log('APNs token not set. Token generation skipped.');
+          if (!fromLateRetry) _scheduleLateApnsRetry();
           return;
         }
       }
 
       _fcmToken = await _messaging.getToken();
       if (_fcmToken != null) {
+        _apnsLateRetryTimer?.cancel();
         await _registerTokenWithBackend(_fcmToken!);
       }
     } catch (e, stack) {
       log('Error getting FCM token: $e', stackTrace: stack);
+      if (Platform.isIOS && !fromLateRetry) _scheduleLateApnsRetry();
     }
+  }
+
+  void _scheduleLateApnsRetry() {
+    if (!Platform.isIOS) return;
+    if (_fcmToken != null) return;
+    if (_apnsLateRetries >= 3) return;
+    _apnsLateRetryTimer?.cancel();
+    final delaySeconds = 15 * (_apnsLateRetries + 1);
+    _apnsLateRetryTimer = Timer(Duration(seconds: delaySeconds), () async {
+      _apnsLateRetries++;
+      log('Retrying APNs/FCM token (late attempt $_apnsLateRetries)');
+      await _getToken(fromLateRetry: true);
+      if (_fcmToken == null && _apnsLateRetries < 3) {
+        _scheduleLateApnsRetry();
+      }
+    });
   }
 
   /// Internal: Callback for token rotation events.
@@ -291,6 +313,13 @@ class FCMService {
     final allowed = await NotificationPrefs.shouldShowType(type);
     if (!allowed) {
       log('Suppressed foreground notification type=$type by user prefs');
+      return;
+    }
+
+    // iOS already presents the remote APNs banner via
+    // setForegroundNotificationPresentationOptions — a local show would duplicate.
+    if (Platform.isIOS) {
+      log('iOS foreground: system banner only (skip local duplicate)');
       return;
     }
 

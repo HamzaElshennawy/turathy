@@ -35,6 +35,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionProducts? selectedProduct;
   final bool showOnlyMaxBid;
   final VoidCallback? onGoToLiveLot;
+  final bool suppressSwipe;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -50,6 +51,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.selectedProduct,
     this.showOnlyMaxBid = false,
     this.onGoToLiveLot,
+    this.suppressSwipe = false,
   });
 
   @override
@@ -445,7 +447,7 @@ class _AuctionBiddingControlsWidgetState
                           width: 8,
                           height: 8,
                           decoration: const BoxDecoration(
-                            color: Colors.red,
+                            color: Color(0xFF8A6A32),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -454,7 +456,7 @@ class _AuctionBiddingControlsWidgetState
                           AppStrings.higherBidThanYours.tr(),
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.red,
+                            color: Color(0xFF8A6A32),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1014,6 +1016,8 @@ class _AuctionBiddingControlsWidgetState
       amountText: nextBid.toStringAsFixed(0),
       hintText: AppStrings.swipeToBid.tr(),
       somLabel: AppStrings.som.tr(),
+      successText: AppStrings.bidSentSuccessfully.tr(),
+      showSuccess: widget.suppressSwipe,
       onConfirmed: () => widget.onPlaceBid(1, nextBid, currentProductId),
     );
   }
@@ -1191,16 +1195,16 @@ class _AuctionBiddingControlsWidgetState
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.red.shade50,
+              color: const Color(0xFF1A2E22).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red),
+              border: Border.all(color: const Color(0xFF8A6A32)),
             ),
             child: Column(
               children: [
                 Text(
                   AppStrings.youLost.tr(),
                   style: const TextStyle(
-                    color: Colors.red,
+                    color: Color(0xFF1A2E22),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1209,7 +1213,7 @@ class _AuctionBiddingControlsWidgetState
                 if (widget.winnerName != null)
                   Text(
                     '${'winner'.tr()}: ${widget.winnerName}',
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                    style: const TextStyle(color: Color(0xFF5C4A32), fontSize: 14),
                   ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1219,7 +1223,7 @@ class _AuctionBiddingControlsWidgetState
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.red,
+                        color: Color(0xFF1A2E22),
                       ),
                     ),
                     Text(
@@ -1227,14 +1231,14 @@ class _AuctionBiddingControlsWidgetState
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.red,
+                        color: Color(0xFF1A2E22),
                       ),
                     ),
                     SvgPicture.asset(
                       'assets/icons/RSA.svg',
                       height: 16,
                       colorFilter: const ColorFilter.mode(
-                        Colors.red,
+                        Color(0xFF1A2E22),
                         BlendMode.srcIn,
                       ),
                     ),

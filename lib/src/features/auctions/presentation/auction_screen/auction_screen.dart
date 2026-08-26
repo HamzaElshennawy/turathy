@@ -245,24 +245,38 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     _bidSubscription = socketService
         .getEventStream<BidPlacedEvent>(
           'newBid',
-          (data) => BidPlacedEvent.fromJson(data as Map<String, dynamic>),
+          (data) => BidPlacedEvent.fromJson(
+            Map<String, dynamic>.from(data as Map),
+          ),
         )
         .listen((event) {
           if (!mounted) return;
           final bid = event.newBid;
-          final productId = bid.productId;
+          final productId = event.eventProductId ?? bid?.productId;
           if (productId == null) return;
+
+          final price = bid?.bid ?? event.currentPrice;
+          if (bid == null && price == null) return;
 
           setState(() {
             // Track that THIS user bid on this product
-            if (bid.userId == userId) {
+            if (bid?.userId == userId) {
               _userBidProductIds.add(productId);
             }
 
             // Update highest bid for this product
             final existing = _highestBids[productId];
-            if (existing == null || (bid.bid ?? 0) >= (existing.bid ?? 0)) {
-              _highestBids[productId] = bid;
+            if (existing == null || (price ?? 0) >= (existing.bid ?? 0)) {
+              _highestBids[productId] = bid ??
+                  AuctionBid(
+                    bid: price,
+                    productId: productId,
+                    userId: existing?.userId,
+                    id: existing?.id,
+                    auctionId: existing?.auctionId,
+                    isActive: existing?.isActive,
+                    user: existing?.user,
+                  );
             }
           });
         });
@@ -364,7 +378,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         .listen((data) {
           if (!mounted || data == null) return;
           final serverPrice = data['currentPrice'] as num?;
-          final minBid = data['minimumBid'] as num?;
           final productId = data['productId'] as int?;
 
           if (serverPrice != null && productId != null) {
@@ -400,9 +413,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             });
           }
 
-          final hint = minBid != null ? ' (min: $minBid)' : '';
           _showFloatingToast(
-            '${'priceUpdatedRetry'.tr()}$hint',
+            'priceUpdatedRetry'.tr(),
             icon: Icons.sync_problem_outlined,
             color: Colors.orange,
           );

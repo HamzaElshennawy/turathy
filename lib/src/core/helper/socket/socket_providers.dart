@@ -121,7 +121,7 @@ final latestExpiryDateStateProvider = StateProvider.autoDispose<DateTime?>((
 final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<BidPlacedEvent>('newBid', (data) {
-    return BidPlacedEvent.fromJson(data as Map<String, dynamic>);
+    return BidPlacedEvent.fromJson(Map<String, dynamic>.from(data as Map));
   });
 });
 
@@ -176,8 +176,8 @@ final accumulatedBidsProvider =
         if (event != null) {
           if (event.auctionBids.isNotEmpty) {
             notifier.updateAll(event.auctionBids);
-          } else {
-            notifier.addBid(event.newBid);
+          } else if (event.newBid != null) {
+            notifier.addBid(event.newBid!);
           }
         }
       });
@@ -338,7 +338,7 @@ final auctionGapDetectedProvider = Provider<void>((ref) {
   ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
-    checkSeq(event.seq, event.newBid.auctionId ?? 0);
+    checkSeq(event.seq, event.newBid?.auctionId ?? 0);
   });
 
   ref.listen<AsyncValue<AuctionItemEndedEvent>>(auctionItemEndedProvider, (_, next) {

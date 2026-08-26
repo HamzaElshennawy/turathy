@@ -33,6 +33,7 @@ import 'package:turathy/src/core/helper/locale/app_locale_sync.dart';
 import 'package:turathy/src/core/helper/lot_result_status.dart';
 import '../../../../core/helper/cache/cached_variables.dart';
 import '../../../../core/helper/socket/socket_exports.dart';
+import 'package:turathy/src/core/helper/live_bid_sync.dart';
 
 import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_result_banner.dart';
@@ -58,7 +59,7 @@ class LiveAuctionScreen extends ConsumerStatefulWidget {
 class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     with WidgetsBindingObserver {
   late SocketActions socketActions = ref.read(socketActionsProvider);
-  late AuctionModel auction;
+  AuctionModel auction = AuctionModel(isLiveAuction: true);
   // RtcEngine? _engine;
   // video flag removed - not used anymore
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -112,6 +113,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   DateTime? _failSafeFiredForExpiry;
   num? _liveCurrentPrice;
   DateTime? _liveExpiryDate;
+  bool _suppressSwipe = false;
+  Timer? _swipeHideTimer;
 
   @override
   void initState() {
@@ -170,16 +173,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         .listen((data) {
           if (!mounted || data == null) return;
           final serverPrice = (data['currentPrice'] as num?);
-          final minBid = (data['minimumBid'] as num?);
           if (serverPrice != null) {
-            setState(() {
-              auction.actualPrice = serverPrice;
-            });
+            _applyRoomBidUpdate(currentPrice: serverPrice);
           }
-          final hint = minBid != null ? ' (min: $minBid)' : '';
           AppFunctions.showSnackBar(
             context: context,
-            message: '${'priceUpdatedRetry'.tr()}$hint',
+            message: 'priceUpdatedRetry'.tr(),
             icon: Icons.info_outline,
           );
         });
@@ -190,6 +189,23 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         .getEventStream<dynamic>('bidAccepted', (data) => data)
         .listen((data) {
           if (!mounted || data == null) return;
+          final map = data is Map
+              ? Map<String, dynamic>.from(data)
+              : <String, dynamic>{};
+          _applyRoomBidUpdate(
+            currentPrice: parseBidAcceptedPrice(map),
+            expiryDate: parseSocketDate(map['expiryDate']),
+            eventProductId: parsePositiveInt(map['productId'] ?? map['product_id']),
+          );
+          final rawBids = map['auctionBids'];
+          if (rawBids is List) {
+            for (final raw in rawBids.whereType<Map>()) {
+              ref.read(accumulatedBidsProvider.notifier).addBid(
+                    AuctionBid.fromJson(Map<String, dynamic>.from(raw)),
+                  );
+            }
+          }
+          _flashBidAccepted();
           AppFunctions.showSnackBar(
             context: context,
             message: AppStrings.bidSentSuccessfully.tr(),
@@ -280,6 +296,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     _bidRejectedSubscription?.cancel();
     _bidAcceptedSubscription?.cancel();
     _auctionSyncSubscription?.cancel();
+    _swipeHideTimer?.cancel();
     _cancelFailSafeTimer();
     _lotResultTimer?.cancel();
     _audioPlayer.dispose();
@@ -329,6 +346,42 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         ref.read(accumulatedBidsProvider.notifier).addBid(bid);
       }
     }
+  }
+
+  void _applyRoomBidUpdate({
+    num? currentPrice,
+    DateTime? expiryDate,
+    int? eventProductId,
+  }) {
+    if (!mounted) return;
+    if (shouldIgnoreLiveBid(
+      eventProductId: eventProductId,
+      currentProductId: auction.currentProductId,
+    )) {
+      return;
+    }
+    if (currentPrice == null && expiryDate == null) return;
+    setState(() {
+      if (currentPrice != null) {
+        _liveCurrentPrice = currentPrice;
+        auction.actualPrice = currentPrice;
+      }
+      if (expiryDate != null) {
+        _liveExpiryDate = expiryDate;
+        auction.expiryDate = expiryDate;
+      }
+    });
+    if (expiryDate != null) {
+      _scheduleFailSafeTimer(expiryDate);
+    }
+  }
+
+  void _flashBidAccepted() {
+    _swipeHideTimer?.cancel();
+    setState(() => _suppressSwipe = true);
+    _swipeHideTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _suppressSwipe = false);
+    });
   }
 
   // void _cleanupEngine() {
@@ -719,58 +772,60 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     ref.listen(newBidEventProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event != null) {
-        // Mark that the user was present during a live auction
-        //_wasLiveWhenJoined = true;
+        if (shouldIgnoreLiveBid(
+          eventProductId: event.eventProductId,
+          currentProductId: auction.currentProductId,
+        )) {
+          return;
+        }
 
-        // Play sound if bid is from another user
-        if (event.newBid.userId != CachedVariables.userId) {
+        final incomingBid = event.newBid;
+        if (incomingBid != null &&
+            incomingBid.userId != CachedVariables.userId) {
           _safePlay('sounds/higher_bid_notification.wav');
           HapticFeedback.lightImpact();
         }
 
-        // ── Keep per-product bids in sync so badge logic has fresh data ──
-        final bidProductId = event.newBid.productId;
+        final bidProductId = event.eventProductId ?? incomingBid?.productId;
         if (bidProductId != null && auction.auctionProducts != null) {
           final matchingProduct = auction.auctionProducts!.firstWhere(
             (p) => p.id == bidProductId,
             orElse: () => AuctionProducts(),
           );
-          if (matchingProduct.id != null) {
+          if (matchingProduct.id != null && incomingBid != null) {
             matchingProduct.bids ??= [];
-            if (!matchingProduct.bids!.any((b) => b.id == event.newBid.id)) {
-              matchingProduct.bids!.add(event.newBid);
+            if (!matchingProduct.bids!.any((b) => b.id == incomingBid.id)) {
+              matchingProduct.bids!.add(incomingBid);
             }
           }
         }
 
-        // Track participation: if current user placed a bid on this product
         if (bidProductId != null &&
-            event.newBid.userId == CachedVariables.userId) {
+            incomingBid?.userId == CachedVariables.userId) {
           _productParticipants.add(bidProductId);
         }
 
-        setState(() {
-          if (event.expiryDate != null) {
-            auction.expiryDate = event.expiryDate;
-          }
-          if (event.currentPrice != null) {
-            auction.actualPrice = event.currentPrice;
-          }
-        });
-        if (event.expiryDate != null) {
-          _scheduleFailSafeTimer(event.expiryDate!);
+        if (event.auctionBids.isNotEmpty) {
+          ref.read(accumulatedBidsProvider.notifier).updateAll(event.auctionBids);
+        } else if (incomingBid != null) {
+          ref.read(accumulatedBidsProvider.notifier).addBid(incomingBid);
         }
+
+        _applyRoomBidUpdate(
+          currentPrice: event.currentPrice ?? incomingBid?.bid,
+          expiryDate: event.expiryDate,
+          eventProductId: event.eventProductId,
+        );
       }
     });
 
     final auctionValue = ref.watch(auctionDetailsProvider(widget.auctionId));
     auction = auctionValue.valueOrNull ?? AuctionModel(isLiveAuction: true);
-    if (_liveCurrentPrice != null) {
-      auction.actualPrice = _liveCurrentPrice;
-    }
-    if (_liveExpiryDate != null) {
-      auction.expiryDate = _liveExpiryDate;
-    }
+    applyHeldLiveFields(
+      auction,
+      heldPrice: _liveCurrentPrice,
+      heldExpiry: _liveExpiryDate,
+    );
 
     // Sync auction pricing fields with the current product's pricing
     if (auction.auctionProducts != null &&
@@ -1259,6 +1314,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
               winnerId: _winnerId,
               winnerName: _winnerName,
               finalPrice: _finalPrice,
+              suppressSwipe: _suppressSwipe,
               onPlaceBid: (qty, price, productId) {
                 _placeBid(qty, price, overrideProductId: productId);
               },
