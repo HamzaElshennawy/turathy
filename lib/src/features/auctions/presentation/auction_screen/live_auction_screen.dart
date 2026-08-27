@@ -847,9 +847,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     // We only set it once when data is first loaded, unless it's already ended locally
     if (auctionValue.hasValue &&
         !_isAuctionEnded &&
-        (auction.isExpired == true ||
-            auction.isCanceled == true ||
-            auction.winningUserId != null)) {
+        (auction.isExpired == true || auction.isCanceled == true)) {
       final endedAuction = auction;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _isAuctionEnded) return;
@@ -1139,16 +1137,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                                           return const SizedBox.shrink();
                                         }
 
-                                        // Past lot — sold badges during live;
-                                        // «لم تُبع» only after the whole auction ends.
+                                        // Past lot — sold / unsold as soon as
+                                        // this item ended, even while the
+                                        // auction is still live.
                                         final kind = visibleLotResult(
                                           _endedLotResult(item),
-                                          auctionFullyEnded:
-                                              auctionIsFullyEnded(
-                                            isAuctionEnded: _isAuctionEnded,
-                                            isExpired: auction.isExpired,
-                                            isCanceled: auction.isCanceled,
-                                          ),
+                                          thisLotHasEnded: true,
                                         );
                                         if (kind == LotResultKind.none) {
                                           return const SizedBox.shrink();
@@ -1426,14 +1420,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   }
 
   void _showLotResultBanner(LotResultKind kind) {
-    final visible = visibleLotResult(
-      kind,
-      auctionFullyEnded: auctionIsFullyEnded(
-        isAuctionEnded: _isAuctionEnded,
-        isExpired: auction.isExpired,
-        isCanceled: auction.isCanceled,
-      ),
-    );
+    final visible = visibleLotResult(kind, thisLotHasEnded: true);
     if (visible == LotResultKind.none) return;
     _lotResultTimer?.cancel();
     setState(() => _lotResult = visible);

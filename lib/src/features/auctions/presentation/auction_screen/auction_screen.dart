@@ -160,17 +160,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     return DateTime.now().isAfter(_currentAuction.startDate!);
   }
 
-  /// Whole auction finished — used to show «لم تُبع». Lot timers do not count.
-  bool get _auctionFullyEnded => auctionIsFullyEnded(
-        isAuctionEnded: _currentAuction.currentProduct == null &&
-            _currentAuction.currentProductId == null &&
-            _currentAuction.isPreAuction == false &&
-            _currentAuction.isLive != true &&
-            _timeLeft == Duration.zero,
-        isExpired: _currentAuction.isExpired,
-        isCanceled: _currentAuction.isCanceled,
-      );
-
   @override
   void initState() {
     super.initState();
@@ -910,7 +899,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       }
       final isSold = lotWasSold(productIsSold: product?.isSold);
       if (!isSold) {
-        if (!_auctionFullyEnded) return null;
         badgeText = AppStrings.unsold.tr();
         badgeIcon = Icons.remove_circle_outline;
         badgeColor = Colors.blueGrey;
@@ -1146,9 +1134,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     thisIndex < currentIndex) {
                   final isSold = lotWasSold(productIsSold: product.isSold);
                   if (!isSold) {
-                    if (!_auctionFullyEnded) {
-                      return const SizedBox.shrink();
-                    }
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(

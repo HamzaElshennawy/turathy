@@ -540,17 +540,10 @@ class _AuctionBiddingControlsWidgetState
                   );
 
                   if (!isSold) {
-                    final fullyEnded = auctionIsFullyEnded(
-                      isAuctionEnded: widget.isAuctionEnded,
-                      isExpired: widget.auction.isExpired,
-                      isCanceled: widget.auction.isCanceled,
-                    );
                     return Column(
                       children: [
-                        if (fullyEnded) ...[
-                          const LotResultBanner(kind: LotResultKind.unsold),
-                          gapH8,
-                        ],
+                        const LotResultBanner(kind: LotResultKind.unsold),
+                        gapH8,
                         _goToLiveLotControls(),
                       ],
                     );
@@ -1030,7 +1023,7 @@ class _AuctionBiddingControlsWidgetState
       hasWinner: widget.winnerId != null,
     );
 
-    if (widget.isAuctionEnded && !isSold) {
+    if (!isSold) {
       return const LotResultBanner(kind: LotResultKind.unsold);
     }
 
@@ -1309,9 +1302,6 @@ class _AuctionBiddingControlsWidgetState
         }
       }
     } else {
-      if (widget.isAuctionEnded) {
-        return const LotResultBanner(kind: LotResultKind.unsold);
-      }
       return const SizedBox.shrink();
     }
   }

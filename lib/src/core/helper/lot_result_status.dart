@@ -64,13 +64,14 @@ bool auctionIsFullyEnded({
   return isAuctionEnded || isExpired == true || isCanceled == true;
 }
 
-/// Hide «لم تُبع» until the entire auction has ended. Sold / won / lost
-/// stay visible on past lots while the sale is still live.
+/// Show «لم تُبع» as soon as this lot has ended during a live auction.
+/// Hide it only while the lot is still the open live item on the server
+/// (local timer at 0 must not stamp unsold).
 LotResultKind visibleLotResult(
   LotResultKind kind, {
-  required bool auctionFullyEnded,
+  required bool thisLotHasEnded,
 }) {
-  if (kind == LotResultKind.unsold && !auctionFullyEnded) {
+  if (kind == LotResultKind.unsold && !thisLotHasEnded) {
     return LotResultKind.none;
   }
   return kind;

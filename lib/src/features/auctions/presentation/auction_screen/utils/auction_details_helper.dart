@@ -116,11 +116,7 @@ class AuctionDetailsHelper {
         );
         final visible = visibleLotResult(
           kind,
-          auctionFullyEnded: auctionIsFullyEnded(
-            isAuctionEnded: isAuctionEnded,
-            isExpired: auction.isExpired,
-            isCanceled: auction.isCanceled,
-          ),
+          thisLotHasEnded: true,
         );
         if (visible == LotResultKind.none) {
           statusLabel = null;

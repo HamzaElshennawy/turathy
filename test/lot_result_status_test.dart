@@ -239,21 +239,21 @@ void main() {
   });
 
   group('visibleLotResult', () {
-    test('hides unsold while the auction is still live', () {
+    test('hides unsold while this lot is still open on the server', () {
       expect(
         visibleLotResult(
           LotResultKind.unsold,
-          auctionFullyEnded: false,
+          thisLotHasEnded: false,
         ),
         LotResultKind.none,
       );
     });
 
-    test('shows unsold after the whole auction ends', () {
+    test('shows unsold after this lot ends during a live auction', () {
       expect(
         visibleLotResult(
           LotResultKind.unsold,
-          auctionFullyEnded: true,
+          thisLotHasEnded: true,
         ),
         LotResultKind.unsold,
       );
@@ -263,21 +263,21 @@ void main() {
       expect(
         visibleLotResult(
           LotResultKind.youWon,
-          auctionFullyEnded: false,
+          thisLotHasEnded: false,
         ),
         LotResultKind.youWon,
       );
       expect(
         visibleLotResult(
           LotResultKind.sold,
-          auctionFullyEnded: false,
+          thisLotHasEnded: false,
         ),
         LotResultKind.sold,
       );
       expect(
         visibleLotResult(
           LotResultKind.youLost,
-          auctionFullyEnded: false,
+          thisLotHasEnded: false,
         ),
         LotResultKind.youLost,
       );
