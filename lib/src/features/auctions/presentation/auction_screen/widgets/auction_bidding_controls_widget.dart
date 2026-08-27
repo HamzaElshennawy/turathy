@@ -540,10 +540,17 @@ class _AuctionBiddingControlsWidgetState
                   );
 
                   if (!isSold) {
+                    final fullyEnded = auctionIsFullyEnded(
+                      isAuctionEnded: widget.isAuctionEnded,
+                      isExpired: widget.auction.isExpired,
+                      isCanceled: widget.auction.isCanceled,
+                    );
                     return Column(
                       children: [
-                        const LotResultBanner(kind: LotResultKind.unsold),
-                        gapH8,
+                        if (fullyEnded) ...[
+                          const LotResultBanner(kind: LotResultKind.unsold),
+                          gapH8,
+                        ],
                         _goToLiveLotControls(),
                       ],
                     );
@@ -959,10 +966,6 @@ class _AuctionBiddingControlsWidgetState
               // ─────────────────────────────────────────────
               // LIVE AUCTION: one-step bid only
               // ─────────────────────────────────────────────
-              if (_lotExpired) ...[
-                _lotClosingBanner(),
-                gapH12,
-              ],
               _buildOneStepBidButton(
                 auctionNotStarted: auctionNotStarted,
                 currentPrice: (highestActiveBid?.bid ?? currentPrice),
@@ -1016,7 +1019,6 @@ class _AuctionBiddingControlsWidgetState
       amountText: nextBid.toStringAsFixed(0),
       hintText: AppStrings.swipeToBid.tr(),
       somLabel: AppStrings.som.tr(),
-      successText: AppStrings.bidSentSuccessfully.tr(),
       showSuccess: widget.suppressSwipe,
       onConfirmed: () => widget.onPlaceBid(1, nextBid, currentProductId),
     );
@@ -1310,7 +1312,7 @@ class _AuctionBiddingControlsWidgetState
       if (widget.isAuctionEnded) {
         return const LotResultBanner(kind: LotResultKind.unsold);
       }
-      return _lotClosingBanner();
+      return const SizedBox.shrink();
     }
   }
 
@@ -1321,27 +1323,6 @@ class _AuctionBiddingControlsWidgetState
       productIdsInOrder: products.map((p) => p.id).toList(),
       selectedProductId: widget.selectedProduct?.id,
       currentProductId: widget.auction.currentProductId,
-    );
-  }
-
-  Widget _lotClosingBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.shade200),
-      ),
-      child: Text(
-        AppStrings.lotClosingPleaseWait.tr(),
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.orange.shade800,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
     );
   }
 

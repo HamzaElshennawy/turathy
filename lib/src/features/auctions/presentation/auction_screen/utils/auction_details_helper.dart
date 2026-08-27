@@ -114,8 +114,21 @@ class AuctionDetailsHelper {
           winnerUserId: winnerId,
           userParticipated: didIBid,
         );
-        statusLabel = lotResultStringKey(kind).tr();
-        statusColor = lotResultColor(kind);
+        final visible = visibleLotResult(
+          kind,
+          auctionFullyEnded: auctionIsFullyEnded(
+            isAuctionEnded: isAuctionEnded,
+            isExpired: auction.isExpired,
+            isCanceled: auction.isCanceled,
+          ),
+        );
+        if (visible == LotResultKind.none) {
+          statusLabel = null;
+          statusColor = null;
+        } else {
+          statusLabel = lotResultStringKey(visible).tr();
+          statusColor = lotResultColor(visible);
+        }
       } else {
         if (auction.isPreAuction) {
           //statusLabel = 'preAuctionPhase'.tr();

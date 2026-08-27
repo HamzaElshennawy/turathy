@@ -55,6 +55,27 @@ LotResultKind resolveLotResult({
   return LotResultKind.sold;
 }
 
+/// Whole-auction close flags only — never a lot timer hitting zero.
+bool auctionIsFullyEnded({
+  required bool isAuctionEnded,
+  bool? isExpired,
+  bool? isCanceled,
+}) {
+  return isAuctionEnded || isExpired == true || isCanceled == true;
+}
+
+/// Hide «لم تُبع» until the entire auction has ended. Sold / won / lost
+/// stay visible on past lots while the sale is still live.
+LotResultKind visibleLotResult(
+  LotResultKind kind, {
+  required bool auctionFullyEnded,
+}) {
+  if (kind == LotResultKind.unsold && !auctionFullyEnded) {
+    return LotResultKind.none;
+  }
+  return kind;
+}
+
 String lotResultStringKey(LotResultKind kind) {
   switch (kind) {
     case LotResultKind.none:

@@ -206,11 +206,6 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             }
           }
           _flashBidAccepted();
-          AppFunctions.showSnackBar(
-            context: context,
-            message: AppStrings.bidSentSuccessfully.tr(),
-            icon: Icons.check_circle_outline,
-          );
         });
 
     _auctionSyncSubscription = socketService
@@ -1144,8 +1139,20 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                                           return const SizedBox.shrink();
                                         }
 
-                                        // Past lot — sold only if isSold, otherwise unsold.
-                                        final kind = _endedLotResult(item);
+                                        // Past lot — sold badges during live;
+                                        // «لم تُبع» only after the whole auction ends.
+                                        final kind = visibleLotResult(
+                                          _endedLotResult(item),
+                                          auctionFullyEnded:
+                                              auctionIsFullyEnded(
+                                            isAuctionEnded: _isAuctionEnded,
+                                            isExpired: auction.isExpired,
+                                            isCanceled: auction.isCanceled,
+                                          ),
+                                        );
+                                        if (kind == LotResultKind.none) {
+                                          return const SizedBox.shrink();
+                                        }
                                         final badgeText =
                                             lotResultStringKey(kind).tr();
                                         final badgeColor = lotResultColor(kind);
@@ -1419,9 +1426,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   }
 
   void _showLotResultBanner(LotResultKind kind) {
-    if (kind == LotResultKind.none) return;
+    final visible = visibleLotResult(
+      kind,
+      auctionFullyEnded: auctionIsFullyEnded(
+        isAuctionEnded: _isAuctionEnded,
+        isExpired: auction.isExpired,
+        isCanceled: auction.isCanceled,
+      ),
+    );
+    if (visible == LotResultKind.none) return;
     _lotResultTimer?.cancel();
-    setState(() => _lotResult = kind);
+    setState(() => _lotResult = visible);
     _lotResultTimer = Timer(const Duration(seconds: 8), () {
       if (mounted) setState(() => _lotResult = null);
     });
