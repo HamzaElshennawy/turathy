@@ -14,6 +14,7 @@ import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 import 'socket_connection_state.dart';
+import 'socket_ensure.dart';
 import 'socket_models.dart';
 import 'socket_service.dart';
 
@@ -38,7 +39,15 @@ final socketServiceProvider = Provider<SocketService>((ref) {
 final socketConnectionProvider =
     StreamProvider.autoDispose<SocketConnectionStatus>((ref) {
       final service = ref.watch(socketServiceProvider);
-      return service.connectionStream;
+      return Stream<SocketConnectionStatus>.multi((controller) {
+        controller.add(service.connectionStatus);
+        final sub = service.connectionStream.listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+        controller.onCancel = sub.cancel;
+      });
     });
 
 /// A utility provider that attempts to connect the socket if not already active.
@@ -49,14 +58,10 @@ final socketEnsureConnectedProvider = FutureProvider.autoDispose<void>((
   ref,
 ) async {
   final service = ref.watch(socketServiceProvider);
-  if (!service.isConnected) {
-    try {
-      await service.connect();
-    } catch (e) {
-      // ignore: avoid_print
-      print('Failed to establish socket connection: $e');
-    }
-  }
+  await ensureSocketConnected(
+    isConnected: () => service.isConnected,
+    connect: service.connect,
+  );
 });
 
 // ========== Event Stream Providers ==========
@@ -469,13 +474,9 @@ class SocketActions {
 
   /// Internal: Verifies connectivity and handshakes before attempting an emit action.
   Future<void> _ensureConnected() async {
-    if (!_service.isConnected) {
-      try {
-        await _service.connect();
-      } catch (e) {
-        // ignore: avoid_print
-        print('Error ensuring socket connection: $e');
-      }
-    }
+    await ensureSocketConnected(
+      isConnected: () => _service.isConnected,
+      connect: _service.connect,
+    );
   }
 }

@@ -9,6 +9,7 @@ library core.socket;
 // Core socket service and state management
 export 'socket_config.dart';
 export 'socket_connection_state.dart';
+export 'socket_ensure.dart';
 export 'socket_models.dart';
 export 'socket_providers.dart';
 export 'socket_service.dart';

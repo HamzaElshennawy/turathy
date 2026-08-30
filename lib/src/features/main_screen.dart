@@ -15,6 +15,8 @@
 ///
 // ignore_for_file: unused_element_parameter
 
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/all_auctions_screen.dart';
@@ -93,6 +95,18 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _auctionsScrollController.addListener(_handleAuctionsScroll);
 
     AnalyticsService.logScreenView(screenName: _tabScreenNames[initialPage]);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        ref.read(socketServiceProvider).connect().then(
+          (_) {},
+          onError: (Object e, StackTrace _) {
+            debugPrint('Failed to connect socket in MainScreen: $e');
+          },
+        ),
+      );
+    });
   }
 
   /// Updates local state when the [PageView] settles on a new page.
@@ -146,13 +160,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ── Infrastructure Initialization ─────────────────────────────────────
-    try {
-      ref.read(socketServiceProvider).connect();
-    } catch (e) {
-      debugPrint('Failed to connect socket in MainScreen: $e');
-    }
-
     // ── Auth Listeners ────────────────────────────────────────────────────
     ref.listen(authControllerProvider, (previous, next) {
       if (next.hasValue &&

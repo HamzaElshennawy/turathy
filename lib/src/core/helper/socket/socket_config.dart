@@ -1,8 +1,8 @@
 /// {@category Core}
 ///
 /// Centralized configuration for the WebSocket connection.
-/// 
-/// This class defines the connection URL, transport protocols, retry strategies, 
+///
+/// This class defines the connection URL, transport protocols, retry strategies,
 /// and the list of application-level events handled by the [SocketService].
 library;
 
@@ -16,11 +16,14 @@ abstract class SocketConfig {
   }
 
   /// Initial delay (in milliseconds) before the first reconnection attempt.
-  static const int _reconnectionDelay = 3000;
-  
-  /// Total number of automatic reconnection attempts before giving up.
-  static const int _maxReconnectionAttempts = 5;
-  
+  static const int _reconnectionDelay = 1500;
+
+  /// Cap for engine backoff (milliseconds).
+  static const int _reconnectionDelayMax = 10000;
+
+  /// Engine reconnection attempts (engine is the sole reconnect owner).
+  static const int _maxReconnectionAttempts = 50;
+
   /// General socket timeout (in milliseconds) for the initial handshake.
   static const int _timeout = 20000;
 
@@ -28,23 +31,24 @@ abstract class SocketConfig {
   static String get baseUrl => _baseUrl;
 
   /// Returns the standardized [io.OptionBuilder] configuration.
-  /// 
+  ///
   /// Constraints:
-  /// - Forces 'websocket' transport to avoid slow polling fallbacks.
-  /// - Enables automatic reconnection with the defined delay and limit.
+  /// - Prefers websocket, falls back to polling when the upgrade fails.
+  /// - Engine reconnection only (the app must not create a second io.io loop).
   /// - Sets a custom timeout for robustness in poor network conditions.
   static Map<String, dynamic> get options => io.OptionBuilder()
-      .setTransports(['websocket'])
+      .setTransports(['websocket', 'polling'])
       .enableReconnection()
       .setReconnectionDelay(_reconnectionDelay)
+      .setReconnectionDelayMax(_reconnectionDelayMax)
       .setReconnectionAttempts(_maxReconnectionAttempts)
       .setTimeout(_timeout)
       .enableAutoConnect()
       .build();
 
   /// A registry of all server-sent events the application is configured to listen for.
-  /// 
-  /// These keys are used by [SocketService] to initialize [StreamController]s 
+  ///
+  /// These keys are used by [SocketService] to initialize [StreamController]s
   /// for reactive data binding.
   static const List<String> supportedEvents = [
     // ── Auction Lifecycle ─────────────────────────────────────────────────────
@@ -54,7 +58,7 @@ abstract class SocketConfig {
     'auctionCanceled',      // Handle administrative cancellations
     'auctionItemEnded',     // Finalized a single item's bidding
     'auctionEnded',         // Closed the entire auction session
-    
+
     // ── Real-time Updates ─────────────────────────────────────────────────────
     'newBid',               // Incoming bid from any participant
     'timerExtended',        // Anti-snipe / admin lot timer bump
@@ -62,7 +66,7 @@ abstract class SocketConfig {
     'newComment',           // Social commentary from other users
     'auctionSync',          // State synchronization for late-joiners
     'auctionStateUpdate',   // General metadata updates (e.g., timer sync)
-    
+
     // ── Error Handling ────────────────────────────────────────────────────────
     'bidAccepted',          // ACK for the current user's accepted bid
     'bidRejected',          // Validation error for the current user's bid

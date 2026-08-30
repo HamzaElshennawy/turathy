@@ -283,4 +283,58 @@ void main() {
       );
     });
   });
+
+  group('overlayLotResult', () {
+    test('hides previous lot unsold on the next live item', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.unsold,
+          resultProductId: 10,
+          selectedProductId: 11,
+          currentLiveProductId: 11,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
+    test('hides unsold while the selected lot is still the open live item', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.unsold,
+          resultProductId: 10,
+          selectedProductId: 10,
+          currentLiveProductId: 10,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
+    test('shows unsold on the ended lot after the server closed it', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.unsold,
+          resultProductId: 10,
+          selectedProductId: 10,
+          currentLiveProductId: null,
+          selectedLotClosedByServer: true,
+        ),
+        LotResultKind.unsold,
+      );
+    });
+
+    test('shows unsold when browsing that past lot during a live auction', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.unsold,
+          resultProductId: 10,
+          selectedProductId: 10,
+          currentLiveProductId: 11,
+          selectedLotClosedByServer: true,
+        ),
+        LotResultKind.unsold,
+      );
+    });
+  });
 }

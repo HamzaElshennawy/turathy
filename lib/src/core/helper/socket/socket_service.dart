@@ -3,8 +3,8 @@
 /// A robust service for managing real-time bidirectional communication via WebSockets.
 ///
 /// This service wraps the `socket_io_client` package to provide:
-/// - Automatic reconnection with exponential backoff strategies.
-/// - Heartbeat monitoring to detect silent connection drops or network jitter.
+/// - Engine-owned automatic reconnection (single [io.Socket] instance).
+/// - Heartbeat monitoring that requests reconnect instead of going silent.
 /// - Stream-based event handling with typed parsing for domain models.
 /// - Global connection state tracking for reactive UI feedback.
 /// - Specialized emit methods for auction-specific actions (bidding, joining, sync).
@@ -30,9 +30,6 @@ class SocketService {
   /// Timer used to periodically check if the connection is still alive (Heartbeat).
   Timer? _heartbeatTimer;
 
-  /// Timer used to manage delayed reconnection attempts using backoff logic.
-  Timer? _reconnectionTimer;
-
   /// Cached ID of the last auction room joined, used for automatic re-joining on reconnect.
   int? _lastJoinedAuctionId;
 
@@ -51,6 +48,18 @@ class SocketService {
     state: SocketConnectionState.disconnected,
   );
 
+  /// Completes when the current [connect] handshake succeeds or fails.
+  Completer<void>? _handshake;
+
+  /// Single-flight lock so MainScreen / join / bid share one handshake.
+  Future<void>? _inFlight;
+
+  /// True after an explicit [disconnect]; engine must not be treated as a drop.
+  bool _manualDisconnect = false;
+
+  bool _lifecycleListenersAttached = false;
+  bool _eventListenersAttached = false;
+
   /// A public stream of [SocketConnectionStatus] updates.
   Stream<SocketConnectionStatus> get connectionStream =>
       _connectionController.stream;
@@ -66,83 +75,114 @@ class SocketService {
   /// Returns a [Future] that completes when the connection is established.
   /// Throws a [TimeoutException] if the handshake takes longer than
   /// [SocketConfig.connectionTimeout].
-  Future<void> connect() async {
+  Future<void> connect() {
     if (_socket?.connected == true) {
-      log('SocketService: Already connected');
+      _markConnected();
+      return Future.value();
+    }
+    _inFlight ??= _connectInternal().whenComplete(() {
+      _inFlight = null;
+    });
+    return _inFlight!;
+  }
+
+  Future<void> _connectInternal() async {
+    if (_socket?.connected == true) {
+      _markConnected();
+      return;
+    }
+
+    _manualDisconnect = false;
+    _updateConnectionStatus(
+      _currentStatus.copyWith(
+        state: SocketConnectionState.connecting,
+        errorMessage: null,
+      ),
+    );
+
+    final handshake = Completer<void>();
+    _handshake = handshake;
+
+    if (_socket == null) {
+      _socket = io.io(SocketConfig.baseUrl, SocketConfig.options);
+      _setupSocketListeners();
+      _initializeEventControllers();
+    } else {
+      _socket!.connect();
+    }
+
+    if (_socket?.connected == true) {
+      _markConnected();
+      if (!handshake.isCompleted) {
+        handshake.complete();
+      }
       return;
     }
 
     try {
-      _updateConnectionStatus(
-        _currentStatus.copyWith(
-          state: SocketConnectionState.connecting,
-          errorMessage: null,
-        ),
-      );
-
-      _socket = io.io(SocketConfig.baseUrl, SocketConfig.options);
-      _setupSocketListeners();
-      _initializeEventControllers();
-
-      // Manual timeout handling for the initial connection handshake
-      final completer = Completer<void>();
-      Timer? timeoutTimer;
-
-      void onConnected() {
-        timeoutTimer?.cancel();
-        if (!completer.isCompleted) {
-          completer.complete();
-        }
+      await handshake.future.timeout(SocketConfig.connectionTimeout);
+    } on TimeoutException {
+      log('SocketService: Connection timeout');
+      if (identical(_handshake, handshake)) {
+        _updateConnectionStatus(
+          _currentStatus.copyWith(
+            state: SocketConnectionState.failed,
+            errorMessage:
+                'Socket connection timeout after ${SocketConfig.connectionTimeout.inSeconds}s',
+          ),
+        );
       }
-
-      void onConnectionError(dynamic error) {
-        timeoutTimer?.cancel();
-        if (!completer.isCompleted) {
-          completer.completeError(error);
-        }
-      }
-
-      _socket!.onConnect((_) => onConnected());
-      _socket!.onConnectError((error) => onConnectionError(error));
-      _socket!.onError((error) => onConnectionError(error));
-
-      timeoutTimer = Timer(SocketConfig.connectionTimeout, () {
-        if (!completer.isCompleted) {
-          completer.completeError(
-            TimeoutException(
-              'Socket connection timeout after ${SocketConfig.connectionTimeout.inSeconds}s',
-            ),
-          );
-        }
-      });
-
-      await completer.future;
+      rethrow;
     } catch (error) {
       log('SocketService: Connection error: $error');
-      _updateConnectionStatus(
-        _currentStatus.copyWith(
-          state: SocketConnectionState.failed,
-          errorMessage: error.toString(),
-        ),
+      if (identical(_handshake, handshake)) {
+        _updateConnectionStatus(
+          _currentStatus.copyWith(
+            state: SocketConnectionState.failed,
+            errorMessage: error.toString(),
+          ),
+        );
+      }
+      rethrow;
+    }
+  }
+
+  void _markConnected() {
+    _updateConnectionStatus(
+      _currentStatus.copyWith(
+        state: SocketConnectionState.connected,
+        lastConnectionTime: DateTime.now(),
+        errorMessage: null,
+        reconnectionAttempts: 0,
+      ),
+    );
+  }
+
+  void _rejoinCachedAuction() {
+    if (_lastJoinedAuctionId == null || _lastJoinedUserId == null) return;
+    try {
+      log(
+        'SocketService: Restoring auction session for ID: $_lastJoinedAuctionId',
       );
+      emitJoinAuction(_lastJoinedAuctionId!, _lastJoinedUserId!);
+    } catch (error) {
+      log('SocketService: Rejoin emit failed: $error');
     }
   }
 
   /// Internal: Configures core Socket.IO lifecycle event listeners.
   void _setupSocketListeners() {
-    if (_socket == null) return;
+    if (_socket == null || _lifecycleListenersAttached) return;
+    _lifecycleListenersAttached = true;
 
     _socket!.onConnect((_) {
       log('SocketService: Connected successfully');
-      _updateConnectionStatus(
-        _currentStatus.copyWith(
-          state: SocketConnectionState.connected,
-          lastConnectionTime: DateTime.now(),
-          errorMessage: null,
-          reconnectionAttempts: 0,
-        ),
-      );
+      _markConnected();
       _startHeartbeat();
+      if (_handshake != null && !_handshake!.isCompleted) {
+        _handshake!.complete();
+      }
+      _rejoinCachedAuction();
     });
 
     // Debugging: Log all incoming raw traffic during development
@@ -154,19 +194,33 @@ class SocketService {
 
     _socket!.onDisconnect((reason) {
       log('SocketService: Disconnected (Reason: $reason)');
+      _stopHeartbeat();
+      if (_manualDisconnect) {
+        _updateConnectionStatus(
+          _currentStatus.copyWith(
+            state: SocketConnectionState.disconnected,
+            lastDisconnectionTime: DateTime.now(),
+            errorMessage: reason?.toString(),
+          ),
+        );
+        return;
+      }
+      // Engine reconnection is the sole retry owner — do not io.io() again.
       _updateConnectionStatus(
         _currentStatus.copyWith(
-          state: SocketConnectionState.disconnected,
+          state: SocketConnectionState.reconnecting,
           lastDisconnectionTime: DateTime.now(),
           errorMessage: reason?.toString(),
         ),
       );
-      _stopHeartbeat();
-      _scheduleReconnection();
     });
 
     _socket!.onConnectError((error) {
       log('SocketService: Connection error: $error');
+      if (_handshake != null && !_handshake!.isCompleted) {
+        _handshake!.completeError(error ?? 'Connection error');
+      }
+      if (_manualDisconnect) return;
       _updateConnectionStatus(
         _currentStatus.copyWith(
           state: SocketConnectionState.failed,
@@ -200,16 +254,6 @@ class SocketService {
       );
     });
 
-    // Re-synchronization: Automatically rejoin last auction on successful connect
-    _socket!.onConnect((_) {
-      if (_lastJoinedAuctionId != null && _lastJoinedUserId != null) {
-        log(
-          'SocketService: Restoring auction session for ID: $_lastJoinedAuctionId',
-        );
-        emitJoinAuction(_lastJoinedAuctionId!, _lastJoinedUserId!);
-      }
-    });
-
     _socket!.onReconnectError((error) {
       log('SocketService: Reconnection error: $error');
       _updateConnectionStatus(
@@ -226,7 +270,12 @@ class SocketService {
       if (!_eventControllers.containsKey(event)) {
         _eventControllers[event] = StreamController<dynamic>.broadcast();
       }
+    }
 
+    if (_eventListenersAttached || _socket == null) return;
+    _eventListenersAttached = true;
+
+    for (final event in SocketConfig.supportedEvents) {
       _socket?.on(event, (data) {
         _addEventData(event, data);
       });
@@ -296,16 +345,16 @@ class SocketService {
   void _startHeartbeat() {
     _stopHeartbeat();
     _heartbeatTimer = Timer.periodic(SocketConfig.heartbeatInterval, (timer) {
-      if (_socket?.connected != true) {
-        log('SocketService: Heartbeat detected silent disconnection');
-        _stopHeartbeat();
-        _updateConnectionStatus(
-          _currentStatus.copyWith(
-            state: SocketConnectionState.disconnected,
-            errorMessage: 'Heartbeat failure',
-          ),
-        );
-      }
+      if (_manualDisconnect) return;
+      if (_socket?.connected == true) return;
+      log('SocketService: Heartbeat detected silent disconnection');
+      _updateConnectionStatus(
+        _currentStatus.copyWith(
+          state: SocketConnectionState.reconnecting,
+          errorMessage: 'Heartbeat failure',
+        ),
+      );
+      _socket?.connect();
     });
   }
 
@@ -313,31 +362,6 @@ class SocketService {
   void _stopHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
-  }
-
-  /// Internal: Implements an exponential backoff strategy for reconnection tasks.
-  void _scheduleReconnection() {
-    _reconnectionTimer?.cancel();
-
-    if (_currentStatus.reconnectionAttempts >= 5) {
-      log('SocketService: Halting reconnection after 5 failed attempts');
-      return;
-    }
-
-    // Progression: 1s, 3s, 5s... capped at 30s
-    final delay = Duration(
-      seconds: (2 * _currentStatus.reconnectionAttempts + 1).clamp(1, 30),
-    );
-    log('SocketService: Reconnection scheduled in ${delay.inSeconds}s');
-
-    _reconnectionTimer = Timer(delay, () {
-      if (_socket?.connected != true) {
-        log('SocketService: Executing scheduled reconnection...');
-        connect().catchError((error) {
-          log('SocketService: Execution failure: $error');
-        });
-      }
-    });
   }
 
   // ========== Socket Emit Methods (Command Pattern) ==========
@@ -446,7 +470,7 @@ class SocketService {
     });
   }
 
-  /// Manually requests an authoritative state snapshot from the server.
+  /// Manually requests an authoritative state snapshot from the backend.
   ///
   /// Essential for resetting local UI state after network gaps or sequence errors.
   void emitRequestSync(int auctionId) {
@@ -464,12 +488,15 @@ class SocketService {
   Future<void> disconnect() async {
     log('SocketService: Disconnecting session...');
 
+    _manualDisconnect = true;
     _stopHeartbeat();
-    _reconnectionTimer?.cancel();
 
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
+    _lifecycleListenersAttached = false;
+    _eventListenersAttached = false;
+    _handshake = null;
 
     _updateConnectionStatus(
       _currentStatus.copyWith(

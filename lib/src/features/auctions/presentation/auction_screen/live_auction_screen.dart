@@ -103,6 +103,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   final Set<int> _productParticipants = {};
 
   LotResultKind? _lotResult;
+  int? _lotResultProductId;
   Timer? _lotResultTimer;
 
   StreamSubscription? _socketErrorSubscription;
@@ -227,15 +228,33 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         .listen(_applyLiveSnapshot);
   }
 
+  Future<void> _joinLiveRoom() async {
+    final userId = CachedVariables.userId;
+    if (userId == null) return;
+    try {
+      if (widget.isAdmin) {
+        await socketActions.startLiveAuction(widget.auctionId, userId);
+      }
+      await socketActions.joinAuction(widget.auctionId, userId);
+      await socketActions.requestSync(widget.auctionId);
+    } catch (e) {
+      debugPrint('LiveAuctionScreen: join/sync failed: $e');
+      if (!mounted) return;
+      AppFunctions.showSnackBar(
+        context: context,
+        message: AppStrings.notConnectedToLiveRoom.tr(),
+        isError: true,
+      );
+    }
+  }
+
   Future<void> _checkAccess() async {
     if (widget.isAdmin) {
       setState(() {
         _accessStatus = 'GRANTED';
         _isAccessLoading = false;
       });
-      socketActions.startLiveAuction(widget.auctionId, CachedVariables.userId!);
-      socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
-      socketActions.requestSync(widget.auctionId);
+      await _joinLiveRoom();
       return;
     }
 
@@ -251,8 +270,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       });
 
       if (status == 'GRANTED') {
-        socketActions.joinAuction(widget.auctionId, CachedVariables.userId!);
-        socketActions.requestSync(widget.auctionId);
+        await _joinLiveRoom();
       }
     }
   }
@@ -312,11 +330,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     }
   }
 
-  void _rejoinAndSync() {
-    final userId = CachedVariables.userId;
-    if (userId == null || _accessStatus != 'GRANTED') return;
-    socketActions.joinAuction(widget.auctionId, userId);
-    socketActions.requestSync(widget.auctionId);
+  Future<void> _rejoinAndSync() async {
+    if (_accessStatus != 'GRANTED') return;
+    await _joinLiveRoom();
   }
 
   void _applyLiveSnapshot(AuctionStateUpdateEvent event) {
@@ -615,7 +631,6 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           winnerUserId: event.winner?.id,
           userParticipated: didIParticipate,
         );
-        _showLotResultBanner(kind);
 
         if (sold && event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
@@ -659,6 +674,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
               : nextItem;
 
           // ── Single commit: only plain field assignments inside setState ──────
+          // Do not paint the ended lot's «لم تُبع» on the next live item.
+          _lotResultTimer?.cancel();
           setState(() {
             auction.currentProduct = nextItem.displayName;
             auction.currentProductId = nextItem.id;
@@ -673,6 +690,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             _winnerName = null;
             _finalPrice = null;
             _selectedProduct = nextProduct;
+            _lotResult = null;
+            _lotResultProductId = null;
           });
 
           // ── Post-setState side effects (no extra rebuild triggered) ──────────
@@ -694,6 +713,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             auction.currentProduct = null;
             auction.currentProductId = null;
           });
+          _showLotResultBanner(kind, productId: endedProductId);
         }
       }
     });
@@ -899,7 +919,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           ),
         ],
       ),
-      body: SafeArea(child: _buildBodyContent()),
+      body: SocketConnectionIndicator(
+        child: SafeArea(child: _buildBodyContent()),
+      ),
     );
   }
 
@@ -1284,17 +1306,27 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                 ),
               ),
             ),
-            if (_lotResult != null && _lotResult != LotResultKind.none)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: LotResultBanner(
-                  kind: _lotResult!,
-                  onDismiss: () {
-                    _lotResultTimer?.cancel();
-                    setState(() => _lotResult = null);
-                  },
-                ),
-              ),
+            Builder(
+              builder: (context) {
+                final overlayKind = _visibleLotResultOverlay();
+                if (overlayKind == LotResultKind.none) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: LotResultBanner(
+                    kind: overlayKind,
+                    onDismiss: () {
+                      _lotResultTimer?.cancel();
+                      setState(() {
+                        _lotResult = null;
+                        _lotResultProductId = null;
+                      });
+                    },
+                  ),
+                );
+              },
+            ),
             // Bidding Controls (Fixed at bottom)
             AuctionBiddingControlsWidget(
               auction: auction,
@@ -1419,13 +1451,41 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     );
   }
 
-  void _showLotResultBanner(LotResultKind kind) {
+  LotResultKind _visibleLotResultOverlay() {
+    final kind = _lotResult;
+    if (kind == null || kind == LotResultKind.none) {
+      return LotResultKind.none;
+    }
+    return overlayLotResult(
+      kind: kind,
+      resultProductId: _lotResultProductId,
+      selectedProductId: _selectedProduct?.id,
+      currentLiveProductId: auction.currentProductId,
+      selectedLotClosedByServer: isCurrentLiveLotClosedByServer(
+        isAuctionEnded: _isAuctionEnded,
+        auctionExpired: auction.isExpired,
+        auctionCanceled: auction.isCanceled,
+        productSold: _selectedProduct?.isSold,
+        productExpired: _selectedProduct?.isExpired,
+      ),
+    );
+  }
+
+  void _showLotResultBanner(LotResultKind kind, {int? productId}) {
     final visible = visibleLotResult(kind, thisLotHasEnded: true);
     if (visible == LotResultKind.none) return;
     _lotResultTimer?.cancel();
-    setState(() => _lotResult = visible);
+    setState(() {
+      _lotResult = visible;
+      _lotResultProductId = productId;
+    });
     _lotResultTimer = Timer(const Duration(seconds: 8), () {
-      if (mounted) setState(() => _lotResult = null);
+      if (mounted) {
+        setState(() {
+          _lotResult = null;
+          _lotResultProductId = null;
+        });
+      }
     });
   }
 

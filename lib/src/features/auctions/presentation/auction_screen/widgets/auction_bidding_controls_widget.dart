@@ -540,6 +540,22 @@ class _AuctionBiddingControlsWidgetState
                   );
 
                   if (!isSold) {
+                    final stillLiveOpen = isCurrentLiveLot(
+                          productId: widget.selectedProduct?.id,
+                          productName: widget.selectedProduct?.displayName,
+                          currentProductId: widget.auction.currentProductId,
+                          currentProductName: widget.auction.currentProduct,
+                        ) &&
+                        !isCurrentLiveLotClosedByServer(
+                          isAuctionEnded: widget.isAuctionEnded,
+                          auctionExpired: widget.auction.isExpired,
+                          auctionCanceled: widget.auction.isCanceled,
+                          productSold: widget.selectedProduct?.isSold,
+                          productExpired: widget.selectedProduct?.isExpired,
+                        );
+                    if (stillLiveOpen) {
+                      return _goToLiveLotControls();
+                    }
                     return Column(
                       children: [
                         const LotResultBanner(kind: LotResultKind.unsold),
@@ -1023,7 +1039,24 @@ class _AuctionBiddingControlsWidgetState
       hasWinner: widget.winnerId != null,
     );
 
+    final lotStillOpen = !isCurrentLiveLotClosedByServer(
+      isAuctionEnded: widget.isAuctionEnded,
+      auctionExpired: widget.auction.isExpired,
+      auctionCanceled: widget.auction.isCanceled,
+      productSold: widget.selectedProduct?.isSold,
+      productExpired: widget.selectedProduct?.isExpired,
+    );
+    final viewingCurrentLive = isCurrentLiveLot(
+      productId: widget.selectedProduct?.id,
+      productName: widget.selectedProduct?.displayName,
+      currentProductId: widget.auction.currentProductId,
+      currentProductName: widget.auction.currentProduct,
+    );
+
     if (!isSold) {
+      if (lotStillOpen && viewingCurrentLive) {
+        return const SizedBox.shrink();
+      }
       return const LotResultBanner(kind: LotResultKind.unsold);
     }
 

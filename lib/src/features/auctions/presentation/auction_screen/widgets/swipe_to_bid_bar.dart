@@ -164,16 +164,18 @@ class _SwipeToBidBarState extends State<SwipeToBidBar>
             color: widget.trackColor,
             borderRadius: BorderRadius.circular(_height / 2),
           ),
-          child: Center(
-            child: Text(
-              widget.successText ?? widget.hintText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
-          ),
+          child: (widget.successText == null || widget.successText!.isEmpty)
+              ? const SizedBox.shrink()
+              : Center(
+                  child: Text(
+                    widget.successText!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
         ),
       );
     }
