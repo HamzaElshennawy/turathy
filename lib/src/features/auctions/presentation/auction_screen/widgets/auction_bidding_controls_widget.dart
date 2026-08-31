@@ -89,6 +89,7 @@ class _AuctionBiddingControlsWidgetState
         oldWidget.auction.liveStartDate != widget.auction.liveStartDate ||
         oldWidget.auction.isPreAuction != widget.auction.isPreAuction ||
         oldWidget.selectedProduct?.id != widget.selectedProduct?.id) {
+      _lotExpired = false;
       _syncExpiryFromWidget();
     }
   }
@@ -104,6 +105,20 @@ class _AuctionBiddingControlsWidgetState
 
   bool _computeLotExpired() {
     if (widget.auction.isPreAuction) return false;
+    final viewingLiveOpen = isCurrentLiveLot(
+          productId: widget.selectedProduct?.id,
+          productName: widget.selectedProduct?.displayName,
+          currentProductId: widget.auction.currentProductId,
+          currentProductName: widget.auction.currentProduct,
+        ) &&
+        !isCurrentLiveLotClosedByServer(
+          isAuctionEnded: widget.isAuctionEnded,
+          auctionExpired: widget.auction.isExpired,
+          auctionCanceled: widget.auction.isCanceled,
+          productSold: widget.selectedProduct?.isSold,
+          productExpired: widget.selectedProduct?.isExpired,
+        );
+    if (viewingLiveOpen) return false;
     final expiry = _effectiveExpiry;
     if (expiry == null) return true;
     return !DateTime.now().isBefore(expiry);
@@ -507,11 +522,33 @@ class _AuctionBiddingControlsWidgetState
           // Timer pill with progress bar for last 30 seconds
           if (!isAuctionEnded && !widget.auction.isPreAuction) ...[
             AuctionExpiryClock(
-              expiry: _effectiveExpiry,
+              key: ValueKey(
+                'lot-clock-${widget.selectedProduct?.id ?? widget.auction.currentProductId ?? 0}-${_effectiveExpiry?.millisecondsSinceEpoch ?? 0}',
+              ),
+              expiry: !isBiddingDisabled &&
+                      _effectiveExpiry != null &&
+                      !DateTime.now().isBefore(_effectiveExpiry!)
+                  ? null
+                  : _effectiveExpiry,
               durationThreshold: widget.auction.itemDuration ?? 30,
               isAuctionEnded: isAuctionEnded,
               onExpired: () {
                 if (!mounted || _lotExpired) return;
+                if (isCurrentLiveLot(
+                      productId: widget.selectedProduct?.id,
+                      productName: widget.selectedProduct?.displayName,
+                      currentProductId: widget.auction.currentProductId,
+                      currentProductName: widget.auction.currentProduct,
+                    ) &&
+                    !isCurrentLiveLotClosedByServer(
+                      isAuctionEnded: widget.isAuctionEnded,
+                      auctionExpired: widget.auction.isExpired,
+                      auctionCanceled: widget.auction.isCanceled,
+                      productSold: widget.selectedProduct?.isSold,
+                      productExpired: widget.selectedProduct?.isExpired,
+                    )) {
+                  return;
+                }
                 setState(() => _lotExpired = true);
               },
             ),

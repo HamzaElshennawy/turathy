@@ -49,3 +49,7 @@ void applyHeldLiveFields(
   if (heldPrice != null) auction.actualPrice = heldPrice;
   if (heldExpiry != null) auction.expiryDate = heldExpiry;
 }
+
+/// On `auctionItemEnded` + nextItem, replace the previous lot hammer
+/// with the new lot opening (`bidPrice`) so a rebuild cannot flash it.
+num heldPriceForNextLot(num nextOpeningBidPrice) => nextOpeningBidPrice;

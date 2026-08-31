@@ -285,6 +285,42 @@ void main() {
   });
 
   group('overlayLotResult', () {
+    test('hides sold overlay on an open live lot', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.sold,
+          resultProductId: 10,
+          selectedProductId: 11,
+          currentLiveProductId: 11,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.sold,
+          resultProductId: 11,
+          selectedProductId: 11,
+          currentLiveProductId: 11,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
+    test('hides youWon overlay on an open live lot', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.youWon,
+          resultProductId: 10,
+          selectedProductId: 11,
+          currentLiveProductId: 11,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
     test('hides previous lot unsold on the next live item', () {
       expect(
         overlayLotResult(
@@ -298,13 +334,26 @@ void main() {
       );
     });
 
-    test('hides unsold while the selected lot is still the open live item', () {
+    test('hides unsold even if resultProductId matches the open live lot', () {
       expect(
         overlayLotResult(
           kind: LotResultKind.unsold,
           resultProductId: 10,
           selectedProductId: 10,
           currentLiveProductId: 10,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
+    test('hides unsold when selected id is missing on an open live auction', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.unsold,
+          resultProductId: 10,
+          selectedProductId: null,
+          currentLiveProductId: 11,
           selectedLotClosedByServer: false,
         ),
         LotResultKind.none,
@@ -334,6 +383,32 @@ void main() {
           selectedLotClosedByServer: true,
         ),
         LotResultKind.unsold,
+      );
+    });
+
+    test('hides sold on the open live item', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.sold,
+          resultProductId: 10,
+          selectedProductId: 11,
+          currentLiveProductId: 11,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
+    test('hides youWon on the open live item', () {
+      expect(
+        overlayLotResult(
+          kind: LotResultKind.youWon,
+          resultProductId: 10,
+          selectedProductId: 10,
+          currentLiveProductId: 10,
+          selectedLotClosedByServer: false,
+        ),
+        LotResultKind.none,
       );
     });
   });

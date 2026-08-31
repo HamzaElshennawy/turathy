@@ -79,8 +79,9 @@ LotResultKind visibleLotResult(
 
 /// Overlay banner for a lot-end result (dismissible «لم تُبع» / sold).
 ///
-/// Never paint the previous lot's unsold state on the next live item, and
-/// never while that item is still open for bids (timer at 0 is not enough).
+/// Never paint the previous lot's result on the next live item, and never
+/// while the selected lot is still open for bids (local timer at 0 is not
+/// a sale decision).
 LotResultKind overlayLotResult({
   required LotResultKind kind,
   required int? resultProductId,
@@ -90,23 +91,27 @@ LotResultKind overlayLotResult({
 }) {
   if (kind == LotResultKind.none) return LotResultKind.none;
 
+  final selectedIsCurrentLive = selectedProductId != null &&
+      currentLiveProductId != null &&
+      selectedProductId == currentLiveProductId;
+  final viewingOpenLiveLot = !selectedLotClosedByServer &&
+      (selectedIsCurrentLive ||
+          currentLiveProductId == null ||
+          selectedProductId == null);
+  if (viewingOpenLiveLot) {
+    return LotResultKind.none;
+  }
+
   if (resultProductId != null &&
       selectedProductId != null &&
       resultProductId != selectedProductId) {
     return LotResultKind.none;
   }
 
-  if (kind != LotResultKind.unsold) return kind;
+  if (kind == LotResultKind.unsold && !selectedLotClosedByServer) {
+    return LotResultKind.none;
+  }
 
-  final selectedIsCurrentLive = selectedProductId != null &&
-      currentLiveProductId != null &&
-      selectedProductId == currentLiveProductId;
-  if (selectedIsCurrentLive && !selectedLotClosedByServer) {
-    return LotResultKind.none;
-  }
-  if (!selectedLotClosedByServer && currentLiveProductId == null) {
-    return LotResultKind.none;
-  }
   return kind;
 }
 

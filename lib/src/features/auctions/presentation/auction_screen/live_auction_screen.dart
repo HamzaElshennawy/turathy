@@ -338,6 +338,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   void _applyLiveSnapshot(AuctionStateUpdateEvent event) {
     if (!mounted) return;
     if (event.auctionId != 0 && event.auctionId != widget.auctionId) return;
+    // A late pulse from the previous lot must not flash its hammer on the new opening.
+    if (shouldIgnoreLiveBid(
+      eventProductId: event.currentProductId,
+      currentProductId: auction.currentProductId,
+    )) {
+      return;
+    }
     final price = event.resolvedCurrentPrice;
     setState(() {
       if (price != null) {
@@ -661,6 +668,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           final newBidPrice = num.tryParse(nextItem.bidPrice ?? '0') ?? 0;
           final newExpiry = event.auction.expiryDate;
           final newImageUrl = nextItem.imageUrl;
+          // Never leave the previous lot's «لم تُبع» on this chrome.
 
           // Resolve the product object once; O(n) list scan stays outside setState.
           final AuctionProducts nextProduct =
@@ -683,8 +691,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             // Live display floor = opening bidPrice. Do not copy reserve/estimate.
             auction.actualPrice = newBidPrice;
             auction.minBidPrice = null;
+            _liveCurrentPrice = heldPriceForNextLot(newBidPrice);
             if (newImageUrl != null) auction.imageUrl = newImageUrl;
-            if (newExpiry != null) auction.expiryDate = newExpiry;
+            if (newExpiry != null) {
+              auction.expiryDate = newExpiry;
+              _liveExpiryDate = newExpiry;
+            }
             _isAuctionEnded = false;
             _winnerId = null;
             _winnerName = null;
@@ -693,6 +705,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             _lotResult = null;
             _lotResultProductId = null;
           });
+          resetNewBidStream(ref);
 
           // ── Post-setState side effects (no extra rebuild triggered) ──────────
           // addPostFrameCallback is intentionally placed OUTSIDE setState so it
@@ -1472,7 +1485,23 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   }
 
   void _showLotResultBanner(LotResultKind kind, {int? productId}) {
-    final visible = visibleLotResult(kind, thisLotHasEnded: true);
+    final selectedId = _selectedProduct?.id;
+    if (productId != null &&
+        selectedId != null &&
+        productId != selectedId) {
+      return;
+    }
+    final selectedClosed = isCurrentLiveLotClosedByServer(
+      isAuctionEnded: _isAuctionEnded,
+      auctionExpired: auction.isExpired,
+      auctionCanceled: auction.isCanceled,
+      productSold: _selectedProduct?.isSold,
+      productExpired: _selectedProduct?.isExpired,
+    );
+    if (!selectedClosed) {
+      return;
+    }
+    final visible = visibleLotResult(kind, thisLotHasEnded: selectedClosed);
     if (visible == LotResultKind.none) return;
     _lotResultTimer?.cancel();
     setState(() {
