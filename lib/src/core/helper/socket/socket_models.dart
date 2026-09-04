@@ -219,8 +219,8 @@ class SocketUser {
   /// ISO country code (e.g., 'SAU', 'EGY') used for flag decoration.
   final String? nationality;
   
-  /// Contact phone number used for winner identification.
-  final String number;
+  /// Contact phone is never required on public socket payloads.
+  final String? number;
 
   /// Default constructor for socket-based user representations.
   const SocketUser({
@@ -228,17 +228,17 @@ class SocketUser {
     required this.name,
     this.nickname,
     this.nationality,
-    required this.number,
+    this.number,
   });
 
   /// Parses specialized socket user data from JSON.
   factory SocketUser.fromJson(Map<String, dynamic> json) {
     return SocketUser(
       id: json['id'] as int,
-      name: json['name'] as String,
+      name: json['name'] as String? ?? '',
       nickname: json['nickname'] as String?,
       nationality: json['nationality'] as String?,
-      number: json['number'] as String,
+      number: json['number'] as String?,
     );
   }
 
@@ -804,13 +804,10 @@ class AuctionStateUpdateEvent {
   /// Highest live amount for [currentProductId] only — never another lot's hammer.
   num? get resolvedCurrentPrice {
     if (currentPrice != null) return currentPrice;
+    if (currentProductId == null) return null;
     num? highest;
     for (final product in products) {
-      if (currentProductId != null &&
-          product.id != null &&
-          product.id != currentProductId) {
-        continue;
-      }
+      if (product.id != currentProductId) continue;
       for (final bid in product.topBids) {
         final amount = bid.bid;
         if (amount == null) continue;

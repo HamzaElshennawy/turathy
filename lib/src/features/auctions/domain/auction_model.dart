@@ -22,6 +22,10 @@ class AuctionModel {
   String? currentProduct;
   int? currentProductId;
   num? actualPrice;
+
+  /// Live hammer for the current lot. Never confuse this with sold estimate
+  /// [actualPrice] from the catalog API.
+  num? liveCurrentPrice;
   num? minBidPrice;
   num? quantity;
   num? bidPrice;
@@ -71,6 +75,7 @@ class AuctionModel {
     this.currentProduct,
     this.currentProductId,
     this.actualPrice,
+    this.liveCurrentPrice,
     this.minBidPrice,
     this.quantity,
     this.bidPrice,

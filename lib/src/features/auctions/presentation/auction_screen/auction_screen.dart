@@ -26,6 +26,7 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/live_a
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
 import 'package:turathy/src/core/helper/live_bid_sync.dart';
 import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/profile_auction_gate.dart';
 
 import '../../../../core/constants/app_sizes.dart';
 import '../../../authintication/presentation/sign_in_screen.dart';
@@ -150,6 +151,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   StreamSubscription? _bidRejectedSubscription;
   StreamSubscription? _bidAcceptedSubscription;
   SocketActions? _socketActions;
+  bool _isItemSheetOpen = false;
+  final List<PendingClientBid> _pendingBids = [];
 
   /// Whether the auction has entered at least the pre-auction phase (now >= startDate)
   bool get _hasPreAuctionStarted {
@@ -408,7 +411,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             p.displayName == _currentAuction.currentProduct,
                       ) ??
                       false)) {
-                _currentAuction.actualPrice = serverPrice;
+                _currentAuction.liveCurrentPrice = serverPrice;
               }
             });
           }
@@ -428,30 +431,23 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           final map = data is Map
               ? Map<String, dynamic>.from(data)
               : <String, dynamic>{};
-          final nestedBid = map['newBid'];
-          final auctionId = parsePositiveInt(
-            map['auctionId'] ??
-                map['auction_id'] ??
-                (nestedBid is Map ? nestedBid['auctionId'] : null),
-          );
-          if (auctionId != null &&
-              _currentAuction.id != null &&
-              auctionId != _currentAuction.id) {
+          final auctionId = parseBidAcceptedAuctionId(map);
+          final productId = parseBidAcceptedProductId(map);
+          if (auctionId == null || productId == null) return;
+          if (_currentAuction.id != null && auctionId != _currentAuction.id) {
             return;
           }
-          final productId = parsePositiveInt(
-            map['productId'] ?? map['product_id'],
-          );
-          final knownProductIds = _currentAuction.auctionProducts
-              ?.map((p) => p.id)
-              .whereType<int>()
-              .toSet();
-          if (productId != null &&
-              knownProductIds != null &&
-              knownProductIds.isNotEmpty &&
-              !knownProductIds.contains(productId)) {
-            return;
+          PendingClientBid? matched;
+          for (final pending in _pendingBids) {
+            if (matchesPendingBidAck(data: map, pending: pending)) {
+              matched = pending;
+              break;
+            }
           }
+          if (matched == null) return;
+          _pendingBids.remove(matched);
+          final routeIsCurrent = ModalRoute.of(context)?.isCurrent == true;
+          if (!routeIsCurrent && !_isItemSheetOpen) return;
           _showFloatingToast(
             AppStrings.bidPlacedSuccessfully.tr(),
             icon: Icons.check_circle_outline,
@@ -512,7 +508,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             opacity: fadeAnim,
             child: Material(
               color: Colors.transparent,
-              child: GestureDetector(
+              child: Semantics(
+                liveRegion: true,
+                label: message,
+                child: GestureDetector(
                 onTap: dismiss,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -567,6 +566,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       ),
                     ],
                   ),
+                ),
                 ),
               ),
             ),
@@ -995,28 +995,15 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     bool isGranted = isAuctionAccessGranted(_accessStatus);
     bool isPending = _accessStatus == 'PENDING';
     bool isDenied = _accessStatus == 'DENIED';
-    bool isProfilePending =
-        _accessStatus == 'PROFILE_PENDING' ||
-        _accessStatus == 'PROFILE_INCOMPLETE';
+    bool isProfileIncomplete = isAuctionProfileIncomplete(_accessStatus);
+    bool isProfilePending = isAuctionAccessPending(_accessStatus) &&
+        !isProfileIncomplete;
     bool isNicknameRequired = _accessStatus == 'NICKNAME_REQUIRED';
     bool isOwner = _currentAuction.userId == CachedVariables.userId;
+    bool isError = _accessStatus == 'ERROR';
+    bool isLoginRequired = _accessStatus == 'LOGIN_REQUIRED';
 
-    bool isAuctionEnded = false;
-    if (_currentAuction.isExpired == true ||
-        _currentAuction.isCanceled == true) {
-      isAuctionEnded = true;
-    }
-    //else if (_currentAuction.expiryDate != null &&
-    //    _currentAuction.expiryDate!.isBefore(DateTime.now())) {
-    //  isAuctionEnded = true;
-    //}
-    else if (_currentAuction.currentProduct == null &&
-        _currentAuction.currentProductId == null &&
-        _currentAuction.isPreAuction == false &&
-        _currentAuction.isLive != true &&
-        _timeLeft == Duration.zero) {
-      isAuctionEnded = true;
-    }
+    bool isAuctionEnded = _isAuctionFullyEnded();
 
     VoidCallback? onPressed;
     String buttonText = '';
@@ -1053,14 +1040,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           );
         };
       }
-    } else if (isPending) {
+    } else if (isPending || isProfilePending) {
       buttonText = AppStrings.accessPending.tr();
       buttonColor = Colors.orange;
       onPressed = null;
-    } else if (isProfilePending) {
-      buttonText = AppStrings.profileApprovalPending.tr();
+    } else if (isProfileIncomplete) {
+      buttonText = AppStrings.completeProfileToEnterAuction.tr();
       buttonColor = Colors.orange;
-      onPressed = null;
+      onPressed = () => ensureProfileCompleteForAuction(context, ref);
     } else if (isNicknameRequired) {
       buttonText = AppStrings.nicknameRequiredForAuction.tr();
       buttonColor = Colors.orange;
@@ -1069,8 +1056,19 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       buttonText = AppStrings.accessDenied.tr();
       buttonColor = Colors.red;
       onPressed = null;
+    } else if (isLoginRequired) {
+      buttonText = AppStrings.signIn.tr();
+      buttonColor = Theme.of(context).primaryColor;
+      onPressed = () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => SignInScreen()),
+        );
+      };
+    } else if (isError) {
+      buttonText = AppStrings.checkInternetConnection.tr();
+      buttonColor = Theme.of(context).primaryColor;
+      onPressed = _checkAccess;
     } else {
-      // REQUIRED or ERROR
       buttonText = AppStrings.requestAccess.tr();
       buttonColor = Theme.of(context).primaryColor;
       onPressed = _requestAccess;
@@ -1200,14 +1198,29 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     ).toString();
   }
 
-  void _showItemBottomSheet(
+  bool _isAuctionFullyEnded() {
+    if (_currentAuction.isExpired == true ||
+        _currentAuction.isCanceled == true) {
+      return true;
+    }
+    return _currentAuction.currentProduct == null &&
+        _currentAuction.currentProductId == null &&
+        _currentAuction.isPreAuction == false &&
+        _currentAuction.isLive != true &&
+        _timeLeft == Duration.zero;
+  }
+
+  Future<void> _showItemBottomSheet(
     BuildContext context,
     AuctionProducts product,
     int itemIndex,
-  ) {
+  ) async {
+    if (_isItemSheetOpen) return;
+    _isItemSheetOpen = true;
     final bool isTabletSheet = MediaQuery.of(context).size.width >= 600;
 
-    showModalBottomSheet(
+    try {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       // On tablets constrain the sheet width so it doesn't feel stretched.
@@ -1372,6 +1385,27 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
               final bool isGranted =
                   isAuctionAccessGranted(_accessStatus) || isOwner;
 
+              if (_isAuctionFullyEnded()) {
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      AppStrings.ended.tr(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
               if (!isGranted) {
                 return _buildSheetAccessRequired(sheetContext);
               }
@@ -1381,16 +1415,23 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 auction: _currentAuction,
                 selectedProduct: product,
                 showOnlyMaxBid: true,
-                onPlaceBid: (qty, price, productId) {
-                  if (productId != null) {
-                    final socketActions = ref.read(socketActionsProvider);
-                    socketActions.placeBid(
-                      _currentAuction.id ?? 0,
-                      CachedVariables.userId ?? 0,
-                      price.toDouble(),
-                      productId,
-                    );
-                  }
+                onPlaceBid: (qty, price, productId) async {
+                  if (productId == null) return;
+                  final socketActions = ref.read(socketActionsProvider);
+                  final clientBidId = await socketActions.placeBid(
+                    _currentAuction.id ?? 0,
+                    CachedVariables.userId ?? 0,
+                    price.toDouble(),
+                    productId,
+                  );
+                  _pendingBids.add(
+                    PendingClientBid(
+                      clientBidId: clientBidId,
+                      auctionId: _currentAuction.id ?? 0,
+                      productId: productId,
+                      amount: price,
+                    ),
+                  );
                 },
               );
             }
@@ -1641,9 +1682,12 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         );
       },
     );
-  },
-);
-}
+      },
+    );
+    } finally {
+      _isItemSheetOpen = false;
+    }
+  }
 
   void _showFilterBottomSheet() {
     showModalBottomSheet(

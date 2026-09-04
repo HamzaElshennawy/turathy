@@ -36,6 +36,8 @@ import '../../../../core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/helper/live_bid_sync.dart';
 
 import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/profile_auction_gate.dart';
+import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_result_banner.dart';
 
 class LiveAuctionScreen extends ConsumerStatefulWidget {
@@ -116,6 +118,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   DateTime? _liveExpiryDate;
   bool _suppressSwipe = false;
   Timer? _swipeHideTimer;
+  final List<PendingClientBid> _pendingBids = [];
 
   @override
   void initState() {
@@ -201,10 +204,23 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           final map = data is Map
               ? Map<String, dynamic>.from(data)
               : <String, dynamic>{};
+          final auctionId = parseBidAcceptedAuctionId(map);
+          final productId = parseBidAcceptedProductId(map);
+          if (auctionId == null || productId == null) return;
+          if (auctionId != widget.auctionId) return;
+          PendingClientBid? matched;
+          for (final pending in _pendingBids) {
+            if (matchesPendingBidAck(data: map, pending: pending)) {
+              matched = pending;
+              break;
+            }
+          }
+          if (matched == null) return;
+          _pendingBids.remove(matched);
           _applyRoomBidUpdate(
             currentPrice: parseBidAcceptedPrice(map),
             expiryDate: parseSocketDate(map['expiryDate']),
-            eventProductId: parsePositiveInt(map['productId'] ?? map['product_id']),
+            eventProductId: productId,
           );
           final rawBids = map['auctionBids'];
           if (rawBids is List) {
@@ -284,6 +300,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   }
 
   Future<void> _requestAccess() async {
+    if (CachedVariables.userId == null) {
+      setState(() => _accessStatus = 'LOGIN_REQUIRED');
+      return;
+    }
     setState(() {
       _isAccessLoading = true;
     });
@@ -359,7 +379,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     setState(() {
       if (price != null) {
         _liveCurrentPrice = price;
-        auction.actualPrice = price;
+        auction.liveCurrentPrice = price;
       }
       if (event.expiryDate != null) {
         _liveExpiryDate = event.expiryDate;
@@ -392,7 +412,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     setState(() {
       if (currentPrice != null) {
         _liveCurrentPrice = currentPrice;
-        auction.actualPrice = currentPrice;
+        auction.liveCurrentPrice = currentPrice;
       }
       if (expiryDate != null) {
         _liveExpiryDate = expiryDate;
@@ -540,11 +560,19 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     required bool isOpeningBid,
   }) async {
     try {
-      await socketActions.placeBid(
+      final clientBidId = await socketActions.placeBid(
         auction.id ?? 0,
         CachedVariables.userId!,
         currentBid.toDouble(),
         productId,
+      );
+      _pendingBids.add(
+        PendingClientBid(
+          clientBidId: clientBidId,
+          auctionId: auction.id ?? widget.auctionId,
+          productId: productId,
+          amount: currentBid,
+        ),
       );
     } catch (e) {
       debugPrint('LiveAuctionScreen: placeBid failed: $e');
@@ -699,7 +727,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             auction.currentProductId = nextItem.id;
             auction.bidPrice = newBidPrice;
             // Live display floor = opening bidPrice. Do not copy reserve/estimate.
-            auction.actualPrice = newBidPrice;
+            auction.liveCurrentPrice = heldPriceForNextLot(newBidPrice);
             auction.minBidPrice = null;
             _liveCurrentPrice = heldPriceForNextLot(newBidPrice);
             if (newImageUrl != null) auction.imageUrl = newImageUrl;
@@ -1395,11 +1423,75 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         title = AppStrings.accessPending.tr();
         break;
       case 'PROFILE_PENDING':
-      case 'PROFILE_INCOMPLETE':
         icon = Icons.hourglass_top_rounded;
         color = Colors.orange;
         title = AppStrings.profileApprovalPending.tr();
         message = AppStrings.profileApprovalPendingDescription.tr();
+        break;
+      case 'PROFILE_INCOMPLETE':
+        icon = Icons.badge_outlined;
+        color = Colors.orange;
+        title = AppStrings.completeProfileToEnterAuction.tr();
+        message = AppStrings.completeProfileToEnterAuction.tr();
+        actionWidget = ElevatedButton.icon(
+          onPressed: () => ensureProfileCompleteForAuction(context, ref),
+          icon: const Icon(Icons.person, color: Colors.white),
+          label: Text(
+            AppStrings.completeProfile.tr(),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D4739),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        break;
+      case 'LOGIN_REQUIRED':
+        icon = Icons.lock_outline;
+        color = Colors.blueGrey;
+        title = AppStrings.requestAccess.tr();
+        actionWidget = ElevatedButton.icon(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SignInScreen()),
+            );
+          },
+          icon: const Icon(Icons.login, color: Colors.white),
+          label: Text(
+            AppStrings.signIn.tr(),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D4739),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        break;
+      case 'ERROR':
+        icon = Icons.error_outline;
+        color = Colors.red;
+        title = AppStrings.checkInternetConnection.tr();
+        actionWidget = ElevatedButton.icon(
+          onPressed: _checkAccess,
+          icon: const Icon(Icons.refresh, color: Colors.white),
+          label: Text(
+            AppStrings.checkInternetConnection.tr(),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D4739),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
         break;
       case 'NICKNAME_REQUIRED':
         icon = Icons.badge_outlined;

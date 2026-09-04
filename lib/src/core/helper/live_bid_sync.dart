@@ -46,8 +46,65 @@ void applyHeldLiveFields(
   num? heldPrice,
   DateTime? heldExpiry,
 }) {
-  if (heldPrice != null) auction.actualPrice = heldPrice;
+  if (heldPrice != null) auction.liveCurrentPrice = heldPrice;
   if (heldExpiry != null) auction.expiryDate = heldExpiry;
+}
+
+int? parseBidAcceptedAuctionId(Map<String, dynamic> data) {
+  final nested = data['newBid'];
+  return parsePositiveInt(
+    data['auctionId'] ??
+        data['auction_id'] ??
+        (nested is Map ? nested['auctionId'] ?? nested['auction_id'] : null),
+  );
+}
+
+int? parseBidAcceptedProductId(Map<String, dynamic> data) {
+  final nested = data['newBid'];
+  return parsePositiveInt(
+    data['productId'] ??
+        data['product_id'] ??
+        (nested is Map ? nested['productId'] ?? nested['product_id'] : null),
+  );
+}
+
+String? parseClientBidId(Map<String, dynamic> data) {
+  final raw = data['clientBidId'] ?? data['client_bid_id'];
+  if (raw == null) return null;
+  final value = raw.toString().trim();
+  return value.isEmpty ? null : value;
+}
+
+class PendingClientBid {
+  const PendingClientBid({
+    required this.clientBidId,
+    required this.auctionId,
+    required this.productId,
+    required this.amount,
+  });
+
+  final String clientBidId;
+  final int auctionId;
+  final int productId;
+  final num amount;
+}
+
+/// Fail closed: auction + product must be present and match.
+bool matchesPendingBidAck({
+  required Map<String, dynamic> data,
+  required PendingClientBid pending,
+}) {
+  final auctionId = parseBidAcceptedAuctionId(data);
+  final productId = parseBidAcceptedProductId(data);
+  if (auctionId == null || productId == null) return false;
+  if (auctionId != pending.auctionId || productId != pending.productId) {
+    return false;
+  }
+  final clientBidId = parseClientBidId(data);
+  if (clientBidId != null && clientBidId != pending.clientBidId) return false;
+  final submitted = parseOptionalNum(data['submittedAmount']);
+  if (submitted != null && submitted != pending.amount) return false;
+  return true;
 }
 
 /// On `auctionItemEnded` + nextItem, replace the previous lot hammer

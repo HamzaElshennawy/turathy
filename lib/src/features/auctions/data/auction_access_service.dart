@@ -1,31 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/features/auctions/data/auction_access_status.dart';
 import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_access_model.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 
-/// Maps backend / request statuses onto the mobile UI contract.
-String normalizeAuctionAccessStatus(String status) {
-  switch (status.toUpperCase()) {
-    case 'APPROVED':
-      return 'GRANTED';
-    case 'PROFILE_INCOMPLETE':
-      return 'PROFILE_PENDING';
-    default:
-      return status.toUpperCase();
-  }
-}
-
-bool isAuctionAccessGranted(String? status) {
-  return normalizeAuctionAccessStatus(status ?? '') == 'GRANTED';
-}
+export 'auction_access_status.dart';
 
 /// Shared utility for checking and requesting auction access.
-/// Screens should call these methods and handle UI updates themselves.
 class AuctionAccessService {
   final Ref _ref;
   final AuctionsRepository _repository;
+  Future<String>? _inFlightRequest;
 
   AuctionAccessService(this._ref, this._repository);
 
@@ -43,7 +30,7 @@ class AuctionAccessService {
 
     final missing = currentUser.missingFields ?? const <String>[];
     if (currentUser.isProfileComplete == false || missing.isNotEmpty) {
-      return 'PROFILE_PENDING';
+      return 'PROFILE_INCOMPLETE';
     }
 
     final nickname = currentUser.nickname?.trim() ?? '';
@@ -59,20 +46,16 @@ class AuctionAccessService {
     return null;
   }
 
-  /// Returns a status string: GRANTED, PENDING, DENIED, REQUIRED, ERROR.
-  /// Handles admin shortcut and not-logged-in shortcut internally.
   Future<String> checkAccess({
     required int auctionId,
     int? auctionOwnerId,
   }) async {
-    // Admin shortcut
     if (auctionOwnerId != null &&
         CachedVariables.userId != null &&
         auctionOwnerId == CachedVariables.userId) {
       return 'GRANTED';
     }
 
-    // Not logged in
     if (CachedVariables.userId == null) {
       return 'REQUIRED';
     }
@@ -89,13 +72,11 @@ class AuctionAccessService {
       );
       return normalizeAuctionAccessStatus(response.status);
     } catch (e) {
-      debugPrint("Error checking auction access: $e");
+      debugPrint('Error checking auction access: $e');
       return 'ERROR';
     }
   }
 
-  /// Requests access. Returns the new status string.
-  /// Returns 'LOGIN_REQUIRED' if user is not logged in.
   Future<String> requestAccess({required int auctionId}) async {
     if (CachedVariables.userId == null) {
       return 'LOGIN_REQUIRED';
@@ -106,17 +87,31 @@ class AuctionAccessService {
       return profileGateStatus;
     }
 
+    final existing = _inFlightRequest;
+    if (existing != null) return existing;
+
+    final pending = () async {
+      try {
+        final response = await _repository.requestAccess(
+          RequestAuctionAccessDto(
+            userId: CachedVariables.userId!,
+            auctionId: auctionId,
+          ),
+        );
+        return normalizeAuctionAccessStatus(response.status);
+      } catch (e) {
+        debugPrint('Error requesting auction access: $e');
+        return 'ERROR';
+      }
+    }();
+
+    _inFlightRequest = pending;
     try {
-      final response = await _repository.requestAccess(
-        RequestAuctionAccessDto(
-          userId: CachedVariables.userId!,
-          auctionId: auctionId,
-        ),
-      );
-      return normalizeAuctionAccessStatus(response.status);
-    } catch (e) {
-      debugPrint("Error requesting auction access: $e");
-      return 'ERROR';
+      return await pending;
+    } finally {
+      if (identical(_inFlightRequest, pending)) {
+        _inFlightRequest = null;
+      }
     }
   }
 }

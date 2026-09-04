@@ -120,11 +120,11 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
       });
       if (status == 'PENDING') {
         AppFunctions.showSnackBar(
-          context: context, 
+          context: context,
           message: AppStrings.accessPending.tr(),
         );
-      } else if (status == 'ERROR' || status == 'PROFILE_INCOMPLETE') {
-        // Incomplete profile often surfaces as request error from API.
+      }
+      if (isAuctionProfileIncomplete(status) || status == 'NICKNAME_REQUIRED') {
         await ensureProfileCompleteForAuction(context, ref);
       }
     }
@@ -449,8 +449,10 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
         widget.auction.startDate!.isBefore(DateTime.now());
 
     final bool isGranted = isAuctionAccessGranted(_accessStatus);
-    final bool isPending = _accessStatus == 'PENDING';
-    final bool isDenied = _accessStatus == 'DENIED';
+    final bool isPending = isAuctionAccessPending(_accessStatus);
+    final bool isDenied = isAuctionAccessDenied(_accessStatus);
+    final bool isIncomplete = isAuctionProfileIncomplete(_accessStatus);
+    final bool isError = _accessStatus == 'ERROR';
 
     String buttonText;
     Color buttonColor;
@@ -491,6 +493,14 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
       buttonText = AppStrings.accessDenied.tr();
       buttonColor = Colors.red;
       onPressed = null;
+    } else if (isIncomplete) {
+      buttonText = AppStrings.completeProfileToEnterAuction.tr();
+      buttonColor = Colors.orange;
+      onPressed = () => ensureProfileCompleteForAuction(context, ref);
+    } else if (isError) {
+      buttonText = AppStrings.checkInternetConnection.tr();
+      buttonColor = const Color(0xFF1B5E20);
+      onPressed = _loadAccess;
     } else {
       buttonText = AppStrings.requestAccess.tr();
       buttonColor = const Color(0xFF1B5E20);

@@ -31,20 +31,23 @@ abstract class SocketConfig {
   static String get baseUrl => _baseUrl;
 
   /// Returns the standardized [io.OptionBuilder] configuration.
-  ///
-  /// Constraints:
-  /// - Prefers websocket, falls back to polling when the upgrade fails.
-  /// - Engine reconnection only (the app must not create a second io.io loop).
-  /// - Sets a custom timeout for robustness in poor network conditions.
-  static Map<String, dynamic> get options => io.OptionBuilder()
-      .setTransports(['websocket', 'polling'])
-      .enableReconnection()
-      .setReconnectionDelay(_reconnectionDelay)
-      .setReconnectionDelayMax(_reconnectionDelayMax)
-      .setReconnectionAttempts(_maxReconnectionAttempts)
-      .setTimeout(_timeout)
-      .enableAutoConnect()
-      .build();
+  static Map<String, dynamic> optionsFor({String? token}) {
+    final builder = io.OptionBuilder()
+        .setTransports(['websocket', 'polling'])
+        .enableReconnection()
+        .setReconnectionDelay(_reconnectionDelay)
+        .setReconnectionDelayMax(_reconnectionDelayMax)
+        .setReconnectionAttempts(_maxReconnectionAttempts)
+        .setTimeout(_timeout)
+        .enableAutoConnect();
+    if (token != null && token.isNotEmpty) {
+      builder.setAuth({'token': token});
+      builder.setExtraHeaders({'Authorization': 'Bearer $token'});
+    }
+    return builder.build();
+  }
+
+  static Map<String, dynamic> get options => optionsFor();
 
   /// A registry of all server-sent events the application is configured to listen for.
   ///

@@ -424,6 +424,7 @@ class AppStrings {
   static const String tabLosing = 'tabLosing';
   static const String completeProfileToEnterAuction =
       'completeProfileToEnterAuction';
+  static const String completeProfile = 'completeProfile';
   static const String notificationSettings = 'notificationSettings';
   static const String nextItem = 'nextItem';
   static const String welcomeBackMessage = 'welcomeBackMessage';

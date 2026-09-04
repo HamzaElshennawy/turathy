@@ -253,13 +253,33 @@ class AuctionsRepository {
     );
     if (result.statusCode == 200 || result.statusCode == 201) {
       final responseData = result.data['data'];
-      // Handle case where API returns a message and the created request,
-      // or just returns the created request directly.
-      if (responseData is Map<String, dynamic> &&
-          responseData.containsKey('request')) {
-        return AuctionAccessModel.fromJson(responseData['request']);
+      if (responseData is Map<String, dynamic>) {
+        if (responseData.containsKey('request') &&
+            responseData['request'] is Map) {
+          return AuctionAccessModel.fromJson(
+            Map<String, dynamic>.from(responseData['request'] as Map),
+          );
+        }
+        if (responseData['status'] != null && responseData['id'] == null) {
+          return AuctionAccessModel(
+            id: 0,
+            userId: dto.userId,
+            auctionId: dto.auctionId,
+            status: '${responseData['status']}',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+        }
+        return AuctionAccessModel.fromJson(responseData);
       }
-      return AuctionAccessModel.fromJson(responseData);
+      return AuctionAccessModel(
+        id: 0,
+        userId: dto.userId,
+        auctionId: dto.auctionId,
+        status: 'ERROR',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
     } else {
       String message =
           result.data['error'] ??

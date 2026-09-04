@@ -18,6 +18,7 @@ import '../../../core/helper/cache/cached_keys.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/dio/dio_helper.dart';
 import '../../../core/helper/dio/end_points.dart';
+import '../../../core/helper/socket/socket_service.dart';
 import '../domain/user_model.dart';
 
 /// Internal utility to ensure a Dio response's data is a [Map].
@@ -518,6 +519,7 @@ class AuthRepository {
     await CacheHelper.deleteData(key: CachedKeys.isGoogleSignIn);
     await CacheHelper.deleteData(key: CachedKeys.isAppleSignIn);
     await CacheHelper.deleteData(key: CachedKeys.profilePicUrl);
+    SocketService.active?.reconnectWithAuth();
   }
 
   static Future<bool> refreshAccessToken() async {
@@ -544,6 +546,7 @@ class AuthRepository {
 
     await CacheHelper.setData(key: CachedKeys.authToken, value: accessToken);
     CachedVariables.token = accessToken;
+    SocketService.active?.reconnectWithAuth();
 
     if (rotatedRefreshToken != null && rotatedRefreshToken.isNotEmpty) {
       await CacheHelper.setData(

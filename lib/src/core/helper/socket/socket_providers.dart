@@ -419,7 +419,7 @@ class SocketActions {
   }
 
   /// Submits a competitive bid attempt for a specific product.
-  Future<void> placeBid(
+  Future<String> placeBid(
     int auctionId,
     int userId,
     double amount,
@@ -431,7 +431,16 @@ class SocketActions {
       productId: productId,
       amount: amount,
     );
-    _service.emitPlaceBid(auctionId, userId, amount, productId);
+    final clientBidId =
+        'bid-${DateTime.now().microsecondsSinceEpoch}-$productId';
+    _service.emitPlaceBid(
+      auctionId,
+      userId,
+      amount,
+      productId,
+      clientBidId: clientBidId,
+    );
+    return clientBidId;
   }
 
   /// Performs an administrative cancellation of the current auction session.

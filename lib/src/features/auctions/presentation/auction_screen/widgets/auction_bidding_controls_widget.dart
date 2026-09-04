@@ -223,7 +223,6 @@ class _AuctionBiddingControlsWidgetState
       auctionBidPrice: widget.auction.bidPrice,
       selectedProduct: widget.selectedProduct,
     );
-    num bidIncrement = 0;
 
     // Determine the latest bid from either real-time update or initial data
     // Filter initial bids by the current product to avoid using bids from previous items
@@ -275,7 +274,7 @@ class _AuctionBiddingControlsWidgetState
       currentPrice = rejectedServerPrice;
     }
     if (widget.selectedProduct == null && widget.auction.isLive == true) {
-      final liveActual = widget.auction.actualPrice;
+      final liveActual = widget.auction.liveCurrentPrice;
       if (liveActual != null && liveActual > currentPrice && latestBid != null) {
         currentPrice = liveActual;
       }
@@ -295,9 +294,6 @@ class _AuctionBiddingControlsWidgetState
     if (widget.isAuctionEnded && widget.finalPrice != null) {
       currentPrice = widget.finalPrice!;
     }
-
-    // Dynamic bid increment logic based on the current price
-    bidIncrement = getIncrementForPrice(currentPrice);
 
     // Determine if the auction has truly ended based on explicit flags.
     // The parent widget (LiveAuctionScreen) sets isAuctionEnded via socket events.

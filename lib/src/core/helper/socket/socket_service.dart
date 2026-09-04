@@ -14,6 +14,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
+import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'socket_config.dart';
@@ -24,6 +25,12 @@ import 'socket_connection_state.dart';
 /// Manages a single [io.Socket] instance, providing a high-level API for
 /// features to subscribe to real-time events without managing raw socket listeners.
 class SocketService {
+  static SocketService? active;
+
+  SocketService() {
+    active = this;
+  }
+
   /// The underlying Socket.IO client instance.
   io.Socket? _socket;
 
@@ -104,7 +111,10 @@ class SocketService {
     _handshake = handshake;
 
     if (_socket == null) {
-      _socket = io.io(SocketConfig.baseUrl, SocketConfig.options);
+      _socket = io.io(
+        SocketConfig.baseUrl,
+        SocketConfig.optionsFor(token: CachedVariables.token),
+      );
       _setupSocketListeners();
       _initializeEventControllers();
     } else {
@@ -415,7 +425,13 @@ class SocketService {
   }
 
   /// Submits a competitive bid for an item within an active auction.
-  void emitPlaceBid(int auctionId, int userId, double amount, int productId) {
+  void emitPlaceBid(
+    int auctionId,
+    int userId,
+    double amount,
+    int productId, {
+    String? clientBidId,
+  }) {
     if (amount <= 0) {
       throw ArgumentError('Bid amount must be a positive non-zero value');
     }
@@ -425,6 +441,7 @@ class SocketService {
       'userId': userId,
       'amount': amount,
       'productId': productId,
+      if (clientBidId != null) 'clientBidId': clientBidId,
     });
   }
 
@@ -506,6 +523,18 @@ class SocketService {
     );
   }
 
+  /// Recreate the engine after login, logout, or token refresh.
+  Future<void> reconnectWithAuth() async {
+    final auctionId = _lastJoinedAuctionId;
+    final userId = _lastJoinedUserId;
+    await disconnect();
+    await connect();
+    if (auctionId != null && userId != null) {
+      emitJoinAuction(auctionId, userId);
+      emitRequestSync(auctionId);
+    }
+  }
+
   /// Shuts down all stream controllers and permanently disposes the service.
   void dispose() {
     log('SocketService: Disposing entire service registry...');
@@ -521,6 +550,9 @@ class SocketService {
 
     if (!_connectionController.isClosed) {
       _connectionController.close();
+    }
+    if (identical(active, this)) {
+      active = null;
     }
   }
 }
