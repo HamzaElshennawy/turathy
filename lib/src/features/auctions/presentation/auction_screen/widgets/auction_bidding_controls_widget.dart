@@ -128,13 +128,15 @@ class _AuctionBiddingControlsWidgetState
     if (_memoizedBidStepsBase == basePrice && _memoizedBidSteps.length == 50) {
       return _memoizedBidSteps;
     }
+    final bool isBaseChanged =
+        _memoizedBidStepsBase != null && _memoizedBidStepsBase != basePrice;
     _memoizedBidStepsBase = basePrice;
     _memoizedBidSteps = buildBidSteps(basePrice, 50);
     final maxIndex = _memoizedBidSteps.isEmpty
         ? 0
         : _memoizedBidSteps.length - 1;
-    if (_selectedMaxBidIndex > maxIndex) {
-      _selectedMaxBidIndex = maxIndex;
+    if (isBaseChanged || _selectedMaxBidIndex > maxIndex) {
+      _selectedMaxBidIndex = 0;
       _jumpPickerIfNeeded();
     }
     return _memoizedBidSteps;
@@ -272,9 +274,11 @@ class _AuctionBiddingControlsWidgetState
     if (rejectedServerPrice != null && rejectedServerPrice > currentPrice) {
       currentPrice = rejectedServerPrice;
     }
-    final liveActual = widget.auction.actualPrice;
-    if (liveActual != null && liveActual > currentPrice) {
-      currentPrice = liveActual;
+    if (widget.selectedProduct == null && widget.auction.isLive == true) {
+      final liveActual = widget.auction.actualPrice;
+      if (liveActual != null && liveActual > currentPrice && latestBid != null) {
+        currentPrice = liveActual;
+      }
     }
 
     if (auctionProduct != null && widget.selectedProduct == null) {
@@ -383,7 +387,11 @@ class _AuctionBiddingControlsWidgetState
 
     final int bidNumber = currentProductBids.length;
 
-    final num stepsBase = highestActiveBid?.bid ?? currentPrice;
+    final num stepsBase = maxBidFloor(
+      highestActiveBid: highestActiveBid?.bid,
+      currentPrice: currentPrice,
+      openingPrice: openingPrice,
+    );
     final List<num> bidSteps = _bidStepsFor(stepsBase);
 
     return Container(
@@ -957,7 +965,7 @@ class _AuctionBiddingControlsWidgetState
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: auctionNotStarted
+                        onPressed: (auctionNotStarted || selectedBid <= currentPrice)
                             ? null
                             : () {
                                 widget.onPlaceBid(
@@ -1003,8 +1011,8 @@ class _AuctionBiddingControlsWidgetState
               if (_preAuctionTab == 1) ...[
                 _buildOneStepBidButton(
                   auctionNotStarted: auctionNotStarted,
-                  currentPrice: (highestActiveBid?.bid ?? currentPrice),
-                  bidIncrement: bidIncrement,
+                  currentPrice: stepsBase,
+                  bidIncrement: getIncrementForPrice(stepsBase),
                   currentProductId: currentProductId,
                 ),
               ],
@@ -1014,8 +1022,8 @@ class _AuctionBiddingControlsWidgetState
               // ─────────────────────────────────────────────
               _buildOneStepBidButton(
                 auctionNotStarted: auctionNotStarted,
-                currentPrice: (highestActiveBid?.bid ?? currentPrice),
-                bidIncrement: bidIncrement,
+                currentPrice: stepsBase,
+                bidIncrement: getIncrementForPrice(stepsBase),
                 currentProductId: currentProductId,
               ),
             ],

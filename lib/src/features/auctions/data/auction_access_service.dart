@@ -5,6 +5,22 @@ import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_access_model.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 
+/// Maps backend / request statuses onto the mobile UI contract.
+String normalizeAuctionAccessStatus(String status) {
+  switch (status.toUpperCase()) {
+    case 'APPROVED':
+      return 'GRANTED';
+    case 'PROFILE_INCOMPLETE':
+      return 'PROFILE_PENDING';
+    default:
+      return status.toUpperCase();
+  }
+}
+
+bool isAuctionAccessGranted(String? status) {
+  return normalizeAuctionAccessStatus(status ?? '') == 'GRANTED';
+}
+
 /// Shared utility for checking and requesting auction access.
 /// Screens should call these methods and handle UI updates themselves.
 class AuctionAccessService {
@@ -27,7 +43,7 @@ class AuctionAccessService {
 
     final missing = currentUser.missingFields ?? const <String>[];
     if (currentUser.isProfileComplete == false || missing.isNotEmpty) {
-      return 'PROFILE_INCOMPLETE';
+      return 'PROFILE_PENDING';
     }
 
     final nickname = currentUser.nickname?.trim() ?? '';
@@ -71,7 +87,7 @@ class AuctionAccessService {
         CachedVariables.userId!,
         auctionId,
       );
-      return response.status.toUpperCase();
+      return normalizeAuctionAccessStatus(response.status);
     } catch (e) {
       debugPrint("Error checking auction access: $e");
       return 'ERROR';
@@ -97,7 +113,7 @@ class AuctionAccessService {
           auctionId: auctionId,
         ),
       );
-      return response.status.toUpperCase();
+      return normalizeAuctionAccessStatus(response.status);
     } catch (e) {
       debugPrint("Error requesting auction access: $e");
       return 'ERROR';

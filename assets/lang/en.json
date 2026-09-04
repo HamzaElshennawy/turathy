@@ -433,6 +433,7 @@
     "currentAuction": "Current Auction",
     "higherBidThanYours": "Higher bid than yours",
     "bidPlacedSuccessfully": "Max bid placed successfully",
+    "needAdminApprovalToBid": "You need admin approval to bid in this auction",
     "completeProfile": "Complete Profile",
     "profileInfo": "Profile Information",
     "nickname": "Nickname",

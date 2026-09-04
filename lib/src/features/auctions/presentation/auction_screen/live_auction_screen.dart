@@ -155,6 +155,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                 message: AppStrings.bidLimitExceeded.tr(),
                 isError: true,
               );
+            } else if (message.toString().toLowerCase().contains(
+              'admin approval',
+            )) {
+              AppFunctions.showSnackBar(
+                context: context,
+                message: AppStrings.needAdminApprovalToBid.tr(),
+                isError: true,
+              );
             } else {
               // Display other errors generic or as they come
               AppFunctions.showSnackBar(
@@ -269,7 +277,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         _isAccessLoading = false;
       });
 
-      if (status == 'GRANTED') {
+      if (isAuctionAccessGranted(status)) {
         await _joinLiveRoom();
       }
     }
@@ -295,6 +303,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           message: AppStrings.accessPending.tr(),
           icon: Icons.info_outline,
         );
+      } else if (isAuctionAccessGranted(status)) {
+        await _joinLiveRoom();
       }
     }
   }
@@ -331,7 +341,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   }
 
   Future<void> _rejoinAndSync() async {
-    if (_accessStatus != 'GRANTED') return;
+    if (!isAuctionAccessGranted(_accessStatus)) return;
     await _joinLiveRoom();
   }
 
@@ -943,7 +953,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_accessStatus != 'GRANTED') {
+    if (!isAuctionAccessGranted(_accessStatus)) {
       return _buildAccessOverlay();
     }
 
@@ -1385,6 +1395,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         title = AppStrings.accessPending.tr();
         break;
       case 'PROFILE_PENDING':
+      case 'PROFILE_INCOMPLETE':
         icon = Icons.hourglass_top_rounded;
         color = Colors.orange;
         title = AppStrings.profileApprovalPending.tr();

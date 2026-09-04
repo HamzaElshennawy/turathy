@@ -432,6 +432,7 @@
     "currentAuction": "المزاد الحالي",
     "higherBidThanYours": "هناك مزايدة أعلى منك",
     "bidPlacedSuccessfully": "تم وضع الحد الأقصى للمزايدة بنجاح",
+    "needAdminApprovalToBid": "تحتاج إلى موافقة الإدارة للمزايدة في هذا المزاد",
     "completeProfile": "إكمال الملف الشخصي",
     "profileInfo": "معلومات الملف الشخصي",
     "nickname": "الاسم المستعار",

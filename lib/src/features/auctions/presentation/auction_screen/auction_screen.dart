@@ -24,6 +24,7 @@ import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
+import 'package:turathy/src/core/helper/live_bid_sync.dart';
 import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
 
 import '../../../../core/constants/app_sizes.dart';
@@ -147,12 +148,8 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   StreamSubscription? _itemEndedSubscription;
   StreamSubscription? _socketErrorSubscription;
   StreamSubscription? _bidRejectedSubscription;
+  StreamSubscription? _bidAcceptedSubscription;
   SocketActions? _socketActions;
-
-  /// Whether the user can open item bottom sheets (only GRANTED or owner)
-  bool get _canOpenItemBottomSheet =>
-      _accessStatus == 'GRANTED' ||
-      _currentAuction.userId == CachedVariables.userId;
 
   /// Whether the auction has entered at least the pre-auction phase (now >= startDate)
   bool get _hasPreAuctionStarted {
@@ -347,6 +344,14 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 icon: Icons.block,
                 color: Colors.red,
               );
+            } else if (message.toString().toLowerCase().contains(
+              'admin approval',
+            )) {
+              _showFloatingToast(
+                AppStrings.needAdminApprovalToBid.tr(),
+                icon: Icons.lock_outline,
+                color: Colors.red,
+              );
             }
             // bid rejected
             else if (message.toString().contains("bidRejected")) {
@@ -357,7 +362,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                   color: Colors.deepOrange,
                 );
               }
-              //_fetchAuctionDetails();
             } else {
               // Other non-bid errors: show message and refresh
               _showFloatingToast(
@@ -384,17 +388,15 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             setState(() {
               // Build a synthetic AuctionBid to update the highest-bid map
               final existing = _highestBids[productId];
-              if (existing != null) {
-                _highestBids[productId] = AuctionBid(
-                  id: existing.id,
-                  userId: existing.userId,
-                  bid: serverPrice,
-                  productId: productId,
-                  auctionId: existing.auctionId,
-                  isActive: existing.isActive,
-                  user: existing.user,
-                );
-              }
+              _highestBids[productId] = AuctionBid(
+                id: existing?.id,
+                userId: existing?.userId,
+                bid: serverPrice,
+                productId: productId,
+                auctionId: existing?.auctionId ?? _currentAuction.id,
+                isActive: true,
+                user: existing?.user,
+              );
 
               // If the rejected product is the current live item, also update
               // the auction-level price fields so the open bottom sheet (which
@@ -406,8 +408,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             p.displayName == _currentAuction.currentProduct,
                       ) ??
                       false)) {
-                // Current visible price only. Do not write minimumBid into
-                // minBidPrice — that field is the private reserve, not next bid.
                 _currentAuction.actualPrice = serverPrice;
               }
             });
@@ -417,6 +417,45 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
             'priceUpdatedRetry'.tr(),
             icon: Icons.sync_problem_outlined,
             color: Colors.orange,
+          );
+        });
+
+    // Listen for accepted bids to provide authoritative success feedback
+    _bidAcceptedSubscription = socketService
+        .getEventStream<dynamic>('bidAccepted', (data) => data)
+        .listen((data) {
+          if (!mounted || data == null) return;
+          final map = data is Map
+              ? Map<String, dynamic>.from(data)
+              : <String, dynamic>{};
+          final nestedBid = map['newBid'];
+          final auctionId = parsePositiveInt(
+            map['auctionId'] ??
+                map['auction_id'] ??
+                (nestedBid is Map ? nestedBid['auctionId'] : null),
+          );
+          if (auctionId != null &&
+              _currentAuction.id != null &&
+              auctionId != _currentAuction.id) {
+            return;
+          }
+          final productId = parsePositiveInt(
+            map['productId'] ?? map['product_id'],
+          );
+          final knownProductIds = _currentAuction.auctionProducts
+              ?.map((p) => p.id)
+              .whereType<int>()
+              .toSet();
+          if (productId != null &&
+              knownProductIds != null &&
+              knownProductIds.isNotEmpty &&
+              !knownProductIds.contains(productId)) {
+            return;
+          }
+          _showFloatingToast(
+            AppStrings.bidPlacedSuccessfully.tr(),
+            icon: Icons.check_circle_outline,
+            color: Colors.green.shade700,
           );
         });
   }
@@ -663,6 +702,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     _itemEndedSubscription?.cancel();
     _socketErrorSubscription?.cancel();
     _bidRejectedSubscription?.cancel();
+    _bidAcceptedSubscription?.cancel();
     // Leave the auction socket room
     final userId = CachedVariables.userId;
     final auctionId = _currentAuction.id;
@@ -952,10 +992,12 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
 
   Widget _buildAccessButton(BuildContext context) {
     bool isUpcoming = _timeLeft > Duration.zero;
-    bool isGranted = _accessStatus == 'GRANTED';
+    bool isGranted = isAuctionAccessGranted(_accessStatus);
     bool isPending = _accessStatus == 'PENDING';
     bool isDenied = _accessStatus == 'DENIED';
-    bool isProfilePending = _accessStatus == 'PROFILE_PENDING';
+    bool isProfilePending =
+        _accessStatus == 'PROFILE_PENDING' ||
+        _accessStatus == 'PROFILE_INCOMPLETE';
     bool isNicknameRequired = _accessStatus == 'NICKNAME_REQUIRED';
     bool isOwner = _currentAuction.userId == CachedVariables.userId;
 
@@ -1045,6 +1087,93 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
       child: Text(
         buttonText,
         style: TextStyle(fontWeight: FontWeight.bold, color: buttonTextColor),
+      ),
+    );
+  }
+
+  Widget _buildSheetAccessRequired(BuildContext context) {
+    final bool isPending =
+        _accessStatus == 'PENDING' ||
+        _accessStatus == 'PROFILE_PENDING' ||
+        _accessStatus == 'PROFILE_INCOMPLETE';
+    final bool isDenied = _accessStatus == 'DENIED';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: isDenied ? Colors.red.shade50 : Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDenied ? Colors.red.shade200 : Colors.amber.shade300,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isDenied
+                ? Icons.block
+                : (isPending ? Icons.hourglass_empty : Icons.lock_outline),
+            color: isDenied
+                ? Colors.red.shade700
+                : (isPending ? Colors.amber.shade800 : const Color(0xFF2D4739)),
+            size: 32,
+          ),
+          gapH8,
+          Text(
+            isDenied
+                ? AppStrings.accessDenied.tr()
+                : (isPending
+                    ? AppStrings.accessPending.tr()
+                    : AppStrings.requestAccess.tr()),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isDenied
+                  ? Colors.red.shade800
+                  : (isPending
+                      ? Colors.amber.shade900
+                      : const Color(0xFF2D4739)),
+            ),
+          ),
+          gapH8,
+          Text(
+            isDenied
+                ? AppStrings.accessDenied.tr()
+                : (isPending
+                    ? AppStrings.waitingForApprovalMessage.tr()
+                    : AppStrings.requestAccessDescription.tr()),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+          ),
+          if (!isPending && !isDenied) ...[
+            gapH12,
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: _requestAccess,
+                icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
+                label: Text(
+                  AppStrings.requestAccess.tr(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D4739),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1238,6 +1367,15 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 }
               }
 
+              final bool isOwner =
+                  _currentAuction.userId == CachedVariables.userId;
+              final bool isGranted =
+                  isAuctionAccessGranted(_accessStatus) || isOwner;
+
+              if (!isGranted) {
+                return _buildSheetAccessRequired(sheetContext);
+              }
+
               // Current item OR pre-auction → show bidding controls
               return AuctionBiddingControlsWidget(
                 auction: _currentAuction,
@@ -1252,58 +1390,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                       price.toDouble(),
                       productId,
                     );
-                    final overlay = Overlay.of(sheetContext);
-                    late OverlayEntry overlayEntry;
-                    bool isRemoved = false;
-                    overlayEntry = OverlayEntry(
-                      builder: (context) => Positioned(
-                        bottom: MediaQuery.of(context).viewInsets.bottom + 100,
-                        left: 16.0,
-                        right: 16.0,
-                        child: Material(
-                          color: Colors.transparent,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade600,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    AppStrings.bidPlacedSuccessfully.tr(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                    overlay.insert(overlayEntry);
-                    Future.delayed(const Duration(seconds: 3), () {
-                      if (!isRemoved) {
-                        overlayEntry.remove();
-                        isRemoved = true;
-                      }
-                    });
                   }
                 },
               );
@@ -1690,9 +1776,11 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     ref.listen(auctionStartedProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event != null && event.id == _currentAuction.id) {
-        final wasNotGranted = _accessStatus != 'GRANTED';
+        final wasNotGranted = !isAuctionAccessGranted(_accessStatus);
         _checkAccess().then((_) {
-          if (mounted && wasNotGranted && _accessStatus == 'GRANTED') {
+          if (mounted &&
+              wasNotGranted &&
+              isAuctionAccessGranted(_accessStatus)) {
             AppFunctions.showSnackBar(
               context: context,
               message: AppStrings.accessGranted.tr(),
@@ -2048,13 +2136,11 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         : product.displayName == _currentAuction.currentProduct);
 
                 return GestureDetector(
-                  onTap: _canOpenItemBottomSheet
-                      ? () => _showItemBottomSheet(
-                          context,
-                          product,
-                          _lotLabel(product),
-                        )
-                      : null,
+                  onTap: () => _showItemBottomSheet(
+                    context,
+                    product,
+                    _lotLabel(product),
+                  ),
                   child: Container(
                     decoration: BoxDecoration(
                       color: isCurrentLiveItem ? Colors.green.shade50 : null,
@@ -2170,13 +2256,11 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         : product.displayName == _currentAuction.currentProduct);
 
                 return GestureDetector(
-                  onTap: _canOpenItemBottomSheet
-                      ? () => _showItemBottomSheet(
-                          context,
-                          product,
-                          _lotLabel(product),
-                        )
-                      : null,
+                  onTap: () => _showItemBottomSheet(
+                    context,
+                    product,
+                    _lotLabel(product),
+                  ),
                   child: Container(
                     decoration: BoxDecoration(
                       color: isCurrentLiveItem ? Colors.green.shade50 : null,

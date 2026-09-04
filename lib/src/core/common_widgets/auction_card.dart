@@ -448,7 +448,7 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
         widget.auction.startDate != null &&
         widget.auction.startDate!.isBefore(DateTime.now());
 
-    final bool isGranted = _accessStatus == 'GRANTED';
+    final bool isGranted = isAuctionAccessGranted(_accessStatus);
     final bool isPending = _accessStatus == 'PENDING';
     final bool isDenied = _accessStatus == 'DENIED';
 

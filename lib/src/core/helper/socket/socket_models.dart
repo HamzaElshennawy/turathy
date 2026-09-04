@@ -801,11 +801,16 @@ class AuctionStateUpdateEvent {
     this.seq,
   });
 
-  /// Highest live amount from [currentPrice] or [products] top bids.
+  /// Highest live amount for [currentProductId] only — never another lot's hammer.
   num? get resolvedCurrentPrice {
     if (currentPrice != null) return currentPrice;
     num? highest;
     for (final product in products) {
+      if (currentProductId != null &&
+          product.id != null &&
+          product.id != currentProductId) {
+        continue;
+      }
       for (final bid in product.topBids) {
         final amount = bid.bid;
         if (amount == null) continue;
