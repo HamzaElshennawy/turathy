@@ -64,23 +64,23 @@ class AuctionInfoTableWidget extends StatelessWidget {
             gapH16,
             _InfoRow(
               label: 'itemType'.tr(),
-              value: activeProduct!.itemType,
+              value: activeProduct.itemType,
             ),
             _InfoRow(
               label: 'country'.tr(),
-              value: activeProduct!.country,
+              value: activeProduct.country,
             ),
             _InfoRow(
               label: 'denomination'.tr(),
-              value: activeProduct!.denomination,
+              value: activeProduct.denomination,
             ),
             _InfoRow(
               label: 'gradingCompany'.tr(),
-              value: activeProduct!.gradingCompany,
+              value: activeProduct.gradingCompany,
             ),
             _InfoRow(
               label: 'gradeDesignation'.tr(),
-              value: activeProduct!.gradeDesignation,
+              value: activeProduct.gradeDesignation,
             ),
           ],
         ],

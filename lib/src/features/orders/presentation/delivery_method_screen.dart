@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../data/shipping_settings_repository.dart';
 import '../domain/shipping_setting_model.dart';
-import '../../addresses/presentation/address_selection_screen.dart';
-
 class DeliveryMethodData {
   final ShippingSettingModel method;
   final bool combineShipments;

@@ -97,14 +97,14 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     if (addr != null) {
       _selectedCountryCode = resolveAddressCountryIso(addr.country);
       final gov = governateForAddressIso(_selectedCountryCode);
-      if (gov != null && addr.city != null && addr.city!.isNotEmpty) {
+      if (gov != null && addr.city.isNotEmpty) {
         final city = gov.cities
             .where((c) => c.title == addr.city || c.value == addr.city)
             .firstOrNull;
         _selectedCityValue = city?.value;
         if (city == null) {
           // Keep free-text city for unmatched stored values
-          _cityController.text = addr.city!;
+          _cityController.text = addr.city;
         }
       }
 
