@@ -101,6 +101,7 @@ final productsListProvider = FutureProvider<List<ProductModel>>((ref) async {
 final filteredProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final filters = ref.watch(filterWidgetControllerProvider);
   final categories = await ref.watch(getAllCategoriesProvider.future);
+  final products = await ref.watch(productsListProvider.future);
 
   CategoryModel? selected;
   if (filters.selectedCategoryID != null) {
@@ -112,13 +113,9 @@ final filteredProductsProvider = FutureProvider<List<ProductModel>>((ref) async 
     }
   }
 
-  final products = await ref.watch(productsRepositoryProvider).getFilteredProducts(
-        filters,
-      );
-  if (selected == null) return products;
   return [
     for (final product in products)
-      if (productCategoryMatches(product.category, selected)) product,
+      if (productMatchesStoreFilters(product, filters, selected)) product,
   ];
 });
 

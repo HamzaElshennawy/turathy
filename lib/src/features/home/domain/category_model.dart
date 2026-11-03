@@ -8,6 +8,8 @@
 library;
 
 import '../../../core/helper/dio/end_points.dart';
+import '../../products/domain/product_model.dart';
+import '../../search/domain/filter_state.dart';
 
 /// A structural representation of an item category.
 class CategoryModel {
@@ -97,4 +99,31 @@ bool productCategoryMatches(String? productCategory, CategoryModel category) {
     return normalized.isNotEmpty && normalized == value;
   }
   return same(category.nameAr) || same(category.nameEn);
+}
+
+/// In-memory store filter. Avoids a full catalog download on every chip or keystroke.
+bool productMatchesStoreFilters(
+  ProductModel product,
+  FilterState filters,
+  CategoryModel? category,
+) {
+  if (category != null && !productCategoryMatches(product.category, category)) {
+    return false;
+  }
+  final query = (filters.searchText ?? '').trim().toLowerCase();
+  if (query.isNotEmpty) {
+    final haystack = [
+      product.title,
+      product.titleAr,
+      product.titleEn,
+      product.name,
+      product.nameAr,
+      product.nameEn,
+    ].whereType<String>().join(' ').toLowerCase();
+    if (!haystack.contains(query)) return false;
+  }
+  final price = product.price ?? 0;
+  if (filters.minPrice != null && price < filters.minPrice!) return false;
+  if (filters.maxPrice != null && price > filters.maxPrice!) return false;
+  return true;
 }

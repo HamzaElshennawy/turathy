@@ -37,6 +37,7 @@ class CategoryHubScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(categoryLiveAuctionsProvider(categoryId));
           ref.invalidate(categoryUpcomingAuctionsProvider(categoryId));
+          ref.invalidate(productsListProvider);
           ref.invalidate(filteredProductsProvider);
           await Future.wait([
             ref.read(categoryLiveAuctionsProvider(categoryId).future),

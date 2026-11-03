@@ -993,17 +993,38 @@ class _GalleryArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Material(
-          color: Colors.black.withValues(alpha: 0.55),
-          shape: const CircleBorder(),
+    final isLeft = alignment == Alignment.centerLeft;
+    return Positioned(
+      left: isLeft ? 10 : null,
+      right: isLeft ? null : 10,
+      top: 0,
+      bottom: 36,
+      child: Align(
+        alignment: Alignment.center,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.94),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x29000000),
+                blurRadius: 12,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
           child: IconButton(
             tooltip: tooltip,
             onPressed: onTap,
-            icon: Icon(icon, color: Colors.white),
+            style: IconButton.styleFrom(
+              foregroundColor: const Color(0xFF1B1B1B),
+              minimumSize: const Size(44, 44),
+              fixedSize: const Size(44, 44),
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: Icon(icon, size: 26),
           ),
         ),
       ),

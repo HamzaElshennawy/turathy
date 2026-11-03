@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +23,7 @@ class StoreScreen extends ConsumerStatefulWidget {
 
 class _StoreScreenState extends ConsumerState<StoreScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -30,6 +33,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -59,6 +63,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
+          ref.invalidate(productsListProvider);
           ref.invalidate(filteredProductsProvider);
           ref.invalidate(getAllCategoriesProvider);
           await ref.read(filteredProductsProvider.future);
@@ -107,9 +112,16 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                             ),
                           ),
                           onChanged: (value) {
-                            ref
-                                .read(filterWidgetControllerProvider.notifier)
-                                .setSearchText(value);
+                            _searchDebounce?.cancel();
+                            _searchDebounce = Timer(
+                              const Duration(milliseconds: 350),
+                              () {
+                                if (!mounted) return;
+                                ref
+                                    .read(filterWidgetControllerProvider.notifier)
+                                    .setSearchText(value);
+                              },
+                            );
                           },
                         ),
                       ),

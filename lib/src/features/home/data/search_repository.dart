@@ -14,7 +14,6 @@ class SearchRepository {
         url: EndPoints.search,
         query: {'q': query},
       );
-      log(response.data.toString());
       List<dynamic> data;
       if (response.data is Map && response.data.containsKey('data')) {
         data = response.data['data'];
@@ -24,7 +23,6 @@ class SearchRepository {
         log('Invalid response format: ${response.data}');
         data = [];
       }
-      log('Search Response Data: $data');
       final List<dynamic> results = [];
 
       for (var item in data) {
@@ -46,7 +44,6 @@ class SearchRepository {
           }
         } catch (e) {
           log('Error parsing search item: $e');
-          log('Item data: $item');
         }
       }
 
