@@ -8,40 +8,37 @@ class BottomSheetWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
+    final height = MediaQuery.sizeOf(context).height * 0.85;
+    return SizedBox(
+      height: height,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(32),
             topRight: Radius.circular(32),
-          )),
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.8,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 108,
-            height: 5,
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: const ShapeDecoration(
-              color: Colors.grey,
-              shape: StadiumBorder(),
-            ),
           ),
-          if (title != null) ...[
-            Text(
-              title!,
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 108,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: const ShapeDecoration(
+                color: Colors.grey,
+                shape: StadiumBorder(),
+              ),
             ),
-            const SizedBox(
-              height: 16,
-            )
+            if (title != null) ...[
+              Text(title!),
+              const SizedBox(height: 16),
+            ],
+            Expanded(child: child),
           ],
-          child,
-        ],
+        ),
       ),
     );
   }

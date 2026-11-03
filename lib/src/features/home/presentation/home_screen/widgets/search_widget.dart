@@ -94,7 +94,6 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
                     controller: _controller,
                     focusNode: _searchFocus,
                     keyboardType: TextInputType.text,
-                    hintLocales: [Localizations.localeOf(context)],
                     onTapOutside: (_) {},
                     onChanged: (val) {
                       _onSearchChanged(val);
@@ -160,9 +159,15 @@ class _SearchWidgetState extends ConsumerState<SearchWidget> {
                 context: context,
                 isScrollControlled: true,
                 useSafeArea: true,
-                builder: (context) => const FilterWidget(
-                  contentType: FilterContentType.auction,
-                ),
+                builder: (sheetContext) {
+                  final height = MediaQuery.sizeOf(sheetContext).height * 0.88;
+                  return SizedBox(
+                    height: height,
+                    child: const FilterWidget(
+                      contentType: FilterContentType.auction,
+                    ),
+                  );
+                },
               );
             },
             icon: Icon(

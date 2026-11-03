@@ -45,8 +45,7 @@ class FilterWidget extends ConsumerWidget {
     final gradeMax =
         options.maxGrade != null && options.maxGrade! > gradeMin ? options.maxGrade!.toDouble() : gradeMin + 1;
 
-    return Expanded(
-      child: Padding(
+    return Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -293,8 +292,7 @@ class FilterWidget extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
