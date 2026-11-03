@@ -63,3 +63,10 @@ class FilterOptionsModel {
     );
   }
 }
+
+/// Keeps the closed menu on the hint unless the value is one of the loaded options.
+String? dropdownSelection(String? value, List<String> options) {
+  if (value == null || value.isEmpty) return null;
+  if (!options.contains(value)) return null;
+  return value;
+}

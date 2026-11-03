@@ -324,11 +324,11 @@ class _DropdownFilterField extends StatelessWidget {
         ),
         gapH8,
         DropdownButtonFormField<String>(
-          value: value?.isEmpty == true ? null : value,
+          value: dropdownSelection(value, options),
           isExpanded: true,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
-            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           ),
           hint: Text(label),
           items: [
@@ -339,7 +339,10 @@ class _DropdownFilterField extends StatelessWidget {
             ...options.map(
               (option) => DropdownMenuItem<String>(
                 value: option,
-                child: Text(option),
+                child: Text(
+                  option,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ],
@@ -471,7 +474,8 @@ class _RangeSliderWidgetState extends ConsumerState<_RangeSliderWidget> {
               ),
             ),
             Text(
-              '${widget.labelFormatter(_currentRangeValues.start)} - ${widget.labelFormatter(_currentRangeValues.end)}',
+              '${widget.labelFormatter(_currentRangeValues.start)} – ${widget.labelFormatter(_currentRangeValues.end)}',
+              textDirection: TextDirection.ltr,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

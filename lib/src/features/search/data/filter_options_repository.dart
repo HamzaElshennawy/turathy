@@ -59,9 +59,16 @@ final storeFilterOptionsProvider = FutureProvider<FilterOptionsModel>((ref) asyn
 
 final auctionFilterOptionsProvider = FutureProvider<FilterOptionsModel>((ref) async {
   final filters = ref.watch(filterWidgetControllerProvider);
-
-  return ref.watch(filterOptionsRepositoryProvider).getAuctionFilterOptions(
-        isLive: filters.isLiveAuctionsSelected,
-        categoryId: filters.selectedCategoryID,
-      );
+  final repository = ref.watch(filterOptionsRepositoryProvider);
+  // A store category id does not match auction.category_id and would wipe
+  // the country list down to the single "all" row.
+  final primary = await repository.getAuctionFilterOptions(
+    isLive: filters.isLiveAuctionsSelected,
+  );
+  if (primary.countries.isNotEmpty || primary.itemTypes.isNotEmpty) {
+    return primary;
+  }
+  return repository.getAuctionFilterOptions(
+    isLive: !filters.isLiveAuctionsSelected,
+  );
 });

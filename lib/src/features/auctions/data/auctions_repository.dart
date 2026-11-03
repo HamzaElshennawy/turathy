@@ -379,10 +379,19 @@ final homeLiveAuctionsProvider = FutureProvider<List<AuctionModel>>((
     timer.cancel();
   });
 
+  final filters = ref.watch(filterWidgetControllerProvider);
   return ref
       .watch(productsRepositoryProvider)
       .getAllAuctions(
-        FilterState(isLiveAuctionsSelected: true, auctionStatus: 'current'),
+        FilterState(
+          isLiveAuctionsSelected: true,
+          auctionStatus: 'current',
+          country: filters.country,
+          selectedCategoryID: filters.selectedCategoryID,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          searchText: filters.searchText,
+        ),
       );
 });
 final openAuctionsProvider = FutureProvider<List<AuctionModel>>((ref) async {

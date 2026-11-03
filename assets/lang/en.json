@@ -164,6 +164,7 @@
     "addressRequired": "Address is required",
     "cityRequired": "City is required",
     "country": "Country",
+    "all": "All",
     "countryRequired": "Country is required",
     "selectCountry": "Select Country",
     "searchCountry": "Search country",
