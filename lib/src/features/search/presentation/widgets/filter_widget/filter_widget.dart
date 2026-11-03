@@ -1,5 +1,7 @@
 // ignore_for_file: unused_element_parameter
 
+import 'dart:ui' as ui;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -475,7 +477,7 @@ class _RangeSliderWidgetState extends ConsumerState<_RangeSliderWidget> {
             ),
             Text(
               '${widget.labelFormatter(_currentRangeValues.start)} – ${widget.labelFormatter(_currentRangeValues.end)}',
-              textDirection: TextDirection.ltr,
+              textDirection: ui.TextDirection.ltr,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
