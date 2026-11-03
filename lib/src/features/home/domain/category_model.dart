@@ -125,5 +125,33 @@ bool productMatchesStoreFilters(
   final price = product.price ?? 0;
   if (filters.minPrice != null && price < filters.minPrice!) return false;
   if (filters.maxPrice != null && price > filters.maxPrice!) return false;
+  if (!_sameText(product.country, filters.country)) return false;
+  if (!_sameText(product.itemType, filters.itemType)) return false;
+  if (!_sameText(product.denomination, filters.denomination)) return false;
+  if (!_sameText(product.gradingCompany, filters.gradingCompany)) return false;
+  if (!_sameText(product.gradeDesignation, filters.gradeDesignation)) return false;
+  if (!_sameText(product.metalType, filters.metalType)) return false;
+  if (!_sameText(product.metalFineness, filters.metalFineness)) return false;
+  if (filters.isGraded != null && product.isGraded != filters.isGraded) {
+    return false;
+  }
+  if (filters.dateFrom != null || filters.dateTo != null) {
+    final year = product.date;
+    if (year == null) return false;
+    if (filters.dateFrom != null && year < filters.dateFrom!) return false;
+    if (filters.dateTo != null && year > filters.dateTo!) return false;
+  }
+  if (filters.gradeFrom != null || filters.gradeTo != null) {
+    final grade = product.grade;
+    if (grade == null) return false;
+    if (filters.gradeFrom != null && grade < filters.gradeFrom!) return false;
+    if (filters.gradeTo != null && grade > filters.gradeTo!) return false;
+  }
   return true;
+}
+
+bool _sameText(String? value, String? expected) {
+  final wanted = (expected ?? '').trim().toLowerCase();
+  if (wanted.isEmpty) return true;
+  return (value ?? '').trim().toLowerCase() == wanted;
 }
