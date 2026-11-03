@@ -23,6 +23,13 @@ import '../../../routing/rout_constants.dart';
 import '../../common_widgets/no_internet_dialog.dart';
 import 'end_points.dart';
 
+class _RetryResult {
+  const _RetryResult({this.response, this.clearSession = false});
+
+  final Response<dynamic>? response;
+  final bool clearSession;
+}
+
 /// Manages a global [Dio] instance with customized interceptors and base options.
 ///
 /// Provides a unified interface for GET, POST, PUT, PATCH, and DELETE operations
@@ -33,7 +40,8 @@ class DioHelper {
 
   /// Track whether the "No Internet" dialog is currently visible to prevent multiple overlays.
   static bool _isShowingNoInternetDialog = false;
-  static bool _isRefreshingToken = false;
+  static Future<TokenRefreshResult>? _refreshInFlight;
+  static bool _sessionClearedAfterRefreshFailure = false;
 
   static bool _isPaymentUrl(String url) {
     return url.contains('payments/') ||
@@ -70,6 +78,11 @@ class DioHelper {
         baseUrl: EndPoints.baseUrl,
         receiveDataWhenStatusError: true,
         followRedirects: false,
+        headers: kIsWeb
+            ? <String, dynamic>{}
+            : <String, dynamic>{
+                'X-Meta-Platform': Platform.isIOS ? 'IOS' : 'ANDROID',
+              },
         // Status codes are handled manually in repositories to allow custom error handling
         validateStatus: (status) => true,
       ),
@@ -117,26 +130,32 @@ class DioHelper {
                 response.requestOptions.path == EndPoints.refreshToken) {
               return handler.next(response);
             }
-            final retried = await _tryRefreshAndRetry(response.requestOptions);
-            if (retried != null) {
-              return handler.resolve(retried);
+            final retry = await _tryRefreshAndRetry(response.requestOptions);
+            if (retry.response != null) {
+              return handler.resolve(retry.response!);
             }
-            goRouter.push(RouteConstants.signIn);
-            AuthRepository.clearLocalDetails();
+            if (retry.clearSession) {
+              _clearSessionAfterRejectedRefresh();
+            }
           }
           return handler.next(response);
         },
         onError: (DioException error, handler) async {
           // Handle connection-related exceptions with a global UI dialog
-          if (error.response?.statusCode == 401) {
-            if (error.requestOptions.path != EndPoints.refreshToken) {
-              final retried = await _tryRefreshAndRetry(error.requestOptions);
-              if (retried != null) {
-                return handler.resolve(retried);
+          final errorStatus = error.response?.statusCode;
+          if (errorStatus == 401 || errorStatus == 403) {
+            final path = error.requestOptions.path;
+            if (path == EndPoints.refreshToken) {
+              _clearSessionAfterRejectedRefresh();
+            } else if (path != EndPoints.login && path != EndPoints.userSignup) {
+              final retry = await _tryRefreshAndRetry(error.requestOptions);
+              if (retry.response != null) {
+                return handler.resolve(retry.response!);
+              }
+              if (retry.clearSession) {
+                _clearSessionAfterRejectedRefresh();
               }
             }
-            goRouter.push(RouteConstants.signIn);
-            AuthRepository.clearLocalDetails();
           } else if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
               error.type == DioExceptionType.connectionError ||
@@ -215,42 +234,64 @@ class DioHelper {
     }
   }
 
-  static Future<Response<dynamic>?> _tryRefreshAndRetry(
+  static Future<TokenRefreshResult> _sharedRefresh() {
+    final existing = _refreshInFlight;
+    if (existing != null) return existing;
+    final future = AuthRepository.refreshAccessTokenResult();
+    _refreshInFlight = future;
+    future.whenComplete(() {
+      if (identical(_refreshInFlight, future)) {
+        _refreshInFlight = null;
+      }
+    });
+    return future;
+  }
+
+  static void _clearSessionAfterRejectedRefresh() {
+    if (_sessionClearedAfterRefreshFailure) return;
+    _sessionClearedAfterRefreshFailure = true;
+    goRouter.push(RouteConstants.signIn);
+    AuthRepository.clearLocalDetails();
+  }
+
+  /// Concurrent 401s share one refresh. The session is cleared only when that
+  /// refresh call itself returns 401 or 403.
+  static Future<_RetryResult> _tryRefreshAndRetry(
     RequestOptions requestOptions,
   ) async {
-    if (_isRefreshingToken ||
-        requestOptions.extra['retriedAfterRefresh'] == true) {
-      return null;
+    if (requestOptions.extra['retriedAfterRefresh'] == true) {
+      return const _RetryResult();
     }
 
-    _isRefreshingToken = true;
-    try {
-      final refreshed = await AuthRepository.refreshAccessToken();
-      if (!refreshed || CachedVariables.token == null) {
-        return null;
-      }
-
-      final options = Options(
-        method: requestOptions.method,
-        headers: {
-          ...requestOptions.headers,
-          'Authorization': 'Bearer ${CachedVariables.token}',
-        },
-        contentType: requestOptions.contentType,
-        responseType: requestOptions.responseType,
-        validateStatus: (_) => true,
-        extra: {...requestOptions.extra, 'retriedAfterRefresh': true},
-      );
-
-      return dio.request<dynamic>(
-        requestOptions.path,
-        data: requestOptions.data,
-        queryParameters: requestOptions.queryParameters,
-        options: options,
-      );
-    } finally {
-      _isRefreshingToken = false;
+    final outcome = await _sharedRefresh();
+    if (outcome.refreshed) {
+      _sessionClearedAfterRefreshFailure = false;
     }
+    final refreshRejected =
+        outcome.statusCode == 401 || outcome.statusCode == 403;
+    if (!outcome.refreshed || CachedVariables.token == null) {
+      return _RetryResult(clearSession: refreshRejected);
+    }
+
+    final options = Options(
+      method: requestOptions.method,
+      headers: {
+        ...requestOptions.headers,
+        'Authorization': 'Bearer ${CachedVariables.token}',
+      },
+      contentType: requestOptions.contentType,
+      responseType: requestOptions.responseType,
+      validateStatus: (_) => true,
+      extra: {...requestOptions.extra, 'retriedAfterRefresh': true},
+    );
+
+    final response = await dio.request<dynamic>(
+      requestOptions.path,
+      data: requestOptions.data,
+      queryParameters: requestOptions.queryParameters,
+      options: options,
+    );
+    return _RetryResult(response: response);
   }
 
   /// Performs an asynchronous POST request.

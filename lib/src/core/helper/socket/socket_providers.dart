@@ -11,12 +11,44 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 import 'socket_connection_state.dart';
 import 'socket_ensure.dart';
 import 'socket_models.dart';
 import 'socket_service.dart';
+
+int? _lastGapSyncAt;
+
+int? _payloadAuctionId(Map<String, dynamic> json) {
+  int? read(Object? raw) {
+    if (raw is num && raw > 0) return raw.toInt();
+    return null;
+  }
+
+  final direct = read(json['auctionId'] ?? json['auction_id']);
+  if (direct != null) return direct;
+  final nested = json['newBid'];
+  if (nested is Map) {
+    final id = read(nested['auctionId'] ?? nested['auction_id']);
+    if (id != null) return id;
+  }
+  final auction = json['auction'];
+  if (auction is Map) return read(auction['id']);
+  return null;
+}
+
+/// Drops a stale delta. A gap asks the joined room for one snapshot.
+bool retainLivePayload(Map<String, dynamic> json) {
+  final result = roomGate.consider(json);
+  if (result.sync && shouldResync(_lastGapSyncAt, DateTime.now().millisecondsSinceEpoch)) {
+    _lastGapSyncAt = DateTime.now().millisecondsSinceEpoch;
+    final auctionId = _payloadAuctionId(json) ?? SocketService.active?.joinedAuctionId ?? 0;
+    if (auctionId > 0) SocketService.active?.emitRequestSync(auctionId);
+  }
+  return result.accept;
+}
 
 /// The primary provider for the singleton [SocketService] instance.
 /// 
@@ -75,6 +107,33 @@ final auctionStartedProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   );
 });
 
+/// Preparation window (`prepSeconds` + `serverNow`) on `auctionPreStarted`.
+final auctionPrepPayloadProvider =
+    StreamProvider.autoDispose<AuctionPrepPayload>((ref) {
+      final service = ref.watch(socketServiceProvider);
+      return service.getEventStream<AuctionPrepPayload>(
+        'auctionPreStarted',
+        (data) {
+          final parsed = AuctionPrepPayload.tryParse(data);
+          if (parsed == null) {
+            throw const FormatException('auctionPreStarted has no prep window');
+          }
+          return parsed;
+        },
+      );
+    });
+
+/// Lots the signed-in viewer owns and therefore cannot bid on.
+final sellerBidBlockProvider = StreamProvider.autoDispose<SellerBidBlockEvent>((
+  ref,
+) {
+  final service = ref.watch(socketServiceProvider);
+  return service.getEventStream<SellerBidBlockEvent>(
+    'sellerBidBlock',
+    (data) => SellerBidBlockEvent.fromJson(Map<String, dynamic>.from(data as Map)),
+  );
+});
+
 /// Notifies when an auction enters its "Preparing" or "Pre-start" phase.
 final auctionPreStartedProvider = StreamProvider.autoDispose<AuctionModel>((
   ref,
@@ -126,14 +185,18 @@ final latestExpiryDateStateProvider = StateProvider.autoDispose<DateTime?>((
 final newBidEventProvider = StreamProvider.autoDispose<BidPlacedEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<BidPlacedEvent>('newBid', (data) {
-    return BidPlacedEvent.fromJson(Map<String, dynamic>.from(data as Map));
+    final json = Map<String, dynamic>.from(data as Map);
+    if (!retainLivePayload(json)) return null;
+    return BidPlacedEvent.fromJson(json);
   });
 });
 
 final timerExtendedEventProvider = StreamProvider.autoDispose<TimerExtendedEvent>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<TimerExtendedEvent>('timerExtended', (data) {
-    return TimerExtendedEvent.fromJson(data as Map<String, dynamic>);
+    final json = Map<String, dynamic>.from(data as Map);
+    if (!retainLivePayload(json)) return null;
+    return TimerExtendedEvent.fromJson(json);
   });
 });
 
@@ -194,7 +257,11 @@ final auctionCanceledProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<AuctionModel>(
     'auctionCanceled',
-    (data) => AuctionModel.fromJson(data as Map<String, dynamic>),
+    (data) {
+      final json = Map<String, dynamic>.from(data as Map);
+      if (!retainLivePayload(json)) return null;
+      return AuctionModel.fromJson(json);
+    },
   );
 });
 
@@ -205,7 +272,11 @@ final auctionEndedProvider = StreamProvider.autoDispose<AuctionEndedEvent>((
   final service = ref.watch(socketServiceProvider);
   return service.getEventStream<AuctionEndedEvent>(
     'auctionEnded',
-    (data) => AuctionEndedEvent.fromJson(data as Map<String, dynamic>),
+    (data) {
+      final json = Map<String, dynamic>.from(data as Map);
+      if (!retainLivePayload(json)) return null;
+      return AuctionEndedEvent.fromJson(json);
+    },
   );
 });
 
@@ -215,7 +286,11 @@ final auctionItemEndedProvider =
       final service = ref.watch(socketServiceProvider);
       return service.getEventStream<AuctionItemEndedEvent>(
         'auctionItemEnded',
-        (data) => AuctionItemEndedEvent.fromJson(data as Map<String, dynamic>),
+        (data) {
+          final json = Map<String, dynamic>.from(data as Map);
+          if (!retainLivePayload(json)) return null;
+          return AuctionItemEndedEvent.fromJson(json);
+        },
       );
     });
 
@@ -232,8 +307,11 @@ final _auctionProductChangeProvider =
       final service = ref.watch(socketServiceProvider);
       return service.getEventStream<AuctionProductChangeEvent>(
         'auction_change_product',
-        (data) =>
-            AuctionProductChangeEvent.fromJson(data as Map<String, dynamic>),
+        (data) {
+          final json = Map<String, dynamic>.from(data as Map);
+          if (!retainLivePayload(json)) return null;
+          return AuctionProductChangeEvent.fromJson(json);
+        },
       );
     });
 
@@ -282,13 +360,24 @@ final auctionSyncProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
   return service.getEventStream<AuctionModel>(
     'auctionSync',
     (data) {
-      final json = data as Map<String, dynamic>;
+      final json = Map<String, dynamic>.from(data as Map);
+      if (!retainLivePayload(json)) return null;
       final seqFromServer = json['seq'] as int?;
-      if (seqFromServer != null) {
-        // Asynchronously update sequence state to avoid provider loop errors
+      final clock = ClockStamp.tryParse(json['clock']);
+      if (clock != null || seqFromServer != null) {
         Future.microtask(() {
           try {
-            ref.read(auctionSeqProvider.notifier).state = seqFromServer;
+            if (clock != null) {
+              final epoch = ref.read(liveEpochProvider);
+              final last = ref.read(auctionSeqProvider);
+              if (epoch != clock.epoch || last == -1 || clock.seq >= last) {
+                ref.read(liveEpochProvider.notifier).state = clock.epoch;
+                ref.read(auctionSeqProvider.notifier).state = clock.seq;
+              }
+              serverClock.notePassive(clock.serverNow, DateTime.now().millisecondsSinceEpoch);
+            } else if (seqFromServer != null) {
+              ref.read(auctionSeqProvider.notifier).state = seqFromServer;
+            }
           } catch (_) {}
         });
       }
@@ -305,6 +394,9 @@ final auctionSyncProvider = StreamProvider.autoDispose<AuctionModel>((ref) {
 /// detect missed packets in real-time streams.
 final auctionSeqProvider = StateProvider<int>((ref) => -1);
 
+/// Session start stamped on `clock.epoch`. A new value resets [auctionSeqProvider].
+final liveEpochProvider = StateProvider<int?>((ref) => null);
+
 /// A background logic provider that monitors all sequenced streams for state gaps.
 /// 
 /// If an event arrives with a `seq` ID much higher than the last known one 
@@ -312,8 +404,17 @@ final auctionSeqProvider = StateProvider<int>((ref) => -1);
 /// to catch up on missed data.
 final auctionGapDetectedProvider = Provider<void>((ref) {
   /// Compares the [incoming] sequence ID with the [last] known one.
-  void checkSeq(int? incoming, int auctionId) {
+  void checkSeq(int? incoming, int auctionId, {int? epoch, int? serverNow}) {
     if (incoming == null) return;
+    if (serverNow != null) {
+      serverClock.notePassive(serverNow, DateTime.now().millisecondsSinceEpoch);
+    }
+    final knownEpoch = ref.read(liveEpochProvider);
+    if (epoch != null && epoch != knownEpoch) {
+      ref.read(liveEpochProvider.notifier).state = epoch;
+      ref.read(auctionSeqProvider.notifier).state = incoming;
+      return;
+    }
     final last = ref.read(auctionSeqProvider);
 
     if (last == -1) {
@@ -321,7 +422,7 @@ final auctionGapDetectedProvider = Provider<void>((ref) {
       return;
     }
 
-    if (incoming <= last) return; // Ignore old or duplicate events
+    if (incoming <= last) return;
 
     if (incoming > last + 1) {
       // Gap detected: missed one or more packets
@@ -332,7 +433,7 @@ final auctionGapDetectedProvider = Provider<void>((ref) {
         return true;
       }());
       try {
-        ref.read(socketActionsProvider).requestSync(auctionId);
+        if (auctionId > 0) ref.read(socketActionsProvider).requestSync(auctionId);
       } catch (_) {}
     }
 
@@ -343,19 +444,25 @@ final auctionGapDetectedProvider = Provider<void>((ref) {
   ref.listen<AsyncValue<BidPlacedEvent>>(newBidEventProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
-    checkSeq(event.seq, event.newBid?.auctionId ?? 0);
+    checkSeq(event.clock?.seq ?? event.seq, event.newBid?.auctionId ?? 0, epoch: event.clock?.epoch, serverNow: event.clock?.serverNow);
   });
 
   ref.listen<AsyncValue<AuctionItemEndedEvent>>(auctionItemEndedProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
-    checkSeq(event.seq, event.auction.id ?? 0);
+    checkSeq(event.clock?.seq ?? event.seq, event.auction.id ?? 0, epoch: event.clock?.epoch, serverNow: event.clock?.serverNow);
   });
 
   ref.listen<AsyncValue<AuctionEndedEvent>>(auctionEndedProvider, (_, next) {
     final event = next.valueOrNull;
     if (event == null) return;
-    checkSeq(event.seq, event.auctionId);
+    checkSeq(event.clock?.seq ?? event.seq, event.auctionId, epoch: event.clock?.epoch, serverNow: event.clock?.serverNow);
+  });
+
+  ref.listen<AsyncValue<TimerExtendedEvent>>(timerExtendedEventProvider, (_, next) {
+    final event = next.valueOrNull;
+    if (event == null) return;
+    checkSeq(event.clock?.seq ?? event.seq, 0, epoch: event.clock?.epoch, serverNow: event.clock?.serverNow);
   });
 });
 
@@ -378,8 +485,11 @@ final auctionStateUpdateProvider =
       final service = ref.watch(socketServiceProvider);
       return service.getEventStream<AuctionStateUpdateEvent>(
         'auctionStateUpdate',
-        (data) =>
-            AuctionStateUpdateEvent.fromJson(data as Map<String, dynamic>),
+        (data) {
+          final json = Map<String, dynamic>.from(data as Map);
+          if (!retainLivePayload(json)) return null;
+          return AuctionStateUpdateEvent.fromJson(json);
+        },
       );
     });
 

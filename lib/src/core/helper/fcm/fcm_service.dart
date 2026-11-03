@@ -61,6 +61,7 @@ class FCMService {
   String? get fcmToken => _fcmToken;
   String? _apnsToken;
   String? get apnsToken => _apnsToken;
+  final List<int> _pendingReadIds = [];
 
   /// Internal broadcast controller for exposing incoming foreground messages.
   final StreamController<RemoteMessage> _messageController =
@@ -108,6 +109,7 @@ class FCMService {
         if (CachedVariables.userId != null && _fcmToken != null) {
           _registerTokenWithBackend(_fcmToken!);
         }
+        unawaited(flushPendingNotificationReads());
       });
     }
   }
@@ -156,7 +158,9 @@ class FCMService {
 
     await _localNotifications.initialize(
       initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTap,
+      onDidReceiveNotificationResponse: (response) {
+        unawaited(_onNotificationTap(response));
+      },
     );
 
     // Define a High Importance channel for Android to support Heads-up notifications
@@ -348,8 +352,11 @@ class FCMService {
 
   /// Callback for when a Firebase notification is tapped while the app is 
   /// in background or terminated state.
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    log('Message opened app: ' + (message.messageId ?? 'unknown')); 
+  Future<void> _handleMessageOpenedApp(RemoteMessage message) async {
+    log('Message opened app: ' + (message.messageId ?? 'unknown'));
+    await _markOpenedNotificationRead(
+      Map<String, dynamic>.from(message.data),
+    );
     _logNotificationOpened(message.data);
     _navigateBasedOnData(message.data);
   }
@@ -359,7 +366,7 @@ class FCMService {
   /// Since [RemoteMessage.data] becomes a stringified [Map] when passed as a 
   /// payload, this method includes defensive parsing logic to recover the 
   /// JSON structure before routing.
-  void _onNotificationTap(NotificationResponse response) {
+  Future<void> _onNotificationTap(NotificationResponse response) async {
     if (response.payload != null) {
       Map<String, dynamic> data = {};
       try {
@@ -385,6 +392,7 @@ class FCMService {
       }
 
       if (data.isNotEmpty) {
+        await _markOpenedNotificationRead(data);
         _logNotificationOpened(data);
         _navigateBasedOnData(data);
       }
@@ -501,7 +509,64 @@ class FCMService {
   /// 
   /// Typically called after a successful login event to ensure the user's
   /// active account is linked to the current device's push token.
+  bool get _sessionReady =>
+      CachedVariables.token != null &&
+      CachedVariables.token!.isNotEmpty &&
+      CachedVariables.userId != null;
+
+  int? _notificationIdFromData(Map<String, dynamic> data) {
+    const keys = [
+      'notification_id',
+      'notificationId',
+      'notifications_id',
+      'notifications.id',
+    ];
+    for (final key in keys) {
+      final parsed = int.tryParse('${data[key] ?? ''}');
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final hasEntityId =
+        data.containsKey('auction_id') ||
+        data.containsKey('auctionId') ||
+        data.containsKey('order_id') ||
+        data.containsKey('orderId') ||
+        data.containsKey('product_id');
+    if (hasEntityId && data.containsKey('id')) {
+      final parsed = int.tryParse('${data['id']}');
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return null;
+  }
+
+  Future<void> _markOpenedNotificationRead(Map<String, dynamic> data) async {
+    final id = _notificationIdFromData(data);
+    if (id == null) return;
+    if (!_sessionReady) {
+      if (!_pendingReadIds.contains(id)) _pendingReadIds.add(id);
+      return;
+    }
+    await _readNotification(id);
+  }
+
+  Future<void> flushPendingNotificationReads() async {
+    if (!_sessionReady || _pendingReadIds.isEmpty) return;
+    final ids = List<int>.from(_pendingReadIds);
+    _pendingReadIds.clear();
+    for (final id in ids) {
+      await _readNotification(id);
+    }
+  }
+
+  Future<void> _readNotification(int id) async {
+    try {
+      await NotificationsRepository.markAsRead(id);
+    } catch (error, stackTrace) {
+      log('markAsRead failed for $id: $error', stackTrace: stackTrace);
+    }
+  }
+
   Future<void> registerAfterLogin() async {
+    await flushPendingNotificationReads();
     await AppLocaleSync.syncPreferredLanguageToBackend(force: false);
     if (_fcmToken != null) {
       await _registerTokenWithBackend(_fcmToken!);

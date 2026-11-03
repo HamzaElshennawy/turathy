@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
+import 'package:turathy/src/core/time/server_countdown.dart';
 
 /// Lot remaining-time pill. Owns its 1s ticker so bidding controls do not rebuild.
 class AuctionExpiryClock extends StatefulWidget {
@@ -18,17 +20,7 @@ class AuctionExpiryClock extends StatefulWidget {
   });
 
   static String formatDuration(Duration duration) {
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-
-    if (duration.inHours > 0) {
-      final hours = duration.inHours.toString().padLeft(2, '0');
-      return '$hours:$minutes:$seconds';
-    } else if (duration.inMinutes > 0) {
-      return '$minutes:$seconds';
-    } else {
-      return '${duration.inSeconds} sec';
-    }
+    return formatClockDuration(duration.inMilliseconds);
   }
 
   @override
@@ -68,21 +60,31 @@ class _AuctionExpiryClockState extends State<AuctionExpiryClock> {
     _timer?.cancel();
     if (widget.expiry == null) return;
     if (_remainingTime <= Duration.zero) return;
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      final next = _computeRemaining();
-      setState(() => _remainingTime = next);
-      if (next <= Duration.zero) {
-        _timer?.cancel();
-        _notifyExpired();
-      }
-    });
+    _arm();
+  }
+
+  void _arm() {
+    _timer?.cancel();
+    if (widget.expiry == null || _remainingTime <= Duration.zero) return;
+    _timer = armServerCountdown(
+      remainMs: _remainingTime.inMilliseconds,
+      onTick: () {
+        if (!mounted) return;
+        final next = _computeRemaining();
+        setState(() => _remainingTime = next);
+        if (next <= Duration.zero) {
+          _notifyExpired();
+          return;
+        }
+        _arm();
+      },
+    );
   }
 
   Duration _computeRemaining() {
     final expiry = widget.expiry;
     if (expiry == null) return Duration.zero;
-    final difference = expiry.difference(DateTime.now());
+    final difference = expiry.difference(serverClock.nowDate());
     return difference.isNegative ? Duration.zero : difference;
   }
 
@@ -145,7 +147,9 @@ class _AuctionExpiryClockState extends State<AuctionExpiryClock> {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Center(
               child: Text(
-                AuctionExpiryClock.formatDuration(_remainingTime),
+                _remainingTime <= Duration.zero
+                    ? lotClosingLabel
+                    : AuctionExpiryClock.formatDuration(_remainingTime),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

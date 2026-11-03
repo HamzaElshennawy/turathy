@@ -1,11 +1,11 @@
 import 'dart:ui' as ui;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:turathy/src/features/notifications/presentation/notifications_screen.dart';
+import '../../../core/common_widgets/store_product_image.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
 import '../../../core/constants/app_functions/app_functions.dart';
@@ -13,12 +13,26 @@ import '../../../core/helper/analytics/analytics_service.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../../../core/helper/share/item_share_helper.dart';
+import '../../../core/helper/support/support_whatsapp.dart';
+import '../../settings/data/app_config_repository.dart';
 import '../../../core/helper/share/item_share_sheet.dart';
 import '../../cart/data/cart_repository.dart';
 import '../../cart/presentation/cart_screen.dart';
 import '../../preorders/data/preorder_repository.dart';
 import '../../preorders/presentation/preorder_screen.dart';
 import '../domain/product_model.dart';
+
+/// Next gallery index, wrapping at both ends.
+int galleryPageIndex({
+  required int current,
+  required int count,
+  required int delta,
+}) {
+  if (count <= 0) return 0;
+  var index = (current + delta) % count;
+  if (index < 0) index += count;
+  return index;
+}
 
 class ProductScreen extends ConsumerStatefulWidget {
   final ProductModel product;
@@ -137,6 +151,33 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          Builder(
+            builder: (context) {
+              final config = ref.watch(appConfigProvider).valueOrNull;
+              if (config == null ||
+                  supportWhatsAppUri(
+                        config,
+                        lotNumber: widget.product.lotNumber,
+                      ) ==
+                      null) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                tooltip: AppStrings.whatsApp.tr(),
+                onPressed: () => openSupportWhatsApp(
+                  context,
+                  config,
+                  lotNumber: widget.product.lotNumber,
+                ),
+                icon: Image.asset(
+                  'assets/icons/whats.png',
+                  width: 22,
+                  height: 22,
+                  semanticLabel: AppStrings.whatsApp.tr(),
+                ),
+              );
+            },
+          ),
           IconButton(
             key: const Key('product_share_button'),
             tooltip: AppStrings.shareItem.tr(),
@@ -229,9 +270,12 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _productTitle,
+            widget.product.localizedHeadline(_languageCode),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 20,
+              height: 1.35,
               fontWeight: FontWeight.w800,
               color: Colors.black87,
             ),
@@ -249,6 +293,19 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
           ],
         ],
       ),
+    );
+  }
+
+  void _showImage(int delta) {
+    final count = _images.length;
+    if (count <= 1) return;
+    final current = _pageController.hasClients
+        ? (_pageController.page?.round() ?? _currentPage)
+        : _currentPage;
+    _pageController.animateToPage(
+      galleryPageIndex(current: current, count: count, delta: delta),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
     );
   }
 
@@ -273,10 +330,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
       );
     }
 
-    return Directionality(
-      textDirection: ui.TextDirection.rtl,
-      child: SizedBox(
-        height: 300,
+    final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
+    return SizedBox(
+        height: 240,
         child: Stack(
           children: [
             PageView.builder(
@@ -290,25 +346,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
               itemBuilder: (context, index) {
                 return GestureDetector(
                   onTap: () => _openImageZoom(index),
-                  child: CachedNetworkImage(
+                  child: StoreProductImage(
                     imageUrl: _images[index],
                     memCacheHeight: 800,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    progressIndicatorBuilder: (context, url, progress) =>
-                        Center(
-                      child: CircularProgressIndicator(
-                        value: progress.progress,
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.image,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    ),
                   ),
                 );
               },
@@ -331,68 +371,22 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
                 ),
               ),
             ),
-            // Left Arrow
-            if (_images.length > 1)
-              Positioned(
-                left: 8,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_currentPage > 0) {
-                        _pageController.previousPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.chevron_right,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
+            if (_images.length > 1) ...[
+              _GalleryArrow(
+                alignment: Alignment.centerLeft,
+                icon: Icons.chevron_left,
+                tooltip: (isRtl ? AppStrings.nextImage : AppStrings.previousImage)
+                    .tr(),
+                onTap: () => _showImage(isRtl ? 1 : -1),
               ),
-            // Right Arrow
-            if (_images.length > 1)
-              Positioned(
-                right: 8,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_currentPage < _images.length - 1) {
-                        _pageController.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.chevron_left,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
+              _GalleryArrow(
+                alignment: Alignment.centerRight,
+                icon: Icons.chevron_right,
+                tooltip: (isRtl ? AppStrings.previousImage : AppStrings.nextImage)
+                    .tr(),
+                onTap: () => _showImage(isRtl ? -1 : 1),
               ),
+            ],
             // Page Indicator
             if (_images.length > 1)
               Positioned(
@@ -419,7 +413,6 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
               ),
           ],
         ),
-      ),
     );
   }
 
@@ -456,18 +449,9 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: CachedNetworkImage(
+                child: StoreProductImage(
                   imageUrl: _images[index],
                   memCacheWidth: 200,
-                  fit: BoxFit.cover,
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[200],
-                    child: const Icon(
-                      Icons.image,
-                      size: 20,
-                      color: Colors.grey,
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -991,5 +975,38 @@ class _BuyFormSheetState extends ConsumerState<_BuyFormSheet> {
         setState(() => _isLoading = false);
       }
     }
+  }
+}
+
+class _GalleryArrow extends StatelessWidget {
+  const _GalleryArrow({
+    required this.alignment,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final Alignment alignment;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Material(
+          color: Colors.black.withValues(alpha: 0.55),
+          shape: const CircleBorder(),
+          child: IconButton(
+            tooltip: tooltip,
+            onPressed: onTap,
+            icon: Icon(icon, color: Colors.white),
+          ),
+        ),
+      ),
+    );
   }
 }

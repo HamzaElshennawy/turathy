@@ -10,11 +10,11 @@
 /// - **Smart Media Resolution**: Handles complex image path lookups from lists or single URLs.
 library;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
+import 'package:turathy/src/core/common_widgets/store_product_image.dart';
 import 'package:turathy/src/core/helper/dio/end_points.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
@@ -116,14 +116,9 @@ class HorizontalProductCard extends ConsumerWidget {
                       topLeft: Radius.circular(16),
                       bottomLeft: Radius.circular(16),
                     ),
-                    child: CachedNetworkImage(
+                    child: StoreProductImage(
                       imageUrl: _imageUrl,
                       memCacheHeight: 400,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image, size: 50),
-                      ),
                     ),
                   ),
                   // Top-Left Floating Action: Favorite

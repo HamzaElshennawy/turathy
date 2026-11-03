@@ -81,6 +81,9 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Obfuscated iOS compile
+        run: flutter build ios --release --obfuscate --split-debug-info=build/symbols --no-codesign
+
       - name: Verify Xcode
         run: xcodebuild -version
 

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/app_root.dart';
 
+import 'src/core/helper/flutter_error_text.dart';
 import 'src/core/helper/cache/cache_helper.dart';
 import 'src/core/helper/cache/cached_keys.dart';
 import 'src/core/helper/cache/cached_variables.dart';
@@ -65,9 +66,11 @@ void main() async {
 
 void registerErrorHandler() {
   FlutterError.onError = (FlutterErrorDetails details) {
+    debugPrint(readableFlutterError(details));
     FlutterError.presentError(details);
   };
-  PlatformDispatcher.instance.onError = (exception, stackTrace) {
+  PlatformDispatcher.instance.onError = (Object exception, StackTrace stackTrace) {
+    debugPrint('$exception\n$stackTrace');
     return true;
   };
   ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -76,7 +79,12 @@ void registerErrorHandler() {
         backgroundColor: Colors.red,
         title: const Text('An error occurred'),
       ),
-      body: Center(child: Text(details.toString())),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: SelectableText(readableFlutterError(details)),
+        ),
+      ),
     );
   };
 }

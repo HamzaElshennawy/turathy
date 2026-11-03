@@ -6,6 +6,7 @@ class MaxBidModel {
   int? auctionId;
   int? productId;
   num? maxAmount;
+  bool? isActive;
   String? createdAt;
   String? updatedAt;
   User? user;
@@ -18,6 +19,7 @@ class MaxBidModel {
     this.auctionId,
     this.productId,
     this.maxAmount,
+    this.isActive,
     this.createdAt,
     this.updatedAt,
     this.user,
@@ -31,6 +33,12 @@ class MaxBidModel {
     auctionId = json['auction_id'];
     productId = json['product_id'];
     maxAmount = json['max_amount'];
+    final active = json['is_active'] ?? json['isActive'];
+    if (active is bool) {
+      isActive = active;
+    } else if (active != null) {
+      isActive = active.toString() == 'true' || active.toString() == '1';
+    }
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     user = json['user'] != null ? User.fromJson(json['user']) : null;
@@ -49,6 +57,7 @@ class MaxBidModel {
     data['auction_id'] = auctionId;
     data['product_id'] = productId;
     data['max_amount'] = maxAmount;
+    data['is_active'] = isActive;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
     if (user != null) {

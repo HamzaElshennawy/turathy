@@ -218,7 +218,9 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
           ),
         ],
       ),
-      child: InkWell(
+      child: Stack(
+        children: [
+          InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           // Default tap behavior Navigate to details/pre-auction screen
@@ -265,12 +267,6 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
                         ),
                       ),
                     ),
-                  ),
-                  // Floating Interaction: Wishlist/Like
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: _buildHeartIcon(isLiked),
                   ),
                   // Floating Interaction: Status Badge (e.g. "Ended")
                   if (statusLabel != null)
@@ -322,12 +318,20 @@ class _AuctionCardState extends ConsumerState<AuctionCard> {
           ],
         ),
       ),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _buildHeartIcon(isLiked),
+          ),
+        ],
+      ),
     );
   }
 
   /// Internal: Builds the favoriting toggle with authentication guard.
   Widget _buildHeartIcon(bool isLiked) {
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         final user = ref.read(authControllerProvider).value;
         if (user == null) {

@@ -22,6 +22,8 @@ import 'package:turathy/src/features/orders/domain/saved_payment_method_model.da
 import 'package:turathy/src/features/orders/presentation/widgets/card_checkout_section.dart';
 import 'package:turathy/src/features/orders/utils/payment_debug_logger.dart';
 import 'package:turathy/src/features/orders/presentation/delivery_method_screen.dart';
+import 'package:turathy/src/features/orders/presentation/payment_failure_screen.dart';
+import 'package:turathy/src/features/orders/presentation/payment_success_screen.dart';
 
 enum UnifiedPaymentMethod { creditCard, bankTransfer }
 
@@ -515,7 +517,10 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       }
 
       if (outcome.status == GeideaPaymentOutcomeStatus.failure) {
-        _showErrorSnackBar(outcome.message ?? AppStrings.paymentFailed.tr());
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PaymentFailureScreen()),
+        );
         return;
       }
 
@@ -688,15 +693,16 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
       }
 
       if (merged.paymentStatus == 'paid') {
-        AppFunctions.showSnackBar(
-          context: context,
-          message: AppStrings.paymentSuccessful.tr(),
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
         );
         return;
       }
 
       if (merged.paymentStatus == 'failed') {
-        _showErrorSnackBar(AppStrings.paymentFailed.tr());
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PaymentFailureScreen()),
+        );
         return;
       }
 

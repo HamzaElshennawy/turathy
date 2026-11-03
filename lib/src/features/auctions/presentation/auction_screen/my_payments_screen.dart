@@ -8,6 +8,7 @@ import 'package:turathy/src/core/constants/app_sizes.dart';
 import '../../../../core/common_widgets/custom_card.dart';
 import '../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
 import '../../../../core/constants/app_strings/app_strings.dart';
+import '../../../authintication/presentation/sign_in_screen.dart';
 import '../../data/auction_payments_repository.dart';
 import '../../domain/auction_payment_model.dart';
 
@@ -97,7 +98,69 @@ class MyPaymentsScreen extends ConsumerWidget {
             child: ShimmerWidget(width: double.infinity, height: 120),
           ),
         ),
-        error: (error, _) => Center(child: Text('Error: $error')),
+        error: (error, _) {
+          if (error is PaymentsSignInRequired) {
+            return _PaymentsSignIn(onSignedIn: () {
+              ref.invalidate(myPaymentsProvider);
+            });
+          }
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                AppStrings.checkInternetConnection.tr(),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PaymentsSignIn extends StatelessWidget {
+  const _PaymentsSignIn({required this.onSignedIn});
+
+  final VoidCallback onSignedIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 56,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              AppStrings.signInToViewPayments.tr(),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) => const SignInScreen(),
+                      ),
+                    )
+                    .then((_) => onSignedIn());
+              },
+              child: Text(AppStrings.signIn.tr()),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -196,20 +259,22 @@ class _PaymentCard extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showReceiptDialog(context),
-                icon: const Icon(Icons.image_outlined, size: 18),
-                label: Text(AppStrings.viewReceipt.tr()),
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (payment.hasReceipt) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showReceiptDialog(context),
+                  icon: const Icon(Icons.image_outlined, size: 18),
+                  label: Text(AppStrings.viewReceipt.tr()),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -240,6 +305,11 @@ class _PaymentCard extends StatelessWidget {
       textColor = Colors.red.shade700;
       icon = Icons.cancel;
       label = AppStrings.paymentRejected.tr();
+    } else if (payment.isUnpaid) {
+      bgColor = Colors.orange.shade50;
+      textColor = Colors.orange.shade700;
+      icon = Icons.payments_outlined;
+      label = AppStrings.paymentDue.tr();
     } else {
       bgColor = Colors.orange.shade50;
       textColor = Colors.orange.shade700;

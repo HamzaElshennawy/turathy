@@ -16,8 +16,10 @@ import 'package:turathy/src/features/notifications/presentation/notifications_sc
 // import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/agora_video_widget/agora_video_widget.dart';
 
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_prep_banner.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathy/src/core/helper/fcm/live_room_visibility.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
@@ -27,6 +29,8 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bids_history_widget.dart';
 import 'package:turathy/src/core/helper/share/item_share_helper.dart';
+import 'package:turathy/src/core/helper/support/support_whatsapp.dart';
+import 'package:turathy/src/features/settings/data/app_config_repository.dart';
 import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 import 'package:turathy/src/core/helper/locale/app_locale_sync.dart';
@@ -39,6 +43,9 @@ import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/profile_auction_gate.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_result_banner.dart';
+import 'package:turathy/src/core/helper/auction_price_helpers.dart';
+import 'package:turathy/src/features/live_activity/live_activity_controller.dart';
+import 'package:turathy/src/features/live_activity/live_activity_gateway.dart';
 
 class LiveAuctionScreen extends ConsumerStatefulWidget {
   final int auctionId;
@@ -71,6 +78,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
   // Local state for immediate updates
   bool _isAuctionEnded = false;
+  bool _followingLiveLot = false;
+  LiveActivityController? _liveActivity;
   int? _winnerId;
   String? _winnerName;
   num? _finalPrice; // To store the price when auction ends
@@ -106,6 +115,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
   LotResultKind? _lotResult;
   int? _lotResultProductId;
+  final Set<int> _sellerBlockedLots = {};
+  DateTime? _prepServerNow;
+  int? _prepSeconds;
+  DateTime? _prepStartsAt;
   Timer? _lotResultTimer;
 
   StreamSubscription? _socketErrorSubscription;
@@ -132,7 +145,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       );
       AnalyticsService.logAuctionJoined(auctionId: widget.auctionId);
       if (!mounted) return;
-      final loaded = ref.read(auctionDetailsProvider(widget.auctionId)).valueOrNull;
+      final loaded = ref
+          .read(auctionDetailsProvider(widget.auctionId))
+          .valueOrNull;
       if (loaded?.expiryDate != null && !_isAuctionEnded) {
         _scheduleFailSafeTimer(loaded!.expiryDate!);
       }
@@ -184,6 +199,16 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         .getEventStream<dynamic>('bidRejected', (data) => data)
         .listen((data) {
           if (!mounted || data == null) return;
+          if (data['bidBlockedReason']?.toString() == 'SELLER') {
+            final blockedId = data['productId'];
+            final productId = blockedId is num
+                ? blockedId.toInt()
+                : int.tryParse('$blockedId');
+            if (productId != null) {
+              setState(() => _sellerBlockedLots.add(productId));
+            }
+            return;
+          }
           final serverPrice = (data['currentPrice'] as num?);
           if (serverPrice != null) {
             _applyRoomBidUpdate(currentPrice: serverPrice);
@@ -225,30 +250,24 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           final rawBids = map['auctionBids'];
           if (rawBids is List) {
             for (final raw in rawBids.whereType<Map>()) {
-              ref.read(accumulatedBidsProvider.notifier).addBid(
-                    AuctionBid.fromJson(Map<String, dynamic>.from(raw)),
-                  );
+              ref
+                  .read(accumulatedBidsProvider.notifier)
+                  .addBid(AuctionBid.fromJson(Map<String, dynamic>.from(raw)));
             }
           }
           _flashBidAccepted();
         });
 
     _auctionSyncSubscription = socketService
-        .getEventStream<AuctionStateUpdateEvent>(
-          'auctionSync',
-          (data) {
-            try {
-              return AuctionStateUpdateEvent.fromJson(
-                Map<String, dynamic>.from(data as Map),
-              );
-            } catch (_) {
-              return const AuctionStateUpdateEvent(
-                auctionId: 0,
-                products: [],
-              );
-            }
-          },
-        )
+        .getEventStream<AuctionStateUpdateEvent>('auctionSync', (data) {
+          try {
+            final json = Map<String, dynamic>.from(data as Map);
+            if (!retainLivePayload(json)) return null;
+            return AuctionStateUpdateEvent.fromJson(json);
+          } catch (_) {
+            return const AuctionStateUpdateEvent(auctionId: 0, products: []);
+          }
+        })
         .listen(_applyLiveSnapshot);
   }
 
@@ -261,6 +280,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       }
       await socketActions.joinAuction(widget.auctionId, userId);
       await socketActions.requestSync(widget.auctionId);
+      SocketService.active?.burstTimeSync();
+      if (!mounted) return;
+      _followingLiveLot = true;
+      _liveActivity = ref.read(liveActivityControllerProvider);
+      _syncDynamicIsland();
     } catch (e) {
       debugPrint('LiveAuctionScreen: join/sync failed: $e');
       if (!mounted) return;
@@ -283,9 +307,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     }
 
     final service = ref.read(auctionAccessServiceProvider);
-    final status = await service.checkAccess(
-      auctionId: widget.auctionId,
-    );
+    final status = await service.checkAccess(auctionId: widget.auctionId);
 
     if (mounted) {
       setState(() {
@@ -308,10 +330,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       _isAccessLoading = true;
     });
     final service = ref.read(auctionAccessServiceProvider);
-    final status = await service.requestAccess(
+    final status = await service.requestAccess(auctionId: widget.auctionId);
+    await AnalyticsService.logAuctionAccessRequested(
       auctionId: widget.auctionId,
     );
-    await AnalyticsService.logAuctionAccessRequested(auctionId: widget.auctionId);
     if (mounted) {
       setState(() {
         _accessStatus = status;
@@ -329,9 +351,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     }
   }
 
-
   @override
   void dispose() {
+    final activity = _liveActivity;
+    _followingLiveLot = false;
+    _liveActivity = null;
+    activity?.stopFollowing();
     WidgetsBinding.instance.removeObserver(this);
     LiveRoomVisibility.isViewing.value = false;
     // _cleanupEngine();
@@ -368,6 +393,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   void _applyLiveSnapshot(AuctionStateUpdateEvent event) {
     if (!mounted) return;
     if (event.auctionId != 0 && event.auctionId != widget.auctionId) return;
+    if (event.prepSeconds != null && event.serverNow != null) {
+      setState(() {
+        _prepServerNow = event.serverNow;
+        _prepSeconds = event.prepSeconds;
+        _prepStartsAt = event.startsAt;
+      });
+    }
     // A late pulse from the previous lot must not flash its hammer on the new opening.
     if (shouldIgnoreLiveBid(
       eventProductId: event.currentProductId,
@@ -394,6 +426,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         ref.read(accumulatedBidsProvider.notifier).addBid(bid);
       }
     }
+    _syncDynamicIsland();
   }
 
   void _applyRoomBidUpdate({
@@ -422,6 +455,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     if (expiryDate != null) {
       _scheduleFailSafeTimer(expiryDate);
     }
+    _syncDynamicIsland();
   }
 
   void _flashBidAccepted() {
@@ -539,7 +573,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       }
       // Ask the server for an authoritative snapshot so the next attempt
       // can resolve the product.
-      socketActions.requestSync(auction.id ?? widget.auctionId).catchError((_) {});
+      socketActions
+          .requestSync(auction.id ?? widget.auctionId)
+          .catchError((_) {});
       return;
     }
 
@@ -574,6 +610,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           amount: currentBid,
         ),
       );
+      _syncDynamicIsland(bidInProgress: true);
     } catch (e) {
       debugPrint('LiveAuctionScreen: placeBid failed: $e');
       if (!mounted) return;
@@ -602,15 +639,31 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       final expiry = next.valueOrNull?.expiryDate;
       if (expiry != null && !_isAuctionEnded) {
         _scheduleFailSafeTimer(expiry);
+        _syncDynamicIsland();
       }
     });
 
     ref.listen(userCountUpdateProvider, (previous, next) {});
 
     // Listen for pre-auction start
+    ref.listen(auctionPrepPayloadProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event == null || event.auctionId != widget.auctionId) return;
+      setState(() {
+        _prepServerNow = event.serverNow;
+        _prepSeconds = event.prepSeconds;
+        _prepStartsAt = event.startsAt;
+      });
+    });
+    ref.listen(sellerBidBlockProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event == null || event.auctionId != widget.auctionId) return;
+      setState(() => _sellerBlockedLots.addAll(event.productIds));
+    });
+
     ref.listen(auctionPreStartedProvider, (previous, next) {
       final event = next.valueOrNull;
-      if (event != null) {
+      if (event != null && event.id != null) {
         setState(() {
           auction = event;
         });
@@ -635,8 +688,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
         // Record sale/winner for the just-ended product. Sale is isSold only —
         // a winner is attached by the server only when reserve was met.
-        final endedProductId =
-            event.endedProductId ?? auction.currentProductId;
+        final endedProductId = event.endedProductId ?? auction.currentProductId;
         final sold = lotWasSold(
           eventIsSold: event.isSold,
           hasWinner: event.winner != null,
@@ -754,6 +806,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           if (newExpiry != null) {
             _scheduleFailSafeTimer(newExpiry);
           }
+          _syncDynamicIsland();
         } else {
           // No next item — final product has ended. Compute selection first.
           // _selectNextProduct() reads from auction state synchronously;
@@ -765,6 +818,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             auction.currentProductId = null;
           });
           _showLotResultBanner(kind, productId: endedProductId);
+          _syncDynamicIsland(ended: true);
         }
       }
     });
@@ -822,6 +876,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         }
         // We intentionally no longer pop up a result dialog on the live screen.
         // The bottom bidding controls already reflect the winner/loser state.
+        _syncDynamicIsland(ended: true);
       }
     });
 
@@ -829,9 +884,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       final expiry = next.valueOrNull?.expiryDate;
       if (expiry == null || !mounted) return;
       setState(() {
+        _liveExpiryDate = expiry;
         auction.expiryDate = expiry;
       });
       _scheduleFailSafeTimer(expiry);
+      _syncDynamicIsland();
     });
 
     // Listen for new bids to update timer and price
@@ -872,7 +929,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         }
 
         if (event.auctionBids.isNotEmpty) {
-          ref.read(accumulatedBidsProvider.notifier).updateAll(event.auctionBids);
+          ref
+              .read(accumulatedBidsProvider.notifier)
+              .updateAll(event.auctionBids);
         } else if (incomingBid != null) {
           ref.read(accumulatedBidsProvider.notifier).addBid(incomingBid);
         }
@@ -882,6 +941,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           expiryDate: event.expiryDate,
           eventProductId: event.eventProductId,
         );
+        _syncDynamicIsland(bidInProgress: true);
       }
     });
 
@@ -957,6 +1017,27 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         centerTitle: true,
         leading: const BackButton(),
         actions: [
+          Builder(
+            builder: (context) {
+              final config = ref.watch(appConfigProvider).valueOrNull;
+              final lotNumber = _selectedProduct?.lotNumber;
+              if (config == null ||
+                  supportWhatsAppUri(config, lotNumber: lotNumber) == null) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                tooltip: AppStrings.whatsApp.tr(),
+                onPressed: () =>
+                    openSupportWhatsApp(context, config, lotNumber: lotNumber),
+                icon: Image.asset(
+                  'assets/icons/whats.png',
+                  width: 22,
+                  height: 22,
+                  semanticLabel: AppStrings.whatsApp.tr(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_none),
             onPressed: () {
@@ -1005,6 +1086,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (_prepServerNow != null && _prepSeconds != null)
+                      AuctionPrepBanner(
+                        serverNow: _prepServerNow!,
+                        prepSeconds: _prepSeconds!,
+                        startsAt: _prepStartsAt,
+                      ),
                     // Agora Video (shrinks if no video)
                     /* 
                         // video feature currently disabled
@@ -1082,23 +1169,21 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                           itemCount: auction.auctionProducts!.length,
                           itemBuilder: (context, index) {
                             final item = auction.auctionProducts![index];
-                            final bool isLive =
-                                auction.currentProductId != null
-                                    ? item.id == auction.currentProductId
-                                    : item.displayName ==
-                                        auction.currentProduct;
+                            final bool isLive = auction.currentProductId != null
+                                ? item.id == auction.currentProductId
+                                : item.displayName == auction.currentProduct;
                             final bool isSelected =
                                 item.id ==
                                 (_selectedProduct?.id ??
                                     auction.currentProductId ??
                                     (auction.auctionProducts
-                                            ?.firstWhere(
-                                              (p) =>
-                                                  p.displayName ==
-                                                  auction.currentProduct,
-                                              orElse: () => AuctionProducts(),
-                                            )
-                                            .id));
+                                        ?.firstWhere(
+                                          (p) =>
+                                              p.displayName ==
+                                              auction.currentProduct,
+                                          orElse: () => AuctionProducts(),
+                                        )
+                                        .id));
 
                             return GestureDetector(
                               onTap: () {
@@ -1153,15 +1238,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                                             .indexWhere(
                                               (p) =>
                                                   auction.currentProductId !=
-                                                          null
-                                                      ? p.id ==
-                                                          auction
-                                                              .currentProductId
-                                                      : _isSameProduct(
-                                                          p.displayName,
-                                                          auction
-                                                              .currentProduct,
-                                                        ),
+                                                      null
+                                                  ? p.id ==
+                                                        auction.currentProductId
+                                                  : _isSameProduct(
+                                                      p.displayName,
+                                                      auction.currentProduct,
+                                                    ),
                                             );
                                         // If current product not found (e.g. auction ended completely), maybe all are sold?
                                         // Or if auction just started?
@@ -1220,8 +1303,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                                         if (kind == LotResultKind.none) {
                                           return const SizedBox.shrink();
                                         }
-                                        final badgeText =
-                                            lotResultStringKey(kind).tr();
+                                        final badgeText = lotResultStringKey(
+                                          kind,
+                                        ).tr();
                                         final badgeColor = lotResultColor(kind);
 
                                         return Positioned(
@@ -1259,7 +1343,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                     // Main Image -> Title -> Bids -> Thumbnails -> Description
                     Builder(
                       builder: (context) {
-                        final imagesToShow = AuctionDetailsHelper.getImagesToShow(auction, activeProduct);
+                        final imagesToShow =
+                            AuctionDetailsHelper.getImagesToShow(
+                              auction,
+                              activeProduct,
+                            );
                         final badge = AuctionDetailsHelper.getStatusBadge(
                           auction: auction,
                           activeProduct: activeProduct,
@@ -1272,8 +1360,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                               : null,
                           userParticipatedOverride:
                               activeProduct?.id != null &&
-                                  _productParticipants
-                                      .contains(activeProduct!.id)
+                                  _productParticipants.contains(
+                                    activeProduct!.id,
+                                  )
                               ? true
                               : null,
                         );
@@ -1292,7 +1381,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                               statusLabel: badge.label,
                               statusColor: badge.color,
                               onShare: () {
-                                final title = activeProduct?.displayName ??
+                                final title =
+                                    activeProduct?.displayName ??
                                     auction.displayTitle;
                                 final url = ItemShareHelper.auctionLotUrl(
                                   auctionId: auction.id ?? widget.auctionId,
@@ -1315,12 +1405,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                                           )
                                           .toggleWatchLot(activeProduct!);
                                     },
-                              isWatched: activeProduct?.id != null &&
+                              isWatched:
+                                  activeProduct?.id != null &&
                                   ref
                                       .watch(favoritesControllerProvider)
                                       .maybeWhen(
-                                        data: (d) => d.watchedLotIds
-                                            .contains(activeProduct!.id),
+                                        data: (d) => d.watchedLotIds.contains(
+                                          activeProduct!.id,
+                                        ),
                                         orElse: () => false,
                                       ),
                             ),
@@ -1381,6 +1473,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             // Bidding Controls (Fixed at bottom)
             AuctionBiddingControlsWidget(
               auction: auction,
+              showOnlyMaxBid: true,
+              sellerBidBlocked:
+                  _selectedProduct?.bidBlockedReason == 'SELLER' ||
+                  (_selectedProduct?.id != null &&
+                      _sellerBlockedLots.contains(_selectedProduct!.id)),
               expiryDate: auction.expiryDate,
               isAuctionEnded: _isAuctionEnded,
               isViewOnly:
@@ -1455,9 +1552,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         title = AppStrings.requestAccess.tr();
         actionWidget = ElevatedButton.icon(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SignInScreen()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SignInScreen()));
           },
           icon: const Icon(Icons.login, color: Colors.white),
           label: Text(
@@ -1589,9 +1686,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
   void _showLotResultBanner(LotResultKind kind, {int? productId}) {
     final selectedId = _selectedProduct?.id;
-    if (productId != null &&
-        selectedId != null &&
-        productId != selectedId) {
+    if (productId != null && selectedId != null && productId != selectedId) {
       return;
     }
     final selectedClosed = isCurrentLiveLotClosedByServer(
@@ -1690,8 +1785,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   Timer? _failSafeTimer;
 
   void _scheduleFailSafeTimer(DateTime expiry) {
-    final now = DateTime.now();
-    // Schedule for expiry + 2 seconds
+    final now = serverClock.nowDate();
+    // Schedule for expiry + 2 seconds on the server clock.
     final difference = expiry.difference(now) + const Duration(seconds: 2);
 
     if (difference.isNegative) {
@@ -1731,7 +1826,58 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       "LiveAuctionScreen: Fail-safe timer triggered. Polling for updates.",
     );
     _cancelFailSafeTimer();
+    _syncDynamicIsland();
     // Refresh the provider to get latest data from backend
     ref.invalidate(auctionDetailsProvider(widget.auctionId));
+  }
+
+  AuctionProducts? _currentLiveLot() {
+    final products = auction.auctionProducts;
+    if (products == null || products.isEmpty) return null;
+    for (final product in products) {
+      if (auction.currentProductId != null) {
+        if (product.id == auction.currentProductId) return product;
+      } else if (product.displayName == auction.currentProduct) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  num? _publicIslandPrice(AuctionProducts? lot) {
+    final live = _liveCurrentPrice ?? auction.liveCurrentPrice;
+    if (live != null && live > 0) return live;
+    if (lot != null) {
+      final opening = publicStartingPrice(lot);
+      if (opening > 0) return opening;
+    }
+    final auctionOpening = auction.bidPrice;
+    if (auctionOpening != null && auctionOpening > 0) return auctionOpening;
+    return null;
+  }
+
+  DateTime? _deviceDeadline(DateTime? serverExpiry) {
+    if (serverExpiry == null) return null;
+    final localMs = serverExpiry.millisecondsSinceEpoch - serverClock.offset().round();
+    return DateTime.fromMillisecondsSinceEpoch(localMs);
+  }
+
+  void _syncDynamicIsland({bool bidInProgress = false, bool ended = false}) {
+    final activity = _liveActivity;
+    if (activity == null || !_followingLiveLot) return;
+    final lot = _currentLiveLot();
+    final endsAt = _deviceDeadline(_liveExpiryDate ?? auction.expiryDate);
+    activity.apply(
+      LiveRoomActivitySignal(
+        following: true,
+        lotEnded: ended || _isAuctionEnded,
+        bidInProgress: bidInProgress,
+        endsAt: endsAt,
+        lotNumber: lot?.lotNumber,
+        auctionId: auction.id ?? widget.auctionId,
+        productId: lot?.id ?? auction.currentProductId,
+        publicPrice: _publicIslandPrice(lot),
+      ),
+    );
   }
 }

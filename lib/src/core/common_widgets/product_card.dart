@@ -10,7 +10,6 @@
 /// - **Interactive Previews**: Long-press support for fullscreen image inspection.
 library;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,7 @@ import 'package:turathy/src/features/favorites/presentation/controllers/favorite
 import 'package:turathy/src/features/products/presentation/product_details_wrapper.dart';
 
 import '../../features/products/domain/product_model.dart';
+import 'store_product_image.dart';
 import '../constants/app_functions/app_functions.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings/app_strings.dart';
@@ -125,34 +125,29 @@ class _ProductCardState extends ConsumerState<ProductCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Hero Media Layer ────────────────────────────────────────────
-            Expanded(
-              child: Stack(
-                fit: StackFit.passthrough,
-                children: [
-                  Hero(
-                    tag: widget.heroTag ?? widget.product.id,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: _imageUrl,
-                        memCacheHeight: 400,
-                        fit: BoxFit.cover,
-                        progressIndicatorBuilder: (context, url, progress) =>
-                            Center(
-                              child: CircularProgressIndicator(
-                                value: progress.progress,
-                              ),
-                            ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.image, size: 50),
+            Stack(
+              children: [
+                Hero(
+                  tag: widget.heroTag ?? widget.product.id,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: ColoredBox(
+                      color: StoreProductImage.backdrop,
+                      child: AspectRatio(
+                        aspectRatio: StoreProductImage.frameAspect,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+                          child: StoreProductImage(
+                            imageUrl: _imageUrl,
+                            memCacheHeight: 480,
+                          ),
                         ),
                       ),
                     ),
                   ),
+                ),
                   // Floating Interaction: Wishlist/Like
                   Positioned(
                     top: 12,
@@ -183,8 +178,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                   if (widget.product.hasDiscount &&
                       !widget.product.isPreorderContact)
                     Positioned(top: 12, left: 12, child: _buildDiscountBadge()),
-                ],
-              ),
+              ],
             ),
 
             // ── Information & Purchase Layer ────────────────────────────────
@@ -219,7 +213,7 @@ class _ProductCardState extends ConsumerState<ProductCard> {
                   ),
                   gapH8,
                   _buildStockChip(),
-                  gapH16,
+                  gapH8,
                   // Buy Now Button with integrated price display
                   _buildBuyNowButton(),
                 ],

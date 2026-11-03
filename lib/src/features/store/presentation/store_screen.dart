@@ -8,6 +8,7 @@ import 'package:turathy/src/core/helper/analytics/analytics_service.dart';
 import 'package:turathy/src/features/products/data/products_repository.dart';
 import 'package:turathy/src/features/home/data/category_repository.dart';
 
+import '../../home/domain/category_model.dart';
 import '../../search/presentation/widgets/filter_widget/filter_widget.dart';
 import '../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
 
@@ -33,6 +34,22 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
     super.dispose();
   }
 
+  String _selectedCategoryLabel(
+    List<CategoryModel>? categories,
+    int? selectedId,
+    String languageCode,
+  ) {
+    if (categories != null && selectedId != null) {
+      for (final category in categories) {
+        if (category.id == selectedId) {
+          final name = category.localizedName(languageCode);
+          if (name.isNotEmpty) return name;
+        }
+      }
+    }
+    return AppStrings.categories.tr();
+  }
+
   @override
   Widget build(BuildContext context) {
     final productsAsyncValue = ref.watch(filteredProductsProvider);
@@ -48,6 +65,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
           await ref.read(getAllCategoriesProvider.future);
         },
         child: CustomScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
@@ -160,12 +178,41 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                 ),
               ),
             ),
+            if (filterState.selectedCategoryID != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: InputChip(
+                      label: Text(
+                        _selectedCategoryLabel(
+                          categoriesAsyncValue.valueOrNull,
+                          filterState.selectedCategoryID,
+                          context.locale.languageCode,
+                        ),
+                      ),
+                      onDeleted: () {
+                        ref
+                            .read(filterWidgetControllerProvider.notifier)
+                            .clearSelectedCategory();
+                      },
+                    ),
+                  ),
+                ),
+              ),
             const SliverToBoxAdapter(child: gapH16),
             productsAsyncValue.when(
               data: (products) {
                 if (products.isEmpty) {
-                  return const SliverToBoxAdapter(
-                    child: Center(child: Text('No products found')),
+                  final message = filterState.selectedCategoryID != null
+                      ? AppStrings.noProductsInCategory.tr()
+                      : AppStrings.noProductsFound.tr();
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(child: Text(message)),
+                    ),
                   );
                 }
 
@@ -177,7 +224,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> {
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 8,
-                      childAspectRatio: 0.55,
+                      childAspectRatio: 0.52,
                     ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       return ProductCard(product: products[index]);

@@ -7,6 +7,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings/app_strings.dart';
+import '../../../core/helper/support/support_whatsapp.dart';
+import '../data/app_config_repository.dart';
 import '../../profile/presentation/widgets/language_widget/language_widget.dart';
 import 'terms_and_conditions_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -25,8 +27,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     AnalyticsService.logScreenView(screenName: 'settings_screen');
   }
 
+  Future<void> _openWhatsApp(AppConfig config) async {
+    await openSupportWhatsApp(context, config);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final configAsync = ref.watch(appConfigProvider);
+    final config = configAsync.valueOrNull;
+    final whatsappUri = config == null ? null : supportWhatsAppUri(config);
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -84,67 +93,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ]),
               gapH24,
 
-              // --- Contact Us Section ---
-              _buildSectionTitle(AppStrings.contactUs.tr(), context),
-              _buildSettingsGroup([
-                _buildSettingsTile(
-                  icon: Icons.chat_outlined,
-                  title: AppStrings.whatsApp.tr(),
-                  onTap: () async {
-                    final whatsappUri = Uri.parse("https://wa.me/966580545085");
-                    if (await canLaunchUrl(whatsappUri)) {
-                      await launchUrl(
-                        whatsappUri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    } else {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("WhatsApp is not installed"),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      gapW8,
-                      _buildSocialIcon('assets/icons/whats.png', () async {
-                        final whatsappUri = Uri.parse(
-                          "https://wa.me/966580545085",
-                        );
-                        if (await canLaunchUrl(whatsappUri)) {
-                          await launchUrl(
-                            whatsappUri,
-                            mode: LaunchMode.externalApplication,
-                          );
-                        } else {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("WhatsApp is not installed"),
-                              ),
-                            );
-                          }
-                        }
-                      }),
-                    ],
+              if (whatsappUri != null) ...[
+                _buildSectionTitle(AppStrings.contactUs.tr(), context),
+                _buildSettingsGroup([
+                  _buildSettingsTile(
+                    icon: Icons.chat_outlined,
+                    title: AppStrings.whatsApp.tr(),
+                    onTap: () => _openWhatsApp(config!),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        gapW8,
+                        _buildSocialIcon(
+                          'assets/icons/whats.png',
+                          () => _openWhatsApp(config!),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                _buildSettingsTile(
-                  icon: Icons.phone_outlined,
-                  title: AppStrings.call.tr(),
-                  onTap: () async {
-                    final callUri = Uri.parse("tel:+966580545085");
-                    if (await canLaunchUrl(callUri)) {
-                      await launchUrl(callUri);
-                    }
-                  },
-                ),
-              ]),
-              gapH32,
+                  _buildSettingsTile(
+                    icon: Icons.phone_outlined,
+                    title: AppStrings.call.tr(),
+                    onTap: () async {
+                      final digits = config!.whatsappNumber.replaceAll(RegExp(r'[^0-9]'), '');
+                      final callUri = Uri.parse('tel:+$digits');
+                      if (await canLaunchUrl(callUri)) {
+                        await launchUrl(callUri);
+                      }
+                    },
+                  ),
+                ]),
+                gapH32,
+              ],
 
               // --- Version Information ---
               Center(

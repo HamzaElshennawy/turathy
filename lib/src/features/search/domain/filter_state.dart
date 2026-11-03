@@ -146,12 +146,14 @@ class FilterState {
     );
   }
 
-  Map<String, dynamic> toAuctionQuery() {
+  Map<String, dynamic> toAuctionQuery({bool auctionSearch = false}) {
     return {
       if (selectedCategoryID != null) 'cat': selectedCategoryID,
       if (isAllOffersSelected) 'has_offer': '1',
       if (searchText != null) 'search': searchText,
-      'type': isLiveAuctionsSelected ? 'Live' : 'Open',
+      // Auction search always asks for Live lots. Other callers keep Open
+      // when [isLiveAuctionsSelected] is false. Store uses [toProductQuery].
+      'type': auctionSearch || isLiveAuctionsSelected ? 'Live' : 'Open',
       if (auctionStatus != null) 'status': auctionStatus,
       if (minPrice != null) 'min_price': minPrice,
       if (maxPrice != null) 'max_price': maxPrice,

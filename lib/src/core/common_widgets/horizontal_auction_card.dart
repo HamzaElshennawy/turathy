@@ -17,6 +17,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/features/authintication/presentation/auth_controller.dart';
 import 'package:turathy/src/features/authintication/presentation/sign_in_screen.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
@@ -70,7 +71,7 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
   void _calculateRemainingTime() {
     if (widget.product.expiryDate != null) {
       final expiryDate = widget.product.expiryDate!;
-      final now = DateTime.now();
+      final now = serverClock.nowDate();
       setState(() {
         _remainingTime = expiryDate.isAfter(now) 
             ? expiryDate.difference(now) 
@@ -109,7 +110,9 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
           ),
         ],
       ),
-      child: InkWell(
+      child: Stack(
+        children: [
+          InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           // Standard navigation to auction details
@@ -144,12 +147,6 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
                       ),
                     ),
                   ),
-                  // Top-Left Floating Action: Favorite
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: _buildHeartIcon(isLiked),
-                  ),
                 ],
               ),
             ),
@@ -170,13 +167,21 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
             ),
           ],
         ),
+          ),
+          Positioned(
+            top: 8,
+            left: 8,
+            child: _buildHeartIcon(isLiked),
+          ),
+        ],
       ),
     );
   }
 
   /// Internal: Builds the favoriting toggle with session guard.
   Widget _buildHeartIcon(bool isLiked) {
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         final user = ref.read(authControllerProvider).value;
         if (user == null) {
@@ -248,7 +253,7 @@ class _HorizontalAuctionCardState extends ConsumerState<HorizontalAuctionCard> {
             widget.product.startDate != null)
           Builder(
             builder: (context) {
-              final now = DateTime.now();
+              final now = serverClock.nowDate();
               final startDate = widget.product.startDate!;
               final expiryDate = widget.product.expiryDate!;
 

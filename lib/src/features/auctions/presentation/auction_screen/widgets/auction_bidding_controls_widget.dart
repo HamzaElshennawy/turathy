@@ -6,7 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:turathy/src/core/constants/app_sizes.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
+import 'package:turathy/src/features/auctions/data/auctions_repository.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
+import 'package:turathy/src/features/auctions/domain/max_bid_model.dart';
 import 'package:turathy/src/features/auctions/domain/winning_auction_model.dart';
 import 'package:turathy/src/features/orders/presentation/order_details_screen.dart';
 import 'package:turathy/src/features/orders/domain/order_flow_state.dart';
@@ -14,6 +16,7 @@ import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
 
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
 import 'package:turathy/src/core/helper/auction_price_helpers.dart';
 import 'package:turathy/src/core/helper/bid_steps.dart';
@@ -21,6 +24,48 @@ import 'package:turathy/src/core/helper/lot_result_status.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_result_banner.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/swipe_to_bid_bar.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_expiry_clock.dart';
+
+/// Draft sentence until the client confirms the final wording.
+String autoBidBadgeSentence(num maxAmount) =>
+    'لديك مزايدة تلقائية بحد أقصى $maxAmount ر.س';
+
+/// Active cap for this session user and this lot only.
+/// A null [MaxBidModel.isActive], user, or product does not match.
+num? activeOwnMaxAmount({
+  required int? sessionUserId,
+  required int? productId,
+  required Iterable<MaxBidModel> bids,
+}) {
+  if (sessionUserId == null || productId == null) return null;
+  for (final bid in bids) {
+    if (bid.isActive != true) continue;
+    if (bid.userId != sessionUserId) continue;
+    if (bid.productId != productId) continue;
+    final maxAmount = bid.maxAmount;
+    if (maxAmount == null) continue;
+    return maxAmount;
+  }
+  return null;
+}
+
+/// Owner of an active cap sees the badge while the visible price has not
+/// passed that cap. [visiblePrice] is the on-screen public price.
+bool shouldShowAutoBidBadge({
+  required bool sellerBlocked,
+  required int? sessionUserId,
+  required int? productId,
+  required num visiblePrice,
+  required Iterable<MaxBidModel> bids,
+}) {
+  if (sellerBlocked) return false;
+  final maxAmount = activeOwnMaxAmount(
+    sessionUserId: sessionUserId,
+    productId: productId,
+    bids: bids,
+  );
+  if (maxAmount == null) return false;
+  return visiblePrice <= maxAmount;
+}
 
 class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final AuctionModel auction;
@@ -34,6 +79,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final bool isViewOnly;
   final AuctionProducts? selectedProduct;
   final bool showOnlyMaxBid;
+  final bool sellerBidBlocked;
   final VoidCallback? onGoToLiveLot;
   final bool suppressSwipe;
 
@@ -50,6 +96,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.isViewOnly = false,
     this.selectedProduct,
     this.showOnlyMaxBid = false,
+    this.sellerBidBlocked = false,
     this.onGoToLiveLot,
     this.suppressSwipe = false,
   });
@@ -71,6 +118,7 @@ class _AuctionBiddingControlsWidgetState
   FixedExtentScrollController? _maxBidScrollController;
   List<num> _memoizedBidSteps = const [];
   num? _memoizedBidStepsBase;
+  int? _memoizedBidStepsProductId;
   DateTime? _effectiveExpiry;
   bool _lotExpired = false;
 
@@ -121,17 +169,22 @@ class _AuctionBiddingControlsWidgetState
     if (viewingLiveOpen) return false;
     final expiry = _effectiveExpiry;
     if (expiry == null) return true;
-    return !DateTime.now().isBefore(expiry);
+    return !serverClock.nowDate().isBefore(expiry);
   }
 
-  List<num> _bidStepsFor(num basePrice) {
-    if (_memoizedBidStepsBase == basePrice && _memoizedBidSteps.length == 50) {
+  List<num> _bidStepsFor(num basePrice, int? productId) {
+    if (_memoizedBidStepsBase == basePrice &&
+        _memoizedBidStepsProductId == productId &&
+        _memoizedBidSteps.length == 50) {
       return _memoizedBidSteps;
     }
     final bool isBaseChanged =
-        _memoizedBidStepsBase != null && _memoizedBidStepsBase != basePrice;
+        _memoizedBidStepsBase != null &&
+        (_memoizedBidStepsBase != basePrice ||
+            _memoizedBidStepsProductId != productId);
     _memoizedBidStepsBase = basePrice;
-    _memoizedBidSteps = buildBidSteps(basePrice, 50);
+    _memoizedBidStepsProductId = productId;
+    _memoizedBidSteps = buildBidSteps(basePrice, 50, productId: productId);
     final maxIndex = _memoizedBidSteps.isEmpty
         ? 0
         : _memoizedBidSteps.length - 1;
@@ -180,6 +233,10 @@ class _AuctionBiddingControlsWidgetState
           _lotExpired = _computeLotExpired();
         });
       }
+      final openProductId = widget.selectedProduct?.id;
+      if (openProductId != null && event?.eventProductId == openProductId) {
+        ref.invalidate(userMaxBidsProvider);
+      }
     });
     ref.listen(timerExtendedEventProvider, (previous, next) {
       final expiryDateTime = next.valueOrNull?.expiryDate;
@@ -218,7 +275,8 @@ class _AuctionBiddingControlsWidgetState
     }
 
     // Platform contract: bidPrice = public starting/opening; minBidPrice = reserve.
-    // Increment always comes from getIncrementForPrice (ladder), not a product field.
+    // Increment comes from getIncrementForPrice (same ladder as the server).
+    // Product 3833 (auction 4 lot 12) caps the 500 tier at 200.
     num openingPrice = openingPriceFromAuction(
       auctionBidPrice: widget.auction.bidPrice,
       selectedProduct: widget.selectedProduct,
@@ -229,11 +287,13 @@ class _AuctionBiddingControlsWidgetState
     final AuctionBid? latestBid = (() {
       // Prefer real-time bid if it matches the current product
       if (lastBid != null &&
+          lastBid.isActive != false &&
           (currentProductId == null || lastBid.productId == currentProductId)) {
         return lastBid;
       }
 
-      // Fall back to the highest bid from history for the current product
+      // Fall back to the highest public bid. Inactive rows are hidden max bids,
+      // not the current price (a 5000 ceiling must not turn a 3100 lot into 5200).
       if (widget.auction.auctionBids != null &&
           widget.auction.auctionBids!.isNotEmpty) {
         final productBids = currentProductId != null
@@ -241,10 +301,10 @@ class _AuctionBiddingControlsWidgetState
                   .where((b) => b.productId == currentProductId)
                   .toList()
             : widget.auction.auctionBids!;
+        final publicBids = productBids.where((b) => b.isActive != false).toList();
 
-        if (productBids.isNotEmpty) {
-          // Sort descending by bid amount to get the highest
-          final sorted = [...productBids]
+        if (publicBids.isNotEmpty) {
+          final sorted = [...publicBids]
             ..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0));
           return sorted.first;
         }
@@ -388,7 +448,7 @@ class _AuctionBiddingControlsWidgetState
       currentPrice: currentPrice,
       openingPrice: openingPrice,
     );
-    final List<num> bidSteps = _bidStepsFor(stepsBase);
+    final List<num> bidSteps = _bidStepsFor(stepsBase, currentProductId);
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -529,11 +589,7 @@ class _AuctionBiddingControlsWidgetState
               key: ValueKey(
                 'lot-clock-${widget.selectedProduct?.id ?? widget.auction.currentProductId ?? 0}-${_effectiveExpiry?.millisecondsSinceEpoch ?? 0}',
               ),
-              expiry: !isBiddingDisabled &&
-                      _effectiveExpiry != null &&
-                      !DateTime.now().isBefore(_effectiveExpiry!)
-                  ? null
-                  : _effectiveExpiry,
+              expiry: _effectiveExpiry,
               durationThreshold: widget.auction.itemDuration ?? 30,
               isAuctionEnded: isAuctionEnded,
               onExpired: () {
@@ -559,8 +615,17 @@ class _AuctionBiddingControlsWidgetState
             gapH16,
           ],
 
-          // Quick Bid Buttons - 1x, 1.5x, 2x minBid
-          if (widget.isViewOnly) ...[
+          if (widget.showOnlyMaxBid) _buildAutoBidBadge(currentPrice),
+          if (_sellerCannotBid)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'لا يمكنك المزايدة على هذا البند.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            )
+          else if (widget.isViewOnly) ...[
             // Check if user won this specific past product
             Builder(
               builder: (context) {
@@ -1008,7 +1073,10 @@ class _AuctionBiddingControlsWidgetState
                 _buildOneStepBidButton(
                   auctionNotStarted: auctionNotStarted,
                   currentPrice: stepsBase,
-                  bidIncrement: getIncrementForPrice(stepsBase),
+                  bidIncrement: getIncrementForPrice(
+                    stepsBase,
+                    productId: currentProductId,
+                  ),
                   currentProductId: currentProductId,
                 ),
               ],
@@ -1019,13 +1087,51 @@ class _AuctionBiddingControlsWidgetState
               _buildOneStepBidButton(
                 auctionNotStarted: auctionNotStarted,
                 currentPrice: stepsBase,
-                bidIncrement: getIncrementForPrice(stepsBase),
+                bidIncrement: getIncrementForPrice(
+                  stepsBase,
+                  productId: currentProductId,
+                ),
                 currentProductId: currentProductId,
               ),
             ],
           ] else
             _buildResultContainer(currentPrice, orders),
         ],
+      ),
+    );
+  }
+
+  bool get _sellerCannotBid =>
+      widget.sellerBidBlocked ||
+      widget.selectedProduct?.bidBlockedReason == 'SELLER';
+
+  /// Draft copy until the client confirms the final sentence.
+  Widget _buildAutoBidBadge(num currentPrice) {
+    final bids = ref.watch(userMaxBidsProvider).valueOrNull ?? const [];
+    final maxAmount = activeOwnMaxAmount(
+      sessionUserId: CachedVariables.userId,
+      productId: widget.selectedProduct?.id,
+      bids: bids,
+    );
+    if (maxAmount == null ||
+        !shouldShowAutoBidBadge(
+          sellerBlocked: _sellerCannotBid,
+          sessionUserId: CachedVariables.userId,
+          productId: widget.selectedProduct?.id,
+          visiblePrice: currentPrice,
+          bids: bids,
+        )) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        autoBidBadgeSentence(maxAmount),
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFF1B5E20),
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:turathy/src/features/main_screen.dart';
 
-import '../../../../../../core/common_widgets/auction_card.dart';
 import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
 import '../../../../../../core/constants/app_functions/app_functions.dart';
 import '../../../../../../core/constants/app_sizes.dart';
 import '../../../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../../auctions/data/auctions_repository.dart';
+import '../../../category_hub/category_auction_tile.dart';
 
 class LiveAuctionsWidget extends StatelessWidget {
   const LiveAuctionsWidget({super.key});
@@ -48,11 +48,7 @@ class LiveAuctionsWidget extends StatelessWidget {
         ),
         gapH24,
         SizedBox(
-          height: AppFunctions.isMobile(context: context)
-              ? MediaQuery.of(context).size.width * 0.9
-              : (MediaQuery.of(context).orientation == Orientation.landscape
-                    ? 360
-                    : 400),
+          height: 280,
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(homeLiveAuctionsProvider);
@@ -72,10 +68,7 @@ class LiveAuctionsWidget extends StatelessWidget {
                     itemCount: data.length,
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
-                      return AuctionCard(
-                        auction: product,
-                        heroTag: 'live_auctions_${product.id}_$index',
-                      );
+                      return CategoryAuctionTile(auction: product);
                     },
                   );
                 },

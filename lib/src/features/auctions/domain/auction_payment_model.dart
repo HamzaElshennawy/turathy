@@ -32,36 +32,69 @@ class AuctionPaymentModel {
   });
 
   factory AuctionPaymentModel.fromJson(Map<String, dynamic> json) {
+    final product = json['product'];
+    final winning = json['winning'];
+    final auction = winning is Map ? winning['auction'] : null;
     return AuctionPaymentModel(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      winningId: json['winning_id'] as int,
-      productId: json['product_id'] as int,
-      receiptUrl: json['receipt_url'] as String,
-      amount: json['amount'] as int,
-      status: json['status'] as String,
-      adminNotes: json['admin_notes'] as String?,
+      id: _asInt(json['id']),
+      userId: _asInt(json['user_id']),
+      winningId: _asInt(json['winning_id']),
+      productId: _asInt(json['product_id']),
+      receiptUrl: _text(json['receipt_url']) ?? '',
+      amount: _asInt(json['amount']),
+      status: _text(json['status']) ?? 'pending',
+      adminNotes: _text(json['admin_notes']),
       reviewedAt: json['reviewed_at'] != null
-          ? DateTime.parse(json['reviewed_at'] as String).toLocal()
+          ? DateTime.tryParse(json['reviewed_at'].toString())?.toLocal()
           : null,
-      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
-      updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
-      productName: json['product'] != null
-          ? json['product']['product'] as String?
-          : null,
-      auctionTitle:
-          json['winning'] != null && json['winning']['auction'] != null
-          ? json['winning']['auction']['title'] as String?
-          : null,
+      createdAt:
+          DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt']?.toString() ?? '')?.toLocal() ??
+          DateTime.now(),
+      productName: _firstText([
+        product is Map ? product['product'] : null,
+        product is Map ? product['product_ar'] : null,
+        product is Map ? product['product_en'] : null,
+      ]),
+      auctionTitle: _firstText([
+        auction is Map ? auction['title'] : null,
+        auction is Map ? auction['title_ar'] : null,
+        auction is Map ? auction['title_en'] : null,
+      ]),
     );
   }
+
+  bool get hasReceipt => receiptUrl.trim().isNotEmpty;
 
   bool get isPending => status == 'pending';
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
+  bool get isUnpaid => status == 'unpaid';
 
   String get fullReceiptUrl {
     if (receiptUrl.startsWith('http')) return receiptUrl;
     return '${EndPoints.baseUrl}$receiptUrl';
   }
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+String? _text(dynamic value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
+}
+
+String? _firstText(List<dynamic> values) {
+  for (final value in values) {
+    final text = _text(value);
+    if (text != null) return text;
+  }
+  return null;
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
+import 'package:turathy/src/core/time/server_countdown.dart';
 
 /// Isolated countdown label so the parent auction screen does not rebuild every second.
 class AuctionCountdownLabel extends StatefulWidget {
@@ -17,17 +19,7 @@ class AuctionCountdownLabel extends StatefulWidget {
 
   /// Same formatting as the former `_formatDuration` on [AuctionScreen].
   static String formatDuration(Duration duration) {
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-
-    if (duration.inHours > 0) {
-      final hours = duration.inHours.toString().padLeft(2, '0');
-      return '$hours:$minutes:$seconds';
-    } else if (duration.inMinutes > 0) {
-      return '$minutes:$seconds';
-    } else {
-      return '${duration.inSeconds} sec';
-    }
+    return formatClockDuration(duration.inMilliseconds);
   }
 
   @override
@@ -42,16 +34,7 @@ class _AuctionCountdownLabelState extends State<AuctionCountdownLabel> {
   void initState() {
     super.initState();
     _remaining = _computeRemaining();
-    if (_remaining > Duration.zero) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        final next = _computeRemaining();
-        setState(() => _remaining = next);
-        if (next <= Duration.zero) {
-          _timer?.cancel();
-        }
-      });
-    }
+    _arm();
   }
 
   @override
@@ -61,20 +44,28 @@ class _AuctionCountdownLabelState extends State<AuctionCountdownLabel> {
       _timer?.cancel();
       _remaining = _computeRemaining();
       if (_remaining > Duration.zero) {
-        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (!mounted) return;
-          final next = _computeRemaining();
-          setState(() => _remaining = next);
-          if (next <= Duration.zero) {
-            _timer?.cancel();
-          }
-        });
+        _arm();
       }
     }
   }
 
+  void _arm() {
+    _timer?.cancel();
+    if (_remaining <= Duration.zero) return;
+    _timer = armServerCountdown(
+      remainMs: _remaining.inMilliseconds,
+      onTick: () {
+        if (!mounted) return;
+        final next = _computeRemaining();
+        setState(() => _remaining = next);
+        if (next <= Duration.zero) return;
+        _arm();
+      },
+    );
+  }
+
   Duration _computeRemaining() {
-    final difference = widget.target.difference(DateTime.now());
+    final difference = widget.target.difference(serverClock.nowDate());
     return difference.isNegative ? Duration.zero : difference;
   }
 

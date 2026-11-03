@@ -151,20 +151,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     await AuthRepository.getLocalDetails();
                     if (!mounted) return;
 
-                    log("[DEBUG] token: ${CachedVariables.token.toString()}");
-                    log("[DEBUG] userId: ${CachedVariables.userId.toString()}");
-                    log(
-                      "[DEBUG] isGoogleSignIn: ${CachedVariables.isGoogleSignIn.toString()}",
-                    );
-                    log(
-                      "[DEBUG] isAppleSignIn: ${CachedVariables.isAppleSignIn.toString()}",
-                    );
-                    log(
-                      "[DEBUG] phone_number: ${CachedVariables.phone_number.toString()}",
-                    );
-                    log(
-                      "[DEBUG] password: ${CachedVariables.password.toString()}",
-                    );
                     final sessionRestored = await _restoreSessionFromTokens();
                     if (sessionRestored && !mounted) {
                       return;

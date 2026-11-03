@@ -141,9 +141,6 @@ class _WhiteRoundedTextFormFieldState extends State<WhiteRoundedTextFormField> {
           widget.onTab?.call();
         },
         onFieldSubmitted: widget.onFieldSubmitted,
-        onTapOutside: (details) {
-          _focusNode.unfocus();
-        },
         inputFormatters: widget.inputFormatters,
         readOnly: widget.readOnly,
         controller: widget.controller,

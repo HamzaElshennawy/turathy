@@ -69,6 +69,9 @@ class AuctionPaymentsRepository {
   }
 
   Future<List<AuctionPaymentModel>> getMyPayments() async {
+    if (!customerCanLoadPayments(CachedVariables.token)) {
+      throw const PaymentsSignInRequired();
+    }
     final response = await DioHelper.getData(
       url: EndPoints.myPayments,
       token: CachedVariables.token,
@@ -80,12 +83,23 @@ class AuctionPaymentsRepository {
         payments.add(AuctionPaymentModel.fromJson(item));
       }
       return payments;
-    } else {
-      String message =
-          response.data['error'] ?? 'An error occurred while fetching payments';
-      throw AuthException(message, response.statusCode);
     }
+    if (response.statusCode == 401) {
+      throw const PaymentsSignInRequired();
+    }
+    String message =
+        response.data['error'] ?? 'An error occurred while fetching payments';
+    throw AuthException(message, response.statusCode);
   }
+}
+
+/// Logged-out visitors must not call `GET /auction-payments/my-payments`.
+bool customerCanLoadPayments(String? token) {
+  return token != null && token.trim().isNotEmpty;
+}
+
+class PaymentsSignInRequired implements Exception {
+  const PaymentsSignInRequired();
 }
 
 final auctionPaymentsRepositoryProvider = Provider<AuctionPaymentsRepository>((

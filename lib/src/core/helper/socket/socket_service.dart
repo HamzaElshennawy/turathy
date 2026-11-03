@@ -15,6 +15,7 @@ import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'socket_config.dart';
@@ -175,6 +176,7 @@ class SocketService {
         'SocketService: Restoring auction session for ID: $_lastJoinedAuctionId',
       );
       emitJoinAuction(_lastJoinedAuctionId!, _lastJoinedUserId!);
+      emitRequestSync(_lastJoinedAuctionId!);
     } catch (error) {
       log('SocketService: Rejoin emit failed: $error');
     }
@@ -193,6 +195,7 @@ class SocketService {
         _handshake!.complete();
       }
       _rejoinCachedAuction();
+      burstTimeSync();
     });
 
     // Debugging: Log all incoming raw traffic during development
@@ -315,7 +318,10 @@ class SocketService {
   ///
   /// - [eventName]: The key used by the server to emit the event (e.g. 'newBid').
   /// - [parser]: A transformer function that converts raw dynamic data into a type [T].
-  Stream<T> getEventStream<T>(String eventName, T Function(dynamic) parser) {
+  int? get joinedAuctionId => _lastJoinedAuctionId;
+
+  /// A parser may return null to drop a stale live event without an error.
+  Stream<T> getEventStream<T>(String eventName, T? Function(dynamic) parser) {
     if (!_eventControllers.containsKey(eventName)) {
       _eventControllers[eventName] = StreamController<dynamic>.broadcast();
       _socket?.on(eventName, (data) => _addEventData(eventName, data));
@@ -326,18 +332,14 @@ class SocketService {
       throw Exception('Controller registry failure for event: $eventName');
     }
 
-    return controller.stream
-        .map((data) {
-          try {
-            return parser(data);
-          } catch (error) {
-            log('SocketService: Parsing error on $eventName: $error');
-            throw Exception('Model parsing failure for $eventName: $error');
-          }
-        })
-        .handleError((error) {
-          log('SocketService: Stream error on $eventName: $error');
-        });
+    return controller.stream.expand((data) sync* {
+      try {
+        final parsed = parser(data);
+        if (parsed != null) yield parsed;
+      } catch (error) {
+        log('SocketService: Parsing error on $eventName: $error');
+      }
+    });
   }
 
   /// Internal: Notifies connection listeners of a state transition.
@@ -494,11 +496,28 @@ class SocketService {
     _safeEmit('requestSync', {'auctionId': auctionId});
   }
 
-  /// Transmits the client’s local wall clock time for server-side latency calculation.
-  void emitClientTimeSync() {
-    _safeEmit('clientTimeSync', {
-      'clientTime': DateTime.now().toIso8601String(),
+  /// Round-trip sample. A throttled ack is ignored so the median stays clean.
+  void emitTimeSync() {
+    final socket = _socket;
+    if (socket == null || !socket.connected) return;
+    final t0 = DateTime.now().millisecondsSinceEpoch;
+    var settled = false;
+    Timer(const Duration(seconds: 2), () => settled = true);
+    socket.emitWithAck('timeSync', <String, dynamic>{}, ack: (dynamic data) {
+      if (settled || data is! Map) return;
+      settled = true;
+      if (data['throttled'] == true) return;
+      final serverNow = data['serverNow'];
+      if (serverNow is! num) return;
+      final t1 = DateTime.now().millisecondsSinceEpoch;
+      serverClock.record(sampleOffset(t0: t0, t1: t1, serverNow: serverNow.toInt()));
     });
+  }
+
+  void burstTimeSync() {
+    emitTimeSync();
+    Timer(const Duration(milliseconds: 150), emitTimeSync);
+    Timer(const Duration(milliseconds: 300), emitTimeSync);
   }
 
   /// Gracefully terminates the socket connection and background tasks.

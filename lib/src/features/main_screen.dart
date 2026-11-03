@@ -34,6 +34,8 @@ import 'package:turathy/src/features/notifications/presentation/notifications_sc
 
 import 'package:turathy/src/features/orders/presentation/orders_list_screen.dart';
 
+import '../core/helper/support/support_whatsapp.dart';
+import 'settings/data/app_config_repository.dart';
 import '../core/constants/app_functions/app_functions.dart';
 import '../core/constants/app_strings/app_strings.dart';
 import 'auctions/data/auctions_repository.dart';
@@ -241,9 +243,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
           }
         },
         child: Scaffold(
-          floatingActionButton:
-              _selectedIndex == 1 && _auctionsScrollOffset > 50
+          floatingActionButton: _selectedIndex == 1 && _auctionsScrollOffset > 50
               ? FloatingActionButton(
+                  heroTag: 'auctions_filter_fab',
                   onPressed: () {
                     // TODO: Trigger filter from AllAuctionsScreen
                   },
@@ -273,23 +275,27 @@ class _MainScreenState extends ConsumerState<MainScreen>
                         image: authController.valueOrNull?.profilePicUrl,
                       ),
                       const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
                             '👋 ${AppStrings.hi.tr()}, ${authController.valueOrNull?.name ?? 'User'}',
+                            maxLines: 1,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: Colors.grey,
                                   fontSize: welcomeFontSize,
                                 ),
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   )
                 : null,
             actions: [
+              if (_selectedIndex == 0 || _selectedIndex == 2)
+                _WhatsAppAppBarButton(config: ref.watch(appConfigProvider).valueOrNull),
               _NotificationIcon(notificationIconSize: notificationIconSize),
             ],
           ),
@@ -507,6 +513,30 @@ class _UserAvatar extends StatelessWidget {
                 errorWidget: (context, url, error) => const Icon(Icons.error),
               ),
             ),
+    );
+  }
+}
+
+class _WhatsAppAppBarButton extends StatelessWidget {
+  const _WhatsAppAppBarButton({required this.config});
+
+  final AppConfig? config;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = config;
+    if (current == null || supportWhatsAppUri(current) == null) {
+      return const SizedBox.shrink();
+    }
+    return IconButton(
+      tooltip: AppStrings.whatsApp.tr(),
+      onPressed: () => openSupportWhatsApp(context, current),
+      icon: Image.asset(
+        'assets/icons/whats.png',
+        width: 26,
+        height: 26,
+        semanticLabel: AppStrings.whatsApp.tr(),
+      ),
     );
   }
 }

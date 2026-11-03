@@ -87,3 +87,14 @@ class CategoryModel {
     return data;
   }
 }
+
+/// Store rows keep a free-text category. Match either catalog name.
+bool productCategoryMatches(String? productCategory, CategoryModel category) {
+  final value = (productCategory ?? '').trim().toLowerCase();
+  if (value.isEmpty) return false;
+  bool same(String? name) {
+    final normalized = (name ?? '').trim().toLowerCase();
+    return normalized.isNotEmpty && normalized == value;
+  }
+  return same(category.nameAr) || same(category.nameEn);
+}

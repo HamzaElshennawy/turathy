@@ -20,9 +20,11 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../auctions/data/auctions_repository.dart';
 import '../../../products/data/products_repository.dart';
 import '../../data/category_repository.dart';
+import 'controllers/search_provider.dart';
 import 'widgets/categories_widget/category_widget.dart';
 import 'widgets/products_widget/live_auctions_widget.dart';
 import 'widgets/products_widget/products_list_widget.dart';
+import 'widgets/search_results_widget.dart';
 import 'widgets/search_widget.dart';
 
 // Note: OpenAuctionsWidget is currently excluded from the build tree due to 
@@ -40,12 +42,18 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final query = ref.watch(searchQueryProvider).trim();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Sizes.p8),
       child: Column(
         children: [
+          gapH12,
+          const SearchWidget(),
+          gapH16,
           Expanded(
-            child: RefreshIndicator(
+            child: query.isNotEmpty
+                ? const SearchResultsWidget()
+                : RefreshIndicator(
               // Strategy: Batch invalidation of all home-screen data sources
               onRefresh: () async {
                 ref.invalidate(homeLiveAuctionsProvider);
@@ -57,16 +65,11 @@ class HomeScreen extends ConsumerWidget {
               },
               child: SingleChildScrollView(
                 controller: scrollController,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    gapH12,
-                    // ── Search & Filter Layer ─────────────────────────────────
-                    const SearchWidget(),
-                    gapH16,
-
-                    // ── Taxonomy Layer ────────────────────────────────────────
                     const CategoriesWidget(),
                     gapH20,
 
@@ -81,7 +84,7 @@ class HomeScreen extends ConsumerWidget {
 
                     // ── General Feed Layer ────────────────────────────────────
                     const ProductsListWidget(),
-                    gapH20,
+                    const SizedBox(height: 120),
                   ],
                 ),
               ),

@@ -12,6 +12,7 @@ import 'package:turathy/src/core/common_widgets/cached_lot_image.dart';
 import 'package:turathy/src/core/constants/app_functions/app_functions.dart';
 import 'package:turathy/src/core/constants/app_strings/app_strings.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_bidding_controls_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_prep_banner.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_countdown_label.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
@@ -19,7 +20,10 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/core/helper/share/item_share_helper.dart';
+import 'package:turathy/src/core/helper/support/support_whatsapp.dart';
+import 'package:turathy/src/features/settings/data/app_config_repository.dart';
 import 'package:turathy/src/core/helper/share/item_share_sheet.dart';
 import 'package:turathy/src/features/favorites/presentation/controllers/favorites_provider.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/live_auction_screen.dart';
@@ -76,7 +80,7 @@ class _BottomSheetContentWrapperState extends State<_BottomSheetContentWrapper> 
     _controller = PageController();
     final target = widget.rebuildAt;
     if (target != null) {
-      final delay = target.difference(DateTime.now());
+      final delay = target.difference(serverClock.nowDate());
       if (!delay.isNegative && delay > Duration.zero) {
         _gateTimer = Timer(delay, () {
           if (mounted) setState(() {});
@@ -93,7 +97,7 @@ class _BottomSheetContentWrapperState extends State<_BottomSheetContentWrapper> 
     _gateTimer = null;
     final target = widget.rebuildAt;
     if (target == null) return;
-    final delay = target.difference(DateTime.now());
+    final delay = target.difference(serverClock.nowDate());
     if (!delay.isNegative && delay > Duration.zero) {
       _gateTimer = Timer(delay, () {
         if (mounted) setState(() {});
@@ -152,12 +156,16 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   StreamSubscription? _bidAcceptedSubscription;
   SocketActions? _socketActions;
   bool _isItemSheetOpen = false;
+  final Set<int> _sellerBlockedLots = {};
+  DateTime? _prepServerNow;
+  int? _prepSeconds;
+  DateTime? _prepStartsAt;
   final List<PendingClientBid> _pendingBids = [];
 
   /// Whether the auction has entered at least the pre-auction phase (now >= startDate)
   bool get _hasPreAuctionStarted {
     if (_currentAuction.startDate == null) return false;
-    return DateTime.now().isAfter(_currentAuction.startDate!);
+    return serverClock.nowDate().isAfter(_currentAuction.startDate!);
   }
 
   @override
@@ -216,8 +224,16 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           }
 
           setState(() {
+            if (event.prepSeconds != null && event.serverNow != null) {
+              _prepServerNow = event.serverNow;
+              _prepSeconds = event.prepSeconds;
+              _prepStartsAt = event.startsAt;
+            }
             // 1. Instantly snap the timer/expiry to the server's truth
-            if (event.expiryDate != null) {
+            if (event.expiryDate != null &&
+                (event.currentProductId == null ||
+                    _currentAuction.currentProductId == null ||
+                    event.currentProductId == _currentAuction.currentProductId)) {
               _currentAuction.expiryDate = event.expiryDate;
             }
 
@@ -384,6 +400,16 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         .getEventStream<dynamic>('bidRejected', (data) => data)
         .listen((data) {
           if (!mounted || data == null) return;
+          if (data['bidBlockedReason']?.toString() == 'SELLER') {
+            final blockedId = data['productId'];
+            final productId = blockedId is num
+                ? blockedId.toInt()
+                : int.tryParse('$blockedId');
+            if (productId != null) {
+              setState(() => _sellerBlockedLots.add(productId));
+            }
+            return;
+          }
           final serverPrice = data['currentPrice'] as num?;
           final productId = data['productId'] as int?;
 
@@ -795,7 +821,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
   void _calculateTimeLeft() {
     final startDate = _countdownAnchor;
     if (startDate == null) return;
-    final now = DateTime.now();
+    final now = serverClock.nowDate();
     final next = startDate.isAfter(now)
         ? startDate.difference(now)
         : Duration.zero;
@@ -811,7 +837,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     _timer = null;
     final target = _countdownAnchor;
     if (target == null) return;
-    final delay = target.difference(DateTime.now());
+    final delay = target.difference(serverClock.nowDate());
     if (!delay.isNegative && delay > Duration.zero) {
       _timer = Timer(delay, () {
         if (!mounted) return;
@@ -876,7 +902,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         _currentAuction.isCanceled == true) {
       isProductEnded = true;
     } else if (_currentAuction.expiryDate != null &&
-        _currentAuction.expiryDate!.isBefore(DateTime.now())) {
+        _currentAuction.expiryDate!.isBefore(serverClock.nowDate())) {
       isProductEnded = true;
     } else if (_currentAuction.currentProduct != null &&
         _currentAuction.auctionProducts != null) {
@@ -1415,6 +1441,10 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 auction: _currentAuction,
                 selectedProduct: product,
                 showOnlyMaxBid: true,
+                sellerBidBlocked:
+                    product.bidBlockedReason == 'SELLER' ||
+                    (product.id != null &&
+                        _sellerBlockedLots.contains(product.id)),
                 onPlaceBid: (qty, price, productId) async {
                   if (productId == null) return;
                   final socketActions = ref.read(socketActionsProvider);
@@ -1458,6 +1488,35 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             '${AppStrings.itemNumber.tr()}: $itemIndex',
                             style: Theme.of(sheetContext).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Builder(
+                            builder: (context) {
+                              final config = ref
+                                  .watch(appConfigProvider)
+                                  .valueOrNull;
+                              if (config == null ||
+                                  supportWhatsAppUri(
+                                        config,
+                                        lotNumber: product.lotNumber,
+                                      ) ==
+                                      null) {
+                                return const SizedBox.shrink();
+                              }
+                              return IconButton(
+                                tooltip: AppStrings.whatsApp.tr(),
+                                onPressed: () => openSupportWhatsApp(
+                                  context,
+                                  config,
+                                  lotNumber: product.lotNumber,
+                                ),
+                                icon: Image.asset(
+                                  'assets/icons/whats.png',
+                                  width: 22,
+                                  height: 22,
+                                  semanticLabel: AppStrings.whatsApp.tr(),
+                                ),
+                              );
+                            },
                           ),
                           IconButton(
                             icon: const Icon(Icons.close),
@@ -1841,6 +1900,20 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         _checkAccess();
       }
     });
+    ref.listen(auctionPrepPayloadProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event == null || event.auctionId != _currentAuction.id) return;
+      setState(() {
+        _prepServerNow = event.serverNow;
+        _prepSeconds = event.prepSeconds;
+        _prepStartsAt = event.startsAt;
+      });
+    });
+    ref.listen(sellerBidBlockProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event == null || event.auctionId != _currentAuction.id) return;
+      setState(() => _sellerBlockedLots.addAll(event.productIds));
+    });
 
     if (_isLoadingDetails) {
       return Scaffold(
@@ -1920,6 +1993,12 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_prepServerNow != null && _prepSeconds != null)
+          AuctionPrepBanner(
+            serverNow: _prepServerNow!,
+            prepSeconds: _prepSeconds!,
+            startsAt: _prepStartsAt,
+          ),
         // 1. Header Image & Title
         if (_currentAuction.imageUrl != null ||
             (_currentAuction.auctionImages != null &&
@@ -1982,7 +2061,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 ),
               if (_countdownAnchor != null &&
                   (_timeLeft > Duration.zero ||
-                      _countdownAnchor!.isAfter(DateTime.now())))
+                      _countdownAnchor!.isAfter(serverClock.nowDate())))
                 Center(
                   child: Directionality(
                     textDirection: ui.TextDirection.ltr,

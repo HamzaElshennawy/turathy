@@ -27,11 +27,21 @@ class FilterWidgetController extends StateNotifier<FilterState> {
   }
 
   void selectCategory(int index) {
+    if (index < 0 || index >= categories.length) return;
     if (state.selectedCategoryID == categories[index].id) {
       state = state.copyWith(selectedCategoryID: -1);
     } else {
       state = state.copyWith(selectedCategoryID: categories[index].id);
     }
+  }
+
+  /// Keeps [id] selected. Does not toggle it off.
+  void selectCategoryById(int id) {
+    state = state.copyWith(selectedCategoryID: id);
+  }
+
+  void clearSelectedCategory() {
+    state = state.copyWith(selectedCategoryID: -1);
   }
 
   void setSearchText(String text) {

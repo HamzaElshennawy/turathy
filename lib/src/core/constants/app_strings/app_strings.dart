@@ -63,6 +63,9 @@ class AppStrings {
   static const String createAccount = "createAccount";
   static const String continueAsGuest = "continueAsGuest";
   static const String categories = "categories";
+  static const String emptyCategories = "emptyCategories";
+  static const String noProductsInCategory = "noProductsInCategory";
+  static const String noProductsFound = "noProductsFound";
   static const String auctions = "auctions";
   static const String hi = "hi";
   static const String poweredBy = "poweredBy";
@@ -243,6 +246,8 @@ class AppStrings {
   static const String or = "or";
   static const String notifications = "notifications";
   static const String buyNow = "buyNow";
+  static const String previousImage = "previousImage";
+  static const String nextImage = "nextImage";
   static const String itemNumber = "itemNumber";
   static const String auctionItems = "auctionItems";
   static const String auctionNumber = "auctionNumber";
@@ -470,12 +475,14 @@ class AppStrings {
       'receiptUploadedSuccessfully';
   static const String myPayments = 'myPayments';
   static const String paymentPending = 'paymentPending';
+  static const String paymentDue = 'paymentDue';
   static const String paymentApproved = 'paymentApproved';
   static const String paymentRejected = 'paymentRejected';
   static const String fileSizeExceeded = 'fileSizeExceeded';
   static const String selectImageOrPdf = 'selectImageOrPdf';
   static const String viewPayments = 'viewPayments';
   static const String noPaymentsYet = 'noPaymentsYet';
+  static const String signInToViewPayments = 'signInToViewPayments';
   static const String rejectionReason = 'rejectionReason';
   static const String uploadNewReceipt = 'uploadNewReceipt';
   static const String continueToOrder = 'continueToOrder';
@@ -654,5 +661,6 @@ class AppStrings {
   static const String privacy9Content = "privacy9Content";
 
   static const String whatsApp = "whatsApp";
+  static const String whatsappNotInstalled = "whatsappNotInstalled";
   static const String call = "call";
 }

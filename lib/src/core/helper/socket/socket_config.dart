@@ -6,6 +6,8 @@
 /// and the list of application-level events handled by the [SocketService].
 library;
 
+import 'dart:io';
+
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 /// Configuration constants and helper for [io.Socket] options.
@@ -40,10 +42,14 @@ abstract class SocketConfig {
         .setReconnectionAttempts(_maxReconnectionAttempts)
         .setTimeout(_timeout)
         .enableAutoConnect();
+    final extraHeaders = <String, String>{
+      'X-Meta-Platform': Platform.isIOS ? 'IOS' : 'ANDROID',
+    };
     if (token != null && token.isNotEmpty) {
       builder.setAuth({'token': token});
-      builder.setExtraHeaders({'Authorization': 'Bearer $token'});
+      extraHeaders['Authorization'] = 'Bearer $token';
     }
+    builder.setExtraHeaders(extraHeaders);
     return builder.build();
   }
 
@@ -73,6 +79,7 @@ abstract class SocketConfig {
     // ── Error Handling ────────────────────────────────────────────────────────
     'bidAccepted',          // ACK for the current user's accepted bid
     'bidRejected',          // Validation error for the current user's bid
+    'sellerBidBlock',       // Per-socket seller lots the viewer cannot bid
     'error',                // Generic server-side socket errors
   ];
 

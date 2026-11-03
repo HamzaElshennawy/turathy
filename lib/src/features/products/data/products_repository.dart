@@ -4,6 +4,7 @@ import '../../../core/helper/dio/dio_helper.dart';
 import '../../../core/helper/dio/end_points.dart';
 import '../../../core/helper/cache/cached_variables.dart';
 import '../../home/data/category_repository.dart';
+import '../../home/domain/category_model.dart';
 import '../domain/product_model.dart';
 import '../../search/domain/filter_state.dart';
 import '../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
@@ -101,20 +102,24 @@ final filteredProductsProvider = FutureProvider<List<ProductModel>>((ref) async 
   final filters = ref.watch(filterWidgetControllerProvider);
   final categories = await ref.watch(getAllCategoriesProvider.future);
 
-  String? selectedCategoryName;
+  CategoryModel? selected;
   if (filters.selectedCategoryID != null) {
     for (final category in categories) {
       if (category.id == filters.selectedCategoryID) {
-        selectedCategoryName = category.name;
+        selected = category;
         break;
       }
     }
   }
 
-  return ref.watch(productsRepositoryProvider).getFilteredProducts(
+  final products = await ref.watch(productsRepositoryProvider).getFilteredProducts(
         filters,
-        categoryName: selectedCategoryName,
       );
+  if (selected == null) return products;
+  return [
+    for (final product in products)
+      if (productCategoryMatches(product.category, selected)) product,
+  ];
 });
 
 final myProductsProvider = FutureProvider<List<ProductModel>>((ref) async {

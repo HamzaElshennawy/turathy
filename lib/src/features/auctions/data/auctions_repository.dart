@@ -15,6 +15,13 @@ import '../domain/max_bid_model.dart';
 import '../domain/winning_auction_model.dart';
 import '../domain/auction_access_model.dart';
 
+Map<String, String> categoryHubAuctionQuery({required bool live}) {
+  return {
+    'type': live ? 'Live' : 'Open',
+    'status': live ? 'current' : 'future',
+  };
+}
+
 class AuctionsRepository {
   Future<List<AuctionModel>> getAllAuctions([FilterState? filters]) async {
     final lastFilters = (filters?.toAuctionQuery() ?? {});
@@ -37,10 +44,31 @@ class AuctionsRepository {
     }
   }
 
+  Future<List<AuctionModel>> getAuctionsForCategory({
+    required int categoryId,
+    required bool live,
+  }) async {
+    final result = await DioHelper.getData(
+      url: EndPoints.getAuctionsByCategory(id: categoryId),
+      token: CachedVariables.token,
+      query: categoryHubAuctionQuery(live: live),
+    );
+    if (result.statusCode == 200) {
+      final data = result.data['data'];
+      if (data is! List) return [];
+      return [
+        for (final item in data) AuctionModel.fromJson(item),
+      ];
+    }
+    final message =
+        result.data['error'] ?? 'An error occurred while fetching auctions';
+    throw AuthException(message, result.statusCode);
+  }
+
   Future<List<AuctionModel>> getAuctionsByCategory([
     FilterState? filters,
   ]) async {
-    final lastFilters = (filters?.toAuctionQuery() ?? {});
+    final lastFilters = (filters?.toAuctionQuery(auctionSearch: true) ?? {});
     lastFilters.addAll({'limit': '50'});
     final result = await DioHelper.getData(
       url: (filters == null || filters.selectedCategoryID == null)
@@ -370,6 +398,22 @@ final openAuctionsProvider = FutureProvider<List<AuctionModel>>((ref) async {
 });
 
 // search products with filter provider
+final categoryLiveAuctionsProvider = FutureProvider.autoDispose
+    .family<List<AuctionModel>, int>((ref, categoryId) {
+      return ref.watch(productsRepositoryProvider).getAuctionsForCategory(
+            categoryId: categoryId,
+            live: true,
+          );
+    });
+
+final categoryUpcomingAuctionsProvider = FutureProvider.autoDispose
+    .family<List<AuctionModel>, int>((ref, categoryId) {
+      return ref.watch(productsRepositoryProvider).getAuctionsForCategory(
+            categoryId: categoryId,
+            live: false,
+          );
+    });
+
 final searchProductsProvider = FutureProvider<List<AuctionModel>>((ref) async {
   final filters = ref.watch(filterWidgetControllerProvider);
   final timer = Timer(const Duration(minutes: 10), () {

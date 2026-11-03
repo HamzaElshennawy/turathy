@@ -9,6 +9,7 @@
 library;
 
 import 'package:turathy/src/core/helper/live_bid_sync.dart';
+import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/features/auctions/domain/auction_model.dart';
 
 DateTime? parseSocketDate(dynamic value) {
@@ -452,6 +453,7 @@ class AuctionEndedEvent {
   
   /// Sequence number used to maintain strict ordering of events on the client.
   final int? seq;
+  final ClockStamp? clock;
 
   /// Returns the winner's display title or a fallback for anonymous endings.
   String get winnerName => winningUser?.displayTitle ?? 'Unknown';
@@ -466,6 +468,7 @@ class AuctionEndedEvent {
     this.auction,
     this.finalBidAmount,
     this.seq,
+    this.clock,
   });
 
   /// Parses the termination event from server-side emitters.
@@ -480,6 +483,7 @@ class AuctionEndedEvent {
           : null,
       finalBidAmount: json['finalBidAmount'] as num?,
       seq: json['seq'] as int?,
+      clock: ClockStamp.tryParse(json['clock']),
     );
   }
 
@@ -522,6 +526,7 @@ class BidPlacedEvent {
   
   /// Sequence number for packet reordering protection.
   final int? seq;
+  final ClockStamp? clock;
 
   /// Default constructor for successful bid placement events.
   const BidPlacedEvent({
@@ -531,6 +536,7 @@ class BidPlacedEvent {
     this.currentPrice,
     this.expiryDate,
     this.seq,
+    this.clock,
   });
 
   int? get eventProductId => productId ?? newBid?.productId;
@@ -559,8 +565,9 @@ class BidPlacedEvent {
       productId: productId ?? bid?.productId,
       auctionBids: _parseBids(json['auctionBids']),
       currentPrice: parseOptionalNum(json['currentPrice']),
-      expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
+      expiryDate: expiryFromClock(json) ?? parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       seq: json['seq'] as int?,
+      clock: ClockStamp.tryParse(json['clock']),
     );
   }
 
@@ -586,12 +593,15 @@ class TimerExtendedEvent {
   final DateTime? expiryDate;
   final int? seq;
 
-  const TimerExtendedEvent({this.expiryDate, this.seq});
+  final ClockStamp? clock;
+
+  const TimerExtendedEvent({this.expiryDate, this.seq, this.clock});
 
   factory TimerExtendedEvent.fromJson(Map<String, dynamic> json) {
     return TimerExtendedEvent(
-      expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
+      expiryDate: expiryFromClock(json) ?? parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       seq: json['seq'] as int?,
+      clock: ClockStamp.tryParse(json['clock']),
     );
   }
 }
@@ -613,6 +623,7 @@ class AuctionItemEndedEvent {
   
   /// Sequence number for causality tracking.
   final int? seq;
+  final ClockStamp? clock;
 
   /// Explicit sale flag from the server (`isSold` / `is_sold`).
   final bool? isSold;
@@ -629,6 +640,7 @@ class AuctionItemEndedEvent {
     this.nextItem,
     this.winner,
     this.seq,
+    this.clock,
     this.isSold,
     this.endedProductId,
     this.reason,
@@ -657,6 +669,7 @@ class AuctionItemEndedEvent {
           ? SocketUser.fromJson(json['winner'] as Map<String, dynamic>)
           : null,
       seq: json['seq'] as int?,
+      clock: ClockStamp.tryParse(json['clock']),
       isSold: parseAuctionJsonBool(json['isSold'] ?? json['is_sold']),
       endedProductId: endedId,
       reason: json['reason'] as String?,
@@ -790,6 +803,12 @@ class AuctionStateUpdateEvent {
   
   /// State sequence ID for causality tracking in distributed networks.
   final int? seq;
+  final ClockStamp? clock;
+
+  /// Present when this snapshot is inside the pre-live preparation window.
+  final int? prepSeconds;
+  final DateTime? serverNow;
+  final DateTime? startsAt;
 
   /// Default constructor for global state synchronization.
   const AuctionStateUpdateEvent({
@@ -799,6 +818,10 @@ class AuctionStateUpdateEvent {
     required this.products,
     this.currentPrice,
     this.seq,
+    this.clock,
+    this.prepSeconds,
+    this.serverNow,
+    this.startsAt,
   });
 
   /// Highest live amount for [currentProductId] only — never another lot's hammer.
@@ -823,7 +846,7 @@ class AuctionStateUpdateEvent {
     final productIdRaw = json['currentProductId'];
     return AuctionStateUpdateEvent(
       auctionId: idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw') ?? 0,
-      expiryDate: parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
+      expiryDate: expiryFromClock(json) ?? parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       currentProductId: productIdRaw is num
           ? productIdRaw.toInt()
           : int.tryParse('$productIdRaw'),
@@ -833,6 +856,12 @@ class AuctionStateUpdateEvent {
           [],
       currentPrice: json['currentPrice'] as num?,
       seq: json['seq'] as int?,
+      clock: ClockStamp.tryParse(json['clock']),
+      prepSeconds: json['prepSeconds'] is num
+          ? (json['prepSeconds'] as num).toInt()
+          : int.tryParse('${json['prepSeconds'] ?? ''}'),
+      serverNow: DateTime.tryParse('${json['serverNow'] ?? ''}'),
+      startsAt: DateTime.tryParse('${json['startsAt'] ?? ''}'),
     );
   }
 
@@ -923,6 +952,76 @@ class StateUpdateProduct {
       'auction_id': auctionId,
       'topBids': topBids.map((e) => e.toJson()).toList(),
     };
+  }
+}
+
+/// Countdown window emitted when a socket payload includes both fields.
+class AuctionPrepPayload {
+  const AuctionPrepPayload({
+    required this.auctionId,
+    required this.serverNow,
+    required this.prepSeconds,
+    this.startsAt,
+  });
+
+  final int auctionId;
+  final DateTime serverNow;
+  final int prepSeconds;
+  final DateTime? startsAt;
+
+  static AuctionPrepPayload? tryParse(dynamic data) {
+    if (data is! Map) return null;
+    final json = Map<String, dynamic>.from(data);
+    final secondsRaw = json['prepSeconds'];
+    final serverRaw = json['serverNow'];
+    if (secondsRaw == null || serverRaw == null) return null;
+    final seconds = secondsRaw is num
+        ? secondsRaw.toInt()
+        : int.tryParse('$secondsRaw');
+    final serverNow = DateTime.tryParse('$serverRaw');
+    final startsAt = DateTime.tryParse('${json['startsAt'] ?? ''}');
+    final idRaw = json['auctionId'] ?? json['auction_id'] ?? json['id'];
+    final auctionId = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw');
+    if (seconds == null || seconds <= 0 || serverNow == null || auctionId == null) {
+      return null;
+    }
+    return AuctionPrepPayload(
+      auctionId: auctionId,
+      serverNow: serverNow,
+      prepSeconds: seconds,
+      startsAt: startsAt,
+    );
+  }
+}
+
+/// Private seller-block event. Never broadcast to the room.
+class SellerBidBlockEvent {
+  const SellerBidBlockEvent({
+    required this.auctionId,
+    required this.productIds,
+  });
+
+  final int auctionId;
+  final Set<int> productIds;
+
+  factory SellerBidBlockEvent.fromJson(Map<String, dynamic> json) {
+    final idRaw = json['auctionId'] ?? json['auction_id'];
+    final auctionId = idRaw is num ? idRaw.toInt() : int.tryParse('$idRaw') ?? 0;
+    final ids = <int>{};
+    final lots = json['lots'];
+    if (lots is List) {
+      for (final lot in lots) {
+        if (lot is! Map) continue;
+        final reason = lot['bidBlockedReason']?.toString();
+        if (reason != 'SELLER') continue;
+        final productRaw = lot['productId'] ?? lot['product_id'] ?? lot['id'];
+        final productId = productRaw is num
+            ? productRaw.toInt()
+            : int.tryParse('$productRaw');
+        if (productId != null) ids.add(productId);
+      }
+    }
+    return SellerBidBlockEvent(auctionId: auctionId, productIds: ids);
   }
 }
 

@@ -6,11 +6,12 @@ import 'package:turathy/src/features/auctions/data/auction_access_service.dart';
 void main() {
   group('Bidding Controls & Price Synchronization', () {
     test('maxBidFloor prefers currentPrice over stale highestActiveBid', () {
-      const num? highestBid = 200;
+      const num highestBid = 200;
       const num currentPrice = 740;
       const num openingPrice = 100;
 
-      expect(highestBid ?? currentPrice, 200);
+      expect(highestBid, 200);
+      expect(currentPrice, isNot(highestBid));
 
       final floor = maxBidFloor(
         highestActiveBid: highestBid,

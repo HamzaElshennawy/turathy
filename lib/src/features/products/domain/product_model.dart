@@ -21,6 +21,7 @@ class ProductModel {
   final String? category;
   final String? brand;
   final String? sku;
+  final int? lotNumber;
   final int stock;
   final double discount;
   final double rating;
@@ -70,6 +71,11 @@ class ProductModel {
     return titleEn ?? nameEn ?? title ?? name ?? titleAr ?? nameAr ?? '';
   }
 
+  /// Splits a catalog title at the first " - " so the qualifier sits on its own line.
+  String localizedHeadline(String languageCode) {
+    return localizedTitle(languageCode).replaceFirst(RegExp(r'\s[-–—]\s'), '\n');
+  }
+
   String localizedDescription(String languageCode) {
     if (languageCode.toLowerCase().startsWith('ar')) {
       return descriptionAr ?? description ?? descriptionEn ?? '';
@@ -104,6 +110,7 @@ class ProductModel {
     required this.category,
     required this.brand,
     this.sku,
+    this.lotNumber,
     required this.stock,
     required this.discount,
     required this.rating,
@@ -379,6 +386,9 @@ class ProductModel {
       category: json['category'] as String?,
       brand: json['brand'] as String?,
       sku: json['sku'] as String?,
+      lotNumber: int.tryParse(
+        '${json['lot_number'] ?? json['lotNumber'] ?? ''}',
+      ),
       stock: json['stock'] != null ? (int.tryParse(json['stock'].toString()) ?? 0) : 0,
       discount: json['discount'] != null ? (double.tryParse(json['discount'].toString()) ?? 0.0) : 0.0,
       rating: json['rating'] != null ? (double.tryParse(json['rating'].toString()) ?? 0.0) : 0.0,

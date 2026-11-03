@@ -422,6 +422,8 @@ class AuctionProducts {
   /// True only when reserve was met. Bids on an ended lot do not imply a sale.
   bool? isSold;
   bool? isExpired;
+  /// Per-viewer block from the lot payload. `SELLER` hides the bid box.
+  String? bidBlockedReason;
 
   /// Returns the product name for the given [locale] ('ar' or 'en').
   String localizedName(String locale) =>
@@ -611,6 +613,8 @@ class AuctionProducts {
     itemDuration = json['item_duration'] ?? json['duration'];
     isSold = parseAuctionJsonBool(json['isSold'] ?? json['is_sold']);
     isExpired = parseAuctionJsonBool(json['isExpired'] ?? json['is_expired']);
+    final blocked = json['bidBlockedReason'] ?? json['bid_blocked_reason'];
+    bidBlockedReason = blocked?.toString();
   }
 
   Map<String, dynamic> toJson() {

@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
 import '../../../../../../core/constants/app_sizes.dart';
 import '../../../../../../core/constants/app_strings/app_strings.dart';
-// import '../../../../../main_screen.dart';
 import '../../../../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
+import '../../../category_hub/category_hub_screen.dart';
 
 import '../../../../data/category_repository.dart';
 
@@ -18,6 +18,23 @@ class CategoriesWidget extends ConsumerWidget {
     final value = ref.watch(getAllCategoriesProvider);
     return value.when(
       data: (categories) {
+        if (categories.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                AppStrings.categories.tr(),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              gapH8,
+              Text(AppStrings.emptyCategories.tr()),
+            ],
+          );
+        }
+        final selectedCategoryId = ref
+            .watch(filterWidgetControllerProvider)
+            .selectedCategoryID;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -32,11 +49,9 @@ class CategoriesWidget extends ConsumerWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemBuilder: (context, index) {
-                  final isSelected =
-                      ref
-                          .watch(filterWidgetControllerProvider)
-                          .selectedCategoryID ==
-                      categories[index].id;
+                  final category = categories[index];
+                  final isSelected = selectedCategoryId == category.id;
+                  final imageUrl = category.picUrl;
                   return Card(
                     shape: const CircleBorder(),
                     elevation: 1,
@@ -44,10 +59,28 @@ class CategoriesWidget extends ConsumerWidget {
                     child: InkWell(
                       customBorder: const CircleBorder(),
                       onTap: () {
-                        // ref.read(mainScreenIndexProvider.notifier).state = 1;
+                        final id = category.id;
+                        if (id == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(AppStrings.emptyCategories.tr()),
+                            ),
+                          );
+                          return;
+                        }
                         ref
                             .read(filterWidgetControllerProvider.notifier)
-                            .selectCategory(index);
+                            .selectCategoryById(id);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CategoryHubScreen(
+                              categoryId: id,
+                              categoryName: category.localizedName(
+                                context.locale.languageCode,
+                              ),
+                            ),
+                          ),
+                        );
                       },
                       child: Container(
                         width: 80,
@@ -63,10 +96,15 @@ class CategoriesWidget extends ConsumerWidget {
                                   ),
                                 )
                               : const CircleBorder(),
-                          image: DecorationImage(
-                            image: NetworkImage(categories[index].picUrl ?? ''),
-                            fit: BoxFit.cover,
-                          ),
+                          image: imageUrl != null && imageUrl.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(imageUrl),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                          color: imageUrl == null || imageUrl.isEmpty
+                              ? Theme.of(context).colorScheme.surfaceContainerHighest
+                              : null,
                         ),
                         child: Container(
                           width: double.infinity,
@@ -83,9 +121,8 @@ class CategoriesWidget extends ConsumerWidget {
                             ),
                           ),
                           child: Text(
-                            categories[index].localizedName(
-                                    context.locale.languageCode) ??
-                                "",
+                            category.localizedName(
+                                    context.locale.languageCode),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.titleSmall
                                 ?.copyWith(

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../../core/common_widgets/product_card.dart';
+import '../../../../../../core/common_widgets/store_product_image.dart';
 import '../../../../../../core/common_widgets/shimmer_widget/shimmer_widget.dart';
 import '../../../../../../core/constants/app_functions/app_functions.dart';
 import '../../../../../../core/constants/app_sizes.dart';
 import '../../../../../../core/constants/app_strings/app_strings.dart';
 import '../../../../../main_screen.dart';
 import '../../../../../products/data/products_repository.dart';
+import '../../../../../search/presentation/widgets/filter_widget/filter_widget_controller.dart';
 
 class ProductsListWidget extends StatelessWidget {
   const ProductsListWidget({super.key});
@@ -29,6 +31,9 @@ class ProductsListWidget extends StatelessWidget {
               builder: (context, ref, child) {
                 return TextButton(
                   onPressed: () {
+                    ref
+                        .read(filterWidgetControllerProvider.notifier)
+                        .clearSelectedCategory();
                     ref.read(mainScreenTabIndexProvider.notifier).state = 2;
                   },
                   child: Text(
@@ -47,12 +52,18 @@ class ProductsListWidget extends StatelessWidget {
           ],
         ),
         gapH4,
-        SizedBox(
-          height: AppFunctions.isMobile(context: context)
-              ? MediaQuery.of(context).size.width * .8
-              : (MediaQuery.of(context).orientation == Orientation.landscape
-                    ? 320
-                    : 360),
+        Builder(
+          builder: (context) {
+            final screenWidth = MediaQuery.sizeOf(context).width;
+            final isMobile = AppFunctions.isMobile(context: context);
+            final cardWidth = isMobile
+                ? screenWidth * 0.62
+                : (MediaQuery.orientationOf(context) == Orientation.landscape
+                      ? 280.0
+                      : 300.0);
+            final railHeight = cardWidth / StoreProductImage.frameAspect + 168;
+            return SizedBox(
+          height: railHeight,
           child: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               final productsListValue = ref.watch(productsListProvider);
@@ -63,18 +74,16 @@ class ProductsListWidget extends StatelessWidget {
                   }
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemExtent: AppFunctions.isMobile(context: context)
-                        ? MediaQuery.of(context).size.width * .7
-                        : (MediaQuery.of(context).orientation ==
-                                  Orientation.landscape
-                              ? 290
-                              : 320),
+                    itemExtent: cardWidth,
                     itemCount: data.length,
                     itemBuilder: (BuildContext context, int index) {
                       final product = data[index];
-                      return ProductCard(
-                        product: product,
-                        heroTag: 'products_list_${product.id}_$index',
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: ProductCard(
+                          product: product,
+                          heroTag: 'products_list_${product.id}_$index',
+                        ),
                       );
                     },
                   );
@@ -98,6 +107,8 @@ class ProductsListWidget extends StatelessWidget {
               );
             },
           ),
+        );
+          },
         ),
       ],
     );

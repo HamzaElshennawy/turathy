@@ -75,6 +75,9 @@ platform :ios do
     lane_context[SharedValues::IPA_OUTPUT_PATH] = exported_ipa
     
     # 8. Upload the IPA to TestFlight
-    upload_to_testflight(ipa: lane_context[SharedValues::IPA_OUTPUT_PATH])
+    upload_to_testflight(
+      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
+      distribute_external: false
+    )
   end
 end

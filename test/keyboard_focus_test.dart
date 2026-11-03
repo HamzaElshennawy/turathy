@@ -71,4 +71,41 @@ void main() {
     await tester.pump();
     expect(node.hasFocus, isTrue);
   });
+
+  testWidgets('tap outside the field keeps the keyboard focus', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) {
+          return Actions(
+            actions: <Type, Action<Intent>>{
+              EditableTextTapOutsideIntent:
+                  CallbackAction<EditableTextTapOutsideIntent>(
+                onInvoke: (intent) => null,
+              ),
+            },
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
+        home: Scaffold(
+          body: Column(
+            children: [
+              TextField(focusNode: node),
+              const Text('elsewhere'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(node.hasFocus, isTrue);
+
+    await tester.tap(find.text('elsewhere'));
+    await tester.pump();
+    expect(node.hasFocus, isTrue);
+  });
 }

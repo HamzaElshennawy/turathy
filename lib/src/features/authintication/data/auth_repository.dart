@@ -62,6 +62,16 @@ String? _extractRefreshToken(Map<String, dynamic> data) {
 }
 
 /// Manages authentication state and persistence.
+/// Outcome of one access-token refresh HTTP call.
+class TokenRefreshResult {
+  const TokenRefreshResult({required this.refreshed, this.statusCode});
+
+  final bool refreshed;
+
+  /// HTTP status of the refresh call. Null when no request was sent.
+  final int? statusCode;
+}
+
 class AuthRepository {
   /// Authenticates a user using phone and password.
   ///
@@ -523,9 +533,17 @@ class AuthRepository {
   }
 
   static Future<bool> refreshAccessToken() async {
+    final result = await refreshAccessTokenResult();
+    return result.refreshed;
+  }
+
+  /// Refreshes the access token and reports the refresh call's HTTP status.
+  ///
+  /// A missing refresh token does not contact the server, so [TokenRefreshResult.statusCode] stays null.
+  static Future<TokenRefreshResult> refreshAccessTokenResult() async {
     final refreshToken = CachedVariables.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
-      return false;
+      return const TokenRefreshResult(refreshed: false);
     }
 
     final result = await DioHelper.postData(
@@ -533,15 +551,27 @@ class AuthRepository {
       data: {'refreshToken': refreshToken},
     );
     final body = _ensureMap(result.data);
+    if (result.statusCode == 401 || result.statusCode == 403) {
+      return TokenRefreshResult(
+        refreshed: false,
+        statusCode: result.statusCode,
+      );
+    }
     if (result.statusCode != 200 && result.statusCode != 201) {
-      return false;
+      return TokenRefreshResult(
+        refreshed: false,
+        statusCode: result.statusCode,
+      );
     }
 
     final data = _extractAuthData(body);
     final accessToken = _extractAccessToken(data);
     final rotatedRefreshToken = _extractRefreshToken(data);
     if (accessToken == null || accessToken.isEmpty) {
-      return false;
+      return TokenRefreshResult(
+        refreshed: false,
+        statusCode: result.statusCode,
+      );
     }
 
     await CacheHelper.setData(key: CachedKeys.authToken, value: accessToken);
@@ -556,7 +586,7 @@ class AuthRepository {
       CachedVariables.refreshToken = rotatedRefreshToken;
     }
 
-    return true;
+    return TokenRefreshResult(refreshed: true, statusCode: result.statusCode);
   }
 
   static Future<bool> deleteAccount() async {
