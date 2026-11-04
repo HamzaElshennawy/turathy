@@ -13,7 +13,54 @@
 # Uncomment the line if you want fastlane to automatically update itself
 # update_fastlane
 
+require "json"
+
 default_platform(:ios)
+
+APP_GROUP_ID = "group.com.deepblue.turathy"
+MAIN_APP_ID = "com.deepblue.turathy"
+LIVE_ACTIVITY_ID = "com.deepblue.turathy.LiveActivity"
+
+def app_group_settings
+  [{
+    "key" => "APP_GROUPS",
+    "options" => [{
+      "key" => APP_GROUP_ID,
+      "name" => "Turathy",
+      "enabled" => true
+    }]
+  }]
+end
+
+# Creates the Live Activity App ID and turns on the shared App Group.
+# create_capability adds one capability; it does not replace Push or Sign in with Apple.
+def ensure_dynamic_island_ids
+  live = Spaceship::ConnectAPI::BundleId.find(LIVE_ACTIVITY_ID)
+  if live.nil?
+    UI.message("Creating App ID #{LIVE_ACTIVITY_ID}")
+    Spaceship::ConnectAPI::BundleId.create(
+      name: "Turathy Live Activity",
+      platform: "IOS",
+      identifier: LIVE_ACTIVITY_ID
+    )
+  else
+    UI.message("App ID #{LIVE_ACTIVITY_ID} already exists")
+  end
+
+  [LIVE_ACTIVITY_ID, MAIN_APP_ID].each do |identifier|
+    bundle = Spaceship::ConnectAPI::BundleId.find(identifier)
+    UI.user_error!("App ID #{identifier} is missing on the developer portal") if bundle.nil?
+
+    already = bundle.get_capabilities.any? { |cap| cap.capability_type == "APP_GROUPS" }
+    if already
+      UI.message("APP_GROUPS already enabled on #{identifier}")
+      next
+    end
+
+    UI.message("Enabling #{APP_GROUP_ID} on #{identifier}")
+    bundle.create_capability("APP_GROUPS", settings: app_group_settings)
+  end
+end
 
 platform :ios do
   desc "Push a new beta build to TestFlight"
@@ -21,11 +68,33 @@ platform :ios do
     # 0. Setup CI environment (creates a temporary keychain on CI runners)
     setup_ci if ENV['CI']
 
-    # 1. Sync certificates and profiles
+    raw_key = ENV["APP_STORE_CONNECT_API_KEY"].to_s
+    UI.user_error!("APP_STORE_CONNECT_API_KEY is not set") if raw_key.strip.empty?
+    parsed = JSON.parse(raw_key)
+    key_params = {
+      key_id: parsed["key_id"],
+      issuer_id: parsed["issuer_id"],
+      duration: (parsed["duration"] || 1200).to_i,
+      in_house: parsed["in_house"] == true
+    }
+    if parsed["key_filepath"].to_s != ""
+      key_params[:key_filepath] = parsed["key_filepath"]
+    else
+      key_params[:key_content] = parsed["key"] || parsed["key_content"]
+      key_params[:is_key_content_base64] = parsed["is_key_content_base64"] == true
+    end
+    api_key = app_store_connect_api_key(**key_params)
+
+    # The Live Activity identifier does not exist yet. match cannot mint its profile until it does.
+    ensure_dynamic_island_ids
+
+    # 1. Sync certificates and profiles. force recreates them so the App Group is inside the profile.
     match(
       type: "appstore",
-      app_identifier: ["com.deepblue.turathy", "com.deepblue.turathy.LiveActivity"],
-      readonly: false
+      api_key: api_key,
+      app_identifier: [MAIN_APP_ID, LIVE_ACTIVITY_ID],
+      readonly: false,
+      force: true
     )
     
     # 2. Ensure Pods are up to date
