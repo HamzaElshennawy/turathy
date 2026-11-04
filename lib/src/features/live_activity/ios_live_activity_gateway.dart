@@ -17,10 +17,8 @@ class PluginIosLiveActivityGateway implements IosLiveActivityGateway {
   LiveActivities? _plugin;
   bool _ready = false;
 
-  /// The TestFlight profile has no App Group. live_activities 2.4.3 force-unwraps
-  /// `UserDefaults(suiteName:)`, which is nil without that entitlement and kills
-  /// the process. Stay off until the profile includes the group.
-  static const bool enabled = false;
+  /// Signing includes the App Group. init still no-ops off iOS.
+  static const bool enabled = true;
 
   Future<LiveActivities?> _ensureReady() async {
     if (!enabled || kIsWeb || !Platform.isIOS) return null;

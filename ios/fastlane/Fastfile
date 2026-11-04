@@ -22,7 +22,11 @@ platform :ios do
     setup_ci if ENV['CI']
 
     # 1. Sync certificates and profiles
-    match(type: "appstore", readonly: is_ci)
+    match(
+      type: "appstore",
+      app_identifier: ["com.deepblue.turathy", "com.deepblue.turathy.LiveActivity"],
+      readonly: false
+    )
     
     # 2. Ensure Pods are up to date
     cocoapods
@@ -45,6 +49,14 @@ platform :ios do
       team_id: "N6P5KD4Z98",
       code_sign_identity: "Apple Distribution",
       profile_name: "match AppStore com.deepblue.turathy"
+    )
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      targets: ["LiveActivity"],
+      team_id: "N6P5KD4Z98",
+      code_sign_identity: "Apple Distribution",
+      profile_name: "match AppStore com.deepblue.turathy.LiveActivity"
     )
 
     # 5. Archive only (skip IPA export — we need to patch App.framework first)
