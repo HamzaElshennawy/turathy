@@ -21,18 +21,7 @@ APP_GROUP_ID = "group.com.deepblue.turathy"
 MAIN_APP_ID = "com.deepblue.turathy"
 LIVE_ACTIVITY_ID = "com.deepblue.turathy.LiveActivity"
 
-def app_group_settings
-  [{
-    "key" => "APP_GROUPS",
-    "options" => [{
-      "key" => APP_GROUP_ID,
-      "name" => "Turathy",
-      "enabled" => true
-    }]
-  }]
-end
-
-# Creates the Live Activity App ID and turns on the shared App Group.
+# Creates the Live Activity App ID and turns on the App Groups capability.
 # create_capability adds one capability; it does not replace Push or Sign in with Apple.
 def ensure_dynamic_island_ids
   live = Spaceship::ConnectAPI::BundleId.find(LIVE_ACTIVITY_ID)
@@ -57,8 +46,10 @@ def ensure_dynamic_island_ids
       next
     end
 
-    UI.message("Enabling #{APP_GROUP_ID} on #{identifier}")
-    bundle.create_capability("APP_GROUPS", settings: app_group_settings)
+    # Apple's API turns the capability on and accepts no group id here.
+    # The group itself is assigned on the developer portal before match runs.
+    UI.message("Enabling App Groups on #{identifier}. Portal must assign #{APP_GROUP_ID} before signing.")
+    bundle.create_capability("APP_GROUPS")
   end
 end
 
