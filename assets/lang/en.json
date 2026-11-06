@@ -442,6 +442,7 @@
     "currentAuction": "Current Auction",
     "higherBidThanYours": "Higher bid than yours",
     "bidPlacedSuccessfully": "Max bid placed successfully",
+    "bidOutbidProxy": "Your {max} bid was recorded, but another bidder has a higher max bid. The public price is now {visible}.",
     "needAdminApprovalToBid": "You need admin approval to bid in this auction",
     "completeProfile": "Complete Profile",
     "profileInfo": "Profile Information",

@@ -24,6 +24,44 @@ num? parseBidAcceptedPrice(Map<String, dynamic> data) {
   return null;
 }
 
+/// Sender lost the proxy war in the same accepted bid.
+class BidAcceptDecision {
+  const BidAcceptDecision({
+    required this.outbid,
+    this.visibleBid,
+    this.submittedAmount,
+    this.leaderUserId,
+  });
+
+  final bool outbid;
+  final num? visibleBid;
+  final num? submittedAmount;
+  final int? leaderUserId;
+}
+
+BidAcceptDecision decideBidAccept(
+  Map<String, dynamic> data, {
+  int? sessionUserId,
+}) {
+  final visibleBid = parseBidAcceptedPrice(data);
+  final submittedAmount = parseOptionalNum(data['submittedAmount']);
+  final nested = data['newBid'];
+  final leaderUserId = nested is Map
+      ? parsePositiveInt(nested['user_id'] ?? nested['userId'])
+      : null;
+  final explicit = data['outbid'] == true;
+  final inferred =
+      sessionUserId != null &&
+      leaderUserId != null &&
+      leaderUserId != sessionUserId;
+  return BidAcceptDecision(
+    outbid: explicit || inferred,
+    visibleBid: visibleBid,
+    submittedAmount: submittedAmount,
+    leaderUserId: leaderUserId,
+  );
+}
+
 num? parseOptionalNum(dynamic value) {
   if (value is num) return value;
   if (value is String) return num.tryParse(value.trim());

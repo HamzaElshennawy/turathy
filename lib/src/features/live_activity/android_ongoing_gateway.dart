@@ -7,6 +7,33 @@ import 'package:permission_handler/permission_handler.dart';
 import 'live_activity_gateway.dart';
 import 'live_activity_policy.dart';
 
+/// Title and body for the ongoing auction notification.
+/// Status words stay the shared English payload; this surface is Arabic.
+class AndroidLiveNotice {
+  const AndroidLiveNotice({required this.title, required this.body});
+
+  final String title;
+  final String body;
+}
+
+AndroidLiveNotice androidLiveNotice({
+  required String lotNumber,
+  required String status,
+  required String? price,
+}) {
+  final title = lotNumber.isEmpty ? 'مزاد مباشر' : 'بند $lotNumber';
+  final statusAr = switch (status) {
+    'Bidding' => 'جاري المزايدة',
+    'Ending' => 'ينتهي قريباً',
+    '' => 'مباشر',
+    _ => status,
+  };
+  final body = (price == null || price.isEmpty)
+      ? statusAr
+      : '$statusAr · $price ر.س';
+  return AndroidLiveNotice(title: title, body: body);
+}
+
 /// Ongoing status notification for the same lot fields as Dynamic Island.
 ///
 /// Android 14 and later can still dismiss an `ongoing` notification that is
@@ -40,8 +67,8 @@ class PluginAndroidOngoingGateway implements AndroidOngoingGateway {
         ?.createNotificationChannel(
           const AndroidNotificationChannel(
             kAndroidLiveActivityChannelId,
-            'Dynamic Island',
-            description: 'Live auction lot countdown',
+            'المزاد المباشر',
+            description: 'عدّاد البند أثناء المزاد',
             importance: Importance.low,
           ),
         );
@@ -71,20 +98,20 @@ class PluginAndroidOngoingGateway implements AndroidOngoingGateway {
     if (!await _ensurePermission()) return;
     final endsAtMs = payload['endsAt'];
     if (endsAtMs is! int) return;
-    final lotNumber = payload['lotNumber'] as String? ?? '';
-    final status = payload['statusLabel'] as String? ?? '';
-    final price = payload['bidPrice'] as String?;
-    final title = lotNumber.isEmpty ? 'Live' : lotNumber;
-    final body = (price == null || price.isEmpty) ? status : '$status · $price';
+    final notice = androidLiveNotice(
+      lotNumber: payload['lotNumber'] as String? ?? '',
+      status: payload['statusLabel'] as String? ?? '',
+      price: payload['bidPrice'] as String?,
+    );
     await _plugin.show(
       kAndroidLiveActivityNotificationId,
-      title,
-      body,
+      notice.title,
+      notice.body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           kAndroidLiveActivityChannelId,
-          'Dynamic Island',
-          channelDescription: 'Live auction lot countdown',
+          'المزاد المباشر',
+          channelDescription: 'عدّاد البند أثناء المزاد',
           importance: Importance.low,
           priority: Priority.low,
           playSound: false,

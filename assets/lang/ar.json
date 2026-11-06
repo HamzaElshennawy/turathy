@@ -441,6 +441,7 @@
     "currentAuction": "المزاد الحالي",
     "higherBidThanYours": "هناك مزايدة أعلى منك",
     "bidPlacedSuccessfully": "تم وضع الحد الأقصى للمزايدة بنجاح",
+    "bidOutbidProxy": "تم تسجيل مزايدتك {max}، لكن يوجد مزايد آخر بحد أعلى. السعر الظاهر الآن {visible}.",
     "needAdminApprovalToBid": "تحتاج إلى موافقة الإدارة للمزايدة في هذا المزاد",
     "completeProfile": "إكمال الملف الشخصي",
     "profileInfo": "معلومات الملف الشخصي",

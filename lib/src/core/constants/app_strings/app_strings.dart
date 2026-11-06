@@ -588,6 +588,7 @@ class AppStrings {
   static const String currentAuction = 'currentAuction';
   static const String higherBidThanYours = 'higherBidThanYours';
   static const String bidPlacedSuccessfully = 'bidPlacedSuccessfully';
+  static const String bidOutbidProxy = 'bidOutbidProxy';
   static const String needAdminApprovalToBid = 'needAdminApprovalToBid';
   static const String noRequestsFound = 'noRequestsFound';
   static const String filterOptions = 'filterOptions';

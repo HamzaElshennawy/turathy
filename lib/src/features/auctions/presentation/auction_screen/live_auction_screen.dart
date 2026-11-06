@@ -242,8 +242,12 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           }
           if (matched == null) return;
           _pendingBids.remove(matched);
+          final decision = decideBidAccept(
+            map,
+            sessionUserId: CachedVariables.userId,
+          );
           _applyRoomBidUpdate(
-            currentPrice: parseBidAcceptedPrice(map),
+            currentPrice: decision.visibleBid ?? parseBidAcceptedPrice(map),
             expiryDate: parseSocketDate(map['expiryDate']),
             eventProductId: productId,
           );
@@ -254,6 +258,19 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                   .read(accumulatedBidsProvider.notifier)
                   .addBid(AuctionBid.fromJson(Map<String, dynamic>.from(raw)));
             }
+          }
+          if (decision.outbid) {
+            AppFunctions.showSnackBar(
+              context: context,
+              message: AppStrings.bidOutbidProxy.tr(
+                namedArgs: {
+                  'max': '${decision.submittedAmount ?? matched.amount}',
+                  'visible': '${decision.visibleBid ?? ''}',
+                },
+              ),
+              icon: Icons.arrow_upward,
+            );
+            return;
           }
           _flashBidAccepted();
         });

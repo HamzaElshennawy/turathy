@@ -472,8 +472,37 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
           }
           if (matched == null) return;
           _pendingBids.remove(matched);
+          final decision = decideBidAccept(
+            map,
+            sessionUserId: CachedVariables.userId,
+          );
+          if (decision.outbid && decision.visibleBid != null) {
+            setState(() {
+              _highestBids[productId] = AuctionBid(
+                productId: productId,
+                auctionId: auctionId,
+                userId: decision.leaderUserId,
+                bid: decision.visibleBid,
+                isActive: true,
+              );
+              _userBidProductIds.add(productId);
+            });
+          }
           final routeIsCurrent = ModalRoute.of(context)?.isCurrent == true;
           if (!routeIsCurrent && !_isItemSheetOpen) return;
+          if (decision.outbid) {
+            _showFloatingToast(
+              AppStrings.bidOutbidProxy.tr(
+                namedArgs: {
+                  'max': '${decision.submittedAmount ?? matched.amount}',
+                  'visible': '${decision.visibleBid ?? ''}',
+                },
+              ),
+              icon: Icons.arrow_upward,
+              color: Colors.red.shade700,
+            );
+            return;
+          }
           _showFloatingToast(
             AppStrings.bidPlacedSuccessfully.tr(),
             icon: Icons.check_circle_outline,
