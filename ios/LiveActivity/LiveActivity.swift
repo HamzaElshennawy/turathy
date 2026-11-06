@@ -58,6 +58,7 @@ private struct LotLogo: View {
 
   var body: some View {
     Image("AppLogo")
+      .renderingMode(.original)
       .resizable()
       .scaledToFit()
       .frame(width: side, height: side)
