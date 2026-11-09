@@ -480,6 +480,8 @@
     "priceUpdatedRetry": "تم تحديث السعر — يرجى المحاولة مرة أخرى",
     "bidSentSuccessfully": "تمت المزايدة بنجاح",
     "bidSendFailed": "تعذر إرسال المزايدة، حاول مجدداً",
+    "bidConfirming": "جاري تأكيد المزايدة...",
+    "bidAckTimeout": "لم يصل تأكيد المزايدة",
     "lotNotIdentifiedSyncing": "تعذر تحديد البند، جارٍ المزامنة…",
     "notConnectedToLiveRoom": "لا يوجد اتصال بالغرفة الحية",
     "shortAddressCode": "العنوان المختصر",

@@ -480,6 +480,8 @@
     "priceUpdatedRetry": "Price has been updated — please try again",
     "bidSentSuccessfully": "Bid placed successfully",
     "bidSendFailed": "Could not send bid, please try again",
+    "bidConfirming": "Confirming your bid...",
+    "bidAckTimeout": "Bid confirmation did not arrive",
     "lotNotIdentifiedSyncing": "Could not identify the lot, syncing…",
     "notConnectedToLiveRoom": "Not connected to the live room",
     "shortAddressCode": "Short Address Code",

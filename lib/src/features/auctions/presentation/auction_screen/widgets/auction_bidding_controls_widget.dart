@@ -82,6 +82,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final bool sellerBidBlocked;
   final VoidCallback? onGoToLiveLot;
   final bool suppressSwipe;
+  final bool bidPending;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -99,6 +100,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.sellerBidBlocked = false,
     this.onGoToLiveLot,
     this.suppressSwipe = false,
+    this.bidPending = false,
   });
 
   @override
@@ -375,7 +377,7 @@ class _AuctionBiddingControlsWidgetState
     // Check if the auction has actually started (reached startDate)
     final bool hasStarted =
         widget.auction.startDate == null ||
-        DateTime.now().isAfter(widget.auction.startDate!);
+        !serverClock.nowDate().isBefore(widget.auction.startDate!);
 
     // Bidding is allowed if the auction has started and not ended
     final bool auctionNotStarted = !hasStarted;
@@ -508,10 +510,9 @@ class _AuctionBiddingControlsWidgetState
                           ),
                         ),
                         gapW4,
-                        const Text(
-                          // Using a string here, but typically you'd add this to AppStrings
-                          'Your max bid is registered',
-                          style: TextStyle(
+                        Text(
+                          AppStrings.bidPlacedSuccessfully.tr(),
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.orange,
                             fontWeight: FontWeight.w500,
@@ -724,7 +725,7 @@ class _AuctionBiddingControlsWidgetState
                                     Text(
                                       '${AppStrings.finalPrice.tr()}: ',
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFF1B5E20),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ),
@@ -732,7 +733,7 @@ class _AuctionBiddingControlsWidgetState
                                     Text(
                                       '${wonPrice.toStringAsFixed(0)} ',
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFF1B5E20),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ),
@@ -1175,7 +1176,10 @@ class _AuctionBiddingControlsWidgetState
       amountText: nextBid.toStringAsFixed(0),
       hintText: AppStrings.swipeToBid.tr(),
       somLabel: AppStrings.som.tr(),
-      showSuccess: widget.suppressSwipe,
+      showSuccess: widget.suppressSwipe || widget.bidPending,
+      successText: widget.bidPending
+          ? AppStrings.bidConfirming.tr()
+          : AppStrings.bidPlacedSuccessfully.tr(),
       onConfirmed: () => widget.onPlaceBid(1, nextBid, currentProductId),
     );
   }

@@ -607,6 +607,8 @@ class AppStrings {
   static const String priceUpdatedRetry = 'priceUpdatedRetry';
   static const String bidSentSuccessfully = 'bidSentSuccessfully';
   static const String bidSendFailed = 'bidSendFailed';
+  static const String bidConfirming = 'bidConfirming';
+  static const String bidAckTimeout = 'bidAckTimeout';
   static const String lotNotIdentifiedSyncing = 'lotNotIdentifiedSyncing';
   static const String notConnectedToLiveRoom = 'notConnectedToLiveRoom';
 

@@ -78,7 +78,7 @@ void main() {
       expect(decision.leaderUserId, 326);
     });
 
-    test('a higher leader without the flag is still an outbid', () {
+    test('a different leader without the flag is not inferred as outbid', () {
       final decision = decideBidAccept(
         {
           'submittedAmount': 340,
@@ -87,7 +87,7 @@ void main() {
         },
         sessionUserId: 550,
       );
-      expect(decision.outbid, isTrue);
+      expect(decision.outbid, isFalse);
       expect(decision.leaderUserId, 326);
     });
 
@@ -103,5 +103,10 @@ void main() {
       );
       expect(decision.outbid, isFalse);
     });
+  });
+
+  test('a second swipe does not emit while the lot is pending', () {
+    expect(shouldEmitLiveBid(pendingForProduct: true), isFalse);
+    expect(shouldEmitLiveBid(pendingForProduct: false), isTrue);
   });
 }

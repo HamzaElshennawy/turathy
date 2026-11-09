@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/core/time/server_countdown.dart';
 
+/// Width of the last-30-seconds fill. Never wider than the pill.
+double expiryBarWidth(double maxWidth, double progress) {
+  final clamped = progress.clamp(0.0, 1.0);
+  return maxWidth * clamped;
+}
+
 /// Lot remaining-time pill. Owns its 1s ticker so bidding controls do not rebuild.
 class AuctionExpiryClock extends StatefulWidget {
   final DateTime? expiry;
@@ -123,24 +129,28 @@ class _AuctionExpiryClockState extends State<AuctionExpiryClock> {
       child: Stack(
         children: [
           if (showProgressBar)
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              width: MediaQuery.of(context).size.width * progress,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _remainingTime.inSeconds <= 10
-                      ? [
-                          const Color(0xFFD32F2F).withAlpha(180),
-                          const Color(0xFFFF5252).withAlpha(150),
-                        ]
-                      : [
-                          const Color(0xFF2D4739).withAlpha(180),
-                          const Color(0xFF4CAF50).withAlpha(150),
-                        ],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  width: expiryBarWidth(constraints.maxWidth, progress),
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _remainingTime.inSeconds <= 10
+                          ? [
+                              const Color(0xFFD32F2F).withAlpha(180),
+                              const Color(0xFFFF5252).withAlpha(150),
+                            ]
+                          : [
+                              const Color(0xFF2D4739).withAlpha(180),
+                              const Color(0xFF4CAF50).withAlpha(150),
+                            ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                );
+              },
             ),
           Container(
             width: double.infinity,

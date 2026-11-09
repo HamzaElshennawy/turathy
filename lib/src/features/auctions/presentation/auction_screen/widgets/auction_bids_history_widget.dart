@@ -57,6 +57,18 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
       return true;
     }).toList();
 
+    int stamp(AuctionBid bid) {
+      final raw = bid.createdAt;
+      if (raw == null || raw.isEmpty) return 0;
+      return DateTime.tryParse(raw)?.millisecondsSinceEpoch ?? 0;
+    }
+
+    allBids.sort((a, b) {
+      final byTime = stamp(b).compareTo(stamp(a));
+      if (byTime != 0) return byTime;
+      return (b.bid ?? 0).compareTo(a.bid ?? 0);
+    });
+
     if (allBids.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(16.0),

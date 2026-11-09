@@ -403,6 +403,11 @@ class SocketService {
   ///
   /// Automatically caches [auctionId] and [userId] for session recovery.
   void emitJoinAuction(int auctionId, int userId) {
+    final previousId = _lastJoinedAuctionId;
+    final previousUser = _lastJoinedUserId;
+    if (previousId != null && previousId != auctionId && previousUser != null) {
+      emitLeaveAuction(previousId, previousUser);
+    }
     _lastJoinedAuctionId = auctionId;
     _lastJoinedUserId = userId;
     _safeEmit('joinAuction', {'auctionId': auctionId, 'userId': userId});

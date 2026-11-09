@@ -26,8 +26,8 @@ void main() {
     expect(displaySeconds(1), 1);
     expect(displaySeconds(1000), 1);
     expect(displaySeconds(1001), 2);
-    expect(formatClockDuration(1001), '2 sec');
-    expect(formatClockDuration(1000), '1 sec');
+    expect(formatClockDuration(1001), '2 ث');
+    expect(formatClockDuration(1000), '1 ث');
     expect(nextTickDelay(2500), 505);
     expect(nextTickDelay(0), 1000);
   });

@@ -50,12 +50,8 @@ BidAcceptDecision decideBidAccept(
       ? parsePositiveInt(nested['user_id'] ?? nested['userId'])
       : null;
   final explicit = data['outbid'] == true;
-  final inferred =
-      sessionUserId != null &&
-      leaderUserId != null &&
-      leaderUserId != sessionUserId;
   return BidAcceptDecision(
-    outbid: explicit || inferred,
+    outbid: explicit,
     visibleBid: visibleBid,
     submittedAmount: submittedAmount,
     leaderUserId: leaderUserId,
@@ -147,4 +143,6 @@ bool matchesPendingBidAck({
 
 /// On `auctionItemEnded` + nextItem, replace the previous lot hammer
 /// with the new lot opening (`bidPrice`) so a rebuild cannot flash it.
+bool shouldEmitLiveBid({required bool pendingForProduct}) => !pendingForProduct;
+
 num heldPriceForNextLot(num nextOpeningBidPrice) => nextOpeningBidPrice;

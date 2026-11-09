@@ -132,6 +132,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   bool _suppressSwipe = false;
   Timer? _swipeHideTimer;
   final List<PendingClientBid> _pendingBids = [];
+  int? _lastEndedProductId;
+  int? _heldForProductId;
+  Timer? _bidAckTimer;
 
   @override
   void initState() {
@@ -182,10 +185,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                 isError: true,
               );
             } else {
-              // Display other errors generic or as they come
               AppFunctions.showSnackBar(
                 context: context,
-                message: message.toString(),
+                message: AppStrings.bidSendFailed.tr(),
                 isError: true,
               );
             }
@@ -199,11 +201,11 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         .getEventStream<dynamic>('bidRejected', (data) => data)
         .listen((data) {
           if (!mounted || data == null) return;
+          final blockedId = data['productId'];
+          final productId = blockedId is num
+              ? blockedId.toInt()
+              : int.tryParse('$blockedId');
           if (data['bidBlockedReason']?.toString() == 'SELLER') {
-            final blockedId = data['productId'];
-            final productId = blockedId is num
-                ? blockedId.toInt()
-                : int.tryParse('$blockedId');
             if (productId != null) {
               setState(() => _sellerBlockedLots.add(productId));
             }
@@ -213,6 +215,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           if (serverPrice != null) {
             _applyRoomBidUpdate(currentPrice: serverPrice);
           }
+          final rawClientBid = data['clientBidId'] ?? data['client_bid_id'];
+          final clientBidId = rawClientBid?.toString();
+          _pendingBids.removeWhere(
+            (pending) =>
+                (clientBidId != null && pending.clientBidId == clientBidId) ||
+                pending.productId == productId,
+          );
           AppFunctions.showSnackBar(
             context: context,
             message: 'priceUpdatedRetry'.tr(),
@@ -370,6 +379,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
   @override
   void dispose() {
+    final userId = CachedVariables.userId;
+    if (userId != null) {
+      socketActions.leaveAuction(widget.auctionId, userId);
+    }
     final activity = _liveActivity;
     _followingLiveLot = false;
     _liveActivity = null;
@@ -382,6 +395,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     _bidAcceptedSubscription?.cancel();
     _auctionSyncSubscription?.cancel();
     _swipeHideTimer?.cancel();
+    _bidAckTimer?.cancel();
     _cancelFailSafeTimer();
     _lotResultTimer?.cancel();
     _audioPlayer.dispose();
@@ -417,12 +431,32 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         _prepStartsAt = event.startsAt;
       });
     }
-    // A late pulse from the previous lot must not flash its hammer on the new opening.
-    if (shouldIgnoreLiveBid(
-      eventProductId: event.currentProductId,
-      currentProductId: auction.currentProductId,
-    )) {
-      return;
+    final incomingId = event.currentProductId;
+    final switched = incomingId != null && incomingId != auction.currentProductId;
+    if (switched) {
+      AuctionProducts? nextProduct;
+      final products = auction.auctionProducts;
+      if (products != null) {
+        for (final product in products) {
+          if (product.id == incomingId) {
+            nextProduct = product;
+            break;
+          }
+        }
+      }
+      setState(() {
+        auction.currentProductId = incomingId;
+        if (nextProduct != null) {
+          auction.currentProduct = nextProduct.displayName;
+          _selectedProduct = nextProduct;
+        }
+        _liveCurrentPrice = null;
+        _liveExpiryDate = null;
+        _currentMainImageIndex = 0;
+      });
+      if (_mainImagePageController.hasClients) {
+        _mainImagePageController.jumpToPage(0);
+      }
     }
     final price = event.resolvedCurrentPrice;
     setState(() {
@@ -612,9 +646,21 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     num currentBid, {
     required bool isOpeningBid,
   }) async {
+    if (!shouldEmitLiveBid(
+      pendingForProduct: _pendingBids.any((pending) => pending.productId == productId),
+    )) {
+      if (mounted) {
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.bidConfirming.tr(),
+        );
+      }
+      return;
+    }
     try {
+      final auctionId = widget.auctionId;
       final clientBidId = await socketActions.placeBid(
-        auction.id ?? 0,
+        auctionId,
         CachedVariables.userId!,
         currentBid.toDouble(),
         productId,
@@ -622,11 +668,28 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       _pendingBids.add(
         PendingClientBid(
           clientBidId: clientBidId,
-          auctionId: auction.id ?? widget.auctionId,
+          auctionId: auctionId,
           productId: productId,
           amount: currentBid,
         ),
       );
+      _bidAckTimer?.cancel();
+      _bidAckTimer = Timer(const Duration(seconds: 8), () {
+        if (!mounted) return;
+        final stillPending = _pendingBids.any(
+          (pending) => pending.clientBidId == clientBidId,
+        );
+        if (!stillPending) return;
+        setState(() {
+          _pendingBids.removeWhere((pending) => pending.clientBidId == clientBidId);
+        });
+        AppFunctions.showSnackBar(
+          context: context,
+          message: AppStrings.bidAckTimeout.tr(),
+          isError: true,
+        );
+        socketActions.requestSync(auctionId).catchError((_) {});
+      });
       _syncDynamicIsland(bidInProgress: true);
     } catch (e) {
       debugPrint('LiveAuctionScreen: placeBid failed: $e');
@@ -699,6 +762,19 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     ref.listen(auctionItemEndedProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event != null) {
+        if (event.endedProductId != null &&
+            event.endedProductId == _lastEndedProductId) {
+          return;
+        }
+        final alreadyOnNext =
+            event.nextItem?.id != null &&
+            event.nextItem!.id == auction.currentProductId &&
+            event.endedProductId != auction.currentProductId;
+        if (alreadyOnNext) {
+          _lastEndedProductId = event.endedProductId;
+          return;
+        }
+        _lastEndedProductId = event.endedProductId;
         // ── Side effects that must fire immediately (before any rebuild) ───────
         _cancelFailSafeTimer();
         //_wasLiveWhenJoined = true;
@@ -772,7 +848,10 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           // Keeping CPU work out of setState ensures the callback itself is
           // just plain field assignments — the cheapest possible rebuild.
           final nextItem = event.nextItem!;
-          final newBidPrice = num.tryParse(nextItem.bidPrice ?? '0') ?? 0;
+          final openingBid = num.tryParse(nextItem.bidPrice ?? '0') ?? 0;
+          final newBidPrice = (event.currentPrice != null && event.currentPrice! > 0)
+              ? event.currentPrice!
+              : openingBid;
           final newExpiry = event.auction.expiryDate;
           final newImageUrl = nextItem.imageUrl;
           // Never leave the previous lot's «لم تُبع» on this chrome.
@@ -809,6 +888,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             _winnerName = null;
             _finalPrice = null;
             _selectedProduct = nextProduct;
+            _currentMainImageIndex = 0;
             _lotResult = null;
             _lotResultProductId = null;
           });
@@ -817,6 +897,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           // ── Post-setState side effects (no extra rebuild triggered) ──────────
           // addPostFrameCallback is intentionally placed OUTSIDE setState so it
           // does not force a second layout pass within the same frame.
+          if (_mainImagePageController.hasClients) {
+            _mainImagePageController.jumpToPage(0);
+          }
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToCurrentItem();
           });
@@ -855,17 +938,15 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         resetProductChangeStream(ref);
         resetNewBidStream(ref);
 
+        final endedLotId = auction.currentProductId;
         setState(() {
           _isAuctionEnded = true;
           _winnerId = event.winnerId;
           _winnerName = event.winnerName;
           _finalPrice = event.finalBidAmount;
-          // clear currentProduct so the thumbnail badge is no longer marked LIVE
           auction.currentProduct = null;
           auction.currentProductId = null;
         });
-        // _selectNextProduct reads from auction state synchronously;
-        // kept outside setState so it doesn't trigger a second pass.
         _selectNextProduct();
 
         if (event.winnerId == CachedVariables.userId) {
@@ -876,16 +957,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                 '${AppStrings.youWon.tr()} ${auction.localizedTitle(AppLocaleSync.uiLanguageCode)}',
           );
         } else {
-          // Check if current user actually participated in the final item
-          final lastProductId = auction.currentProductId;
           final lastItemBids =
               auction.auctionBids
-                  ?.where((b) => b.productId == lastProductId)
+                  ?.where((b) => b.productId == endedLotId)
                   .toList() ??
               [];
-          final didIParticipate = lastItemBids.any(
-            (b) => b.userId == CachedVariables.userId,
-          );
+          final didIParticipate =
+              (endedLotId != null && _productParticipants.contains(endedLotId)) ||
+              lastItemBids.any((b) => b.userId == CachedVariables.userId);
 
           if (didIParticipate) {
             _safePlay('sounds/lose_notification.wav');
@@ -897,9 +976,17 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       }
     });
 
+    ref.listen(auctionProductChangeProvider, (previous, next) {
+      if (next == null || !mounted) return;
+      socketActions.requestSync(widget.auctionId).catchError((_) {});
+    });
+
     ref.listen(timerExtendedEventProvider, (previous, next) {
-      final expiry = next.valueOrNull?.expiryDate;
-      if (expiry == null || !mounted) return;
+      final event = next.valueOrNull;
+      final expiry = event?.expiryDate;
+      if (expiry == null || !mounted || event == null) return;
+      final lotId = event.productId ?? event.clock?.lotId;
+      if (lotId != null && lotId != auction.currentProductId) return;
       setState(() {
         _liveExpiryDate = expiry;
         auction.expiryDate = expiry;
@@ -964,6 +1051,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
     final auctionValue = ref.watch(auctionDetailsProvider(widget.auctionId));
     auction = auctionValue.valueOrNull ?? AuctionModel(isLiveAuction: true);
+    if (_heldForProductId != null &&
+        auction.currentProductId != null &&
+        auction.currentProductId != _heldForProductId) {
+      _liveCurrentPrice = null;
+      _liveExpiryDate = null;
+    }
+    _heldForProductId = auction.currentProductId;
     applyHeldLiveFields(
       auction,
       heldPrice: _liveCurrentPrice,
@@ -1211,7 +1305,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                               child: Container(
                                 width: 60,
                                 height: 60,
-                                margin: const EdgeInsets.only(right: 8),
+                                margin: const EdgeInsetsDirectional.only(end: 8),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: isLive
@@ -1388,6 +1482,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             AuctionMainImageWidget(
+                              key: ValueKey(activeProduct?.id),
                               images: imagesToShow,
                               pageController: _mainImagePageController,
                               onPageChanged: (idx) {
@@ -1513,6 +1608,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
               winnerName: _winnerName,
               finalPrice: _finalPrice,
               suppressSwipe: _suppressSwipe,
+              bidPending: _pendingBids.isNotEmpty,
               onPlaceBid: (qty, price, productId) {
                 _placeBid(qty, price, overrideProductId: productId);
               },
@@ -1844,8 +1940,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     );
     _cancelFailSafeTimer();
     _syncDynamicIsland();
-    // Refresh the provider to get latest data from backend
     ref.invalidate(auctionDetailsProvider(widget.auctionId));
+    socketActions.requestSync(widget.auctionId).catchError((_) {});
   }
 
   AuctionProducts? _currentLiveLot() {
@@ -1875,8 +1971,8 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
 
   DateTime? _deviceDeadline(DateTime? serverExpiry) {
     if (serverExpiry == null) return null;
-    final localMs = serverExpiry.millisecondsSinceEpoch - serverClock.offset().round();
-    return DateTime.fromMillisecondsSinceEpoch(localMs);
+    final remain = serverExpiry.difference(serverClock.nowDate());
+    return DateTime.now().add(remain);
   }
 
   void _syncDynamicIsland({bool bidInProgress = false, bool ended = false}) {

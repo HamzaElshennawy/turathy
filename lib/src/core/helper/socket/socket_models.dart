@@ -592,15 +592,18 @@ class BidPlacedEvent {
 class TimerExtendedEvent {
   final DateTime? expiryDate;
   final int? seq;
+  final int? productId;
 
   final ClockStamp? clock;
 
-  const TimerExtendedEvent({this.expiryDate, this.seq, this.clock});
+  const TimerExtendedEvent({this.expiryDate, this.seq, this.productId, this.clock});
 
   factory TimerExtendedEvent.fromJson(Map<String, dynamic> json) {
+    final rawProduct = json['productId'] ?? json['product_id'];
     return TimerExtendedEvent(
       expiryDate: expiryFromClock(json) ?? parseSocketDate(json['expiryDate'] ?? json['newExpiry']),
       seq: json['seq'] as int?,
+      productId: rawProduct is num ? rawProduct.toInt() : int.tryParse('$rawProduct'),
       clock: ClockStamp.tryParse(json['clock']),
     );
   }
@@ -634,6 +637,9 @@ class AuctionItemEndedEvent {
   /// Settlement reason (e.g. `reserve_not_met`). Never shown as a price.
   final String? reason;
 
+  /// Public price of the next lot. Prefer this over the opening `bidPrice`.
+  final num? currentPrice;
+
   /// Default constructor for multi-item sequence transitions.
   const AuctionItemEndedEvent({
     required this.auction,
@@ -644,6 +650,7 @@ class AuctionItemEndedEvent {
     this.isSold,
     this.endedProductId,
     this.reason,
+    this.currentPrice,
   });
 
   /// Parses transition metadata from server emitters.
@@ -673,6 +680,7 @@ class AuctionItemEndedEvent {
       isSold: parseAuctionJsonBool(json['isSold'] ?? json['is_sold']),
       endedProductId: endedId,
       reason: json['reason'] as String?,
+      currentPrice: parseOptionalNum(json['currentPrice'] ?? json['current_price']),
     );
   }
 

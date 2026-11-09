@@ -105,14 +105,14 @@ int displaySeconds(int remainMs) {
 
 String formatClockDuration(int remainMs) {
   final total = displaySeconds(remainMs);
-  if (total <= 0) return '0 sec';
+  if (remainMs <= 0) return '0 ث';
   final hours = total ~/ 3600;
   final minutes = (total % 3600) ~/ 60;
   final seconds = total % 60;
   String two(int value) => value.toString().padLeft(2, '0');
   if (hours > 0) return '${two(hours)}:${two(minutes)}:${two(seconds)}';
   if (minutes > 0) return '${two(minutes)}:${two(seconds)}';
-  return '$seconds sec';
+  return '$seconds ث';
 }
 
 int nextTickDelay(int remainMs) {
