@@ -33,7 +33,7 @@ void main() {
     );
     expect(
       AuctionCountdownLabel.formatDuration(const Duration(seconds: 7)),
-      '7 sec',
+      '7 ث',
     );
   });
 }
