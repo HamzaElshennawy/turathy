@@ -50,7 +50,6 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
   Widget build(BuildContext context) {
     final searchBarHeight = 48 - (8 * _scrollProgress);
     final searchBarPadding = 16 - (8 * _scrollProgress);
-    final filterButtonOpacity = (1.0 - _scrollProgress).clamp(0.0, 1.0);
 
     return Column(
       children: [
@@ -66,6 +65,8 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                 child: SizedBox(
                   height: searchBarHeight,
                   child: TextField(
+                    onTapOutside: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
                     decoration: InputDecoration(
                       hintText: AppStrings.search.tr(),
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
@@ -90,36 +91,31 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                   ),
                 ),
               ),
-              if (filterButtonOpacity > 0) ...[
-                gapW8,
-                Opacity(
-                  opacity: filterButtonOpacity,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        showModalBottomSheet(
-                          isScrollControlled: true,
-                          context: context,
-                          builder: (context) => BottomSheetWidget(
-                            title: AppStrings.filters.tr(),
-                            child: FilterWidget(
-                              contentType: FilterContentType.auction,
-                              onApply: () => ref.invalidate(filteredAuctionsProvider),
-                              onClear: () => ref.invalidate(filteredAuctionsProvider),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.tune, color: Colors.grey),
-                    ),
-                  ),
+              gapW8,
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-              ],
+                child: IconButton(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      isScrollControlled: true,
+                      context: context,
+                      builder: (context) => BottomSheetWidget(
+                        title: AppStrings.filters.tr(),
+                        child: FilterWidget(
+                          contentType: FilterContentType.auction,
+                          onApply: () => ref.invalidate(filteredAuctionsProvider),
+                          onClear: () => ref.invalidate(filteredAuctionsProvider),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.tune, color: Colors.grey),
+                ),
+              ),
             ],
           ),
         ),
@@ -154,6 +150,8 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                         builder: (context, constraints) {
                           return SingleChildScrollView(
                             controller: widget.scrollController,
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
                             physics: const AlwaysScrollableScrollPhysics(),
                             child: SizedBox(
                               height: constraints.maxHeight,
@@ -171,6 +169,8 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                         ref.refresh(filteredAuctionsProvider.future),
                     child: GridView.builder(
                       controller: widget.scrollController,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -198,6 +198,8 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                 },
                 loading: () => GridView.builder(
                   controller: widget.scrollController,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   shrinkWrap: true,
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
@@ -220,6 +222,8 @@ class _AllAuctionsScreenState extends ConsumerState<AllAuctionsScreen> {
                     builder: (context, constraints) {
                       return SingleChildScrollView(
                         controller: widget.scrollController,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: SizedBox(
                           height: constraints.maxHeight,

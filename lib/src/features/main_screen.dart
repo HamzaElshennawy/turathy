@@ -35,6 +35,9 @@ import 'package:turathy/src/features/notifications/presentation/notifications_sc
 import 'package:turathy/src/features/orders/presentation/orders_list_screen.dart';
 
 import '../core/helper/support/support_whatsapp.dart';
+import 'main_screen_tab.dart';
+
+export 'main_screen_tab.dart';
 import 'settings/data/app_config_repository.dart';
 import '../core/constants/app_functions/app_functions.dart';
 import '../core/constants/app_strings/app_strings.dart';
@@ -73,14 +76,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
   /// Tracks scrolling on the Home screen to drive AppBar animations.
   late final ScrollController _homeScrollController;
 
-  /// Tracks scrolling on the Auctions screen to show/hide the filter FAB.
+  /// Tracks scrolling on the Auctions screen so the status chips can collapse.
   late final ScrollController _auctionsScrollController;
 
   /// Tracks the vertical offset of the Home scroll view.
   double _scrollOffset = 0.0;
-
-  /// Tracks the vertical offset of the Auctions scroll view.
-  double _auctionsScrollOffset = 0.0;
 
   @override
   void initState() {
@@ -94,7 +94,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _homeScrollController.addListener(_handleScroll);
 
     _auctionsScrollController = ScrollController();
-    _auctionsScrollController.addListener(_handleAuctionsScroll);
 
     AnalyticsService.logScreenView(screenName: _tabScreenNames[initialPage]);
 
@@ -135,24 +134,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
     }
   }
 
-  /// Updates [_auctionsScrollOffset] for the Auctions tab FAB.
-  void _handleAuctionsScroll() {
-    if (!mounted) return;
-    if (_selectedIndex == 1) {
-      if (_auctionsScrollController.hasClients) {
-        setState(() {
-          _auctionsScrollOffset = _auctionsScrollController.offset;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     pageController.removeListener(_handlePageChange);
     _homeScrollController.removeListener(_handleScroll);
     _homeScrollController.dispose();
-    _auctionsScrollController.removeListener(_handleAuctionsScroll);
     _auctionsScrollController.dispose();
     super.dispose();
   }
@@ -243,16 +229,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
           }
         },
         child: Scaffold(
-          floatingActionButton: _selectedIndex == 1 && _auctionsScrollOffset > 50
-              ? FloatingActionButton(
-                  heroTag: 'auctions_filter_fab',
-                  onPressed: () {
-                    // TODO: Trigger filter from AllAuctionsScreen
-                  },
-                  backgroundColor: Theme.of(context).primaryColor,
-                  child: const Icon(Icons.tune, color: Colors.white),
-                )
-              : null,
           appBar: AppBar(
             leadingWidth: _selectedIndex >= 1 ? 80 : 0,
             toolbarHeight: appBarHeight,
@@ -563,9 +539,6 @@ class _ConnectivityErrorDialog extends StatelessWidget {
     );
   }
 }
-
-/// Provider for tracking and persisting the active bottom navigation tab.
-final mainScreenTabIndexProvider = StateProvider<int>((ref) => 0);
 
 /// Stream provider for monitoring system-wide network connectivity changes.
 final connectionProvider = StreamProvider<List<ConnectivityResult>>((ref) {

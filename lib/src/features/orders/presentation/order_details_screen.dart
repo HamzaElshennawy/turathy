@@ -694,7 +694,12 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
 
       if (merged.paymentStatus == 'paid') {
         await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
+          MaterialPageRoute(
+            builder: (_) => PaymentSuccessScreen(
+              orderId: merged.id,
+              total: merged.total,
+            ),
+          ),
         );
         return;
       }

@@ -494,6 +494,13 @@ class AppStrings {
   static const String completeYourOrder = 'completeYourOrder';
   static const String viewReceipt = 'viewReceipt';
   static const String paymentSuccessful = 'paymentSuccessful';
+  static const String paymentReceivedTitle = 'paymentReceivedTitle';
+  static const String paymentThanks = 'paymentThanks';
+  static const String paymentOrderNumber = 'paymentOrderNumber';
+  static const String paymentAmount = 'paymentAmount';
+  static const String paymentNextStep = 'paymentNextStep';
+  static const String viewOrder = 'viewOrder';
+  static const String backToHome = 'backToHome';
   static const String paymentFailed = 'paymentFailed';
   static const String paymentVerificationPending = 'paymentVerificationPending';
   static const String geideaSessionReady = 'geideaSessionReady';
