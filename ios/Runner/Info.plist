@@ -27,6 +27,16 @@
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.deepblue.turathy</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>turathy</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.214584571316-hkfc0qgd3kd5spbici9gh8ji856h7rh5</string>

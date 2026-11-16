@@ -24,6 +24,7 @@ import 'package:turathy/src/core/helper/fcm/fcm_service.dart';
 import 'package:turathy/src/core/helper/fcm/live_room_visibility.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_action_row.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
@@ -1478,9 +1479,46 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                               : null,
                         );
 
+                        final watched = activeProduct?.id != null &&
+                            ref.watch(favoritesControllerProvider).maybeWhen(
+                                  data: (d) => d.watchedLotIds.contains(
+                                    activeProduct!.id,
+                                  ),
+                                  orElse: () => false,
+                                );
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: LotActionRow(
+                                watched: watched,
+                                onWatch: activeProduct?.id == null
+                                    ? null
+                                    : () {
+                                        ref
+                                            .read(
+                                              favoritesControllerProvider
+                                                  .notifier,
+                                            )
+                                            .toggleWatchLot(activeProduct!);
+                                      },
+                                onShare: () {
+                                  final title = activeProduct?.displayName ??
+                                      auction.displayTitle;
+                                  final url = ItemShareHelper.auctionLotUrl(
+                                    auctionId: auction.id ?? widget.auctionId,
+                                    lotNumber: activeProduct?.lotNumber,
+                                    productId: activeProduct?.id,
+                                  );
+                                  showItemShareSheet(
+                                    context: context,
+                                    title: title,
+                                    url: url,
+                                  );
+                                },
+                              ),
+                            ),
                             AuctionMainImageWidget(
                               key: ValueKey(activeProduct?.id),
                               images: imagesToShow,
@@ -1492,41 +1530,6 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                               },
                               statusLabel: badge.label,
                               statusColor: badge.color,
-                              onShare: () {
-                                final title =
-                                    activeProduct?.displayName ??
-                                    auction.displayTitle;
-                                final url = ItemShareHelper.auctionLotUrl(
-                                  auctionId: auction.id ?? widget.auctionId,
-                                  lotNumber: activeProduct?.lotNumber,
-                                  productId: activeProduct?.id,
-                                );
-                                showItemShareSheet(
-                                  context: context,
-                                  title: title,
-                                  url: url,
-                                );
-                              },
-                              onWatch: activeProduct?.id == null
-                                  ? null
-                                  : () {
-                                      ref
-                                          .read(
-                                            favoritesControllerProvider
-                                                .notifier,
-                                          )
-                                          .toggleWatchLot(activeProduct!);
-                                    },
-                              isWatched:
-                                  activeProduct?.id != null &&
-                                  ref
-                                      .watch(favoritesControllerProvider)
-                                      .maybeWhen(
-                                        data: (d) => d.watchedLotIds.contains(
-                                          activeProduct!.id,
-                                        ),
-                                        orElse: () => false,
-                                      ),
                             ),
                             AuctionItemTitleWidget(
                               auction: auction,

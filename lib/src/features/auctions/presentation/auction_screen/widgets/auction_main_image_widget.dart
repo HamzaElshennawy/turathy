@@ -9,9 +9,6 @@ class AuctionMainImageWidget extends StatelessWidget {
   final ValueChanged<int> onPageChanged;
   final String? statusLabel;
   final Color? statusColor;
-  final VoidCallback? onShare;
-  final VoidCallback? onWatch;
-  final bool isWatched;
 
   const AuctionMainImageWidget({
     super.key,
@@ -20,9 +17,6 @@ class AuctionMainImageWidget extends StatelessWidget {
     required this.onPageChanged,
     this.statusLabel,
     this.statusColor,
-    this.onShare,
-    this.onWatch,
-    this.isWatched = false,
   });
 
   @override
@@ -131,62 +125,7 @@ class AuctionMainImageWidget extends StatelessWidget {
                 ),
               ),
             ),
-          if (onShare != null || onWatch != null)
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (onShare != null)
-                    _OverlayIconButton(
-                      key: const Key('lot_share_button'),
-                      icon: Icons.ios_share_rounded,
-                      onPressed: onShare!,
-                    ),
-                  if (onShare != null && onWatch != null)
-                    const SizedBox(width: 8),
-                  if (onWatch != null)
-                    _OverlayIconButton(
-                      key: const Key('lot_watch_button'),
-                      icon: isWatched
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      onPressed: onWatch!,
-                    ),
-                ],
-              ),
-            ),
         ],
-      ),
-    );
-  }
-}
-
-class _OverlayIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  const _OverlayIconButton({
-    super.key,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.55),
-      shape: const CircleBorder(),
-      elevation: 2,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
       ),
     );
   }

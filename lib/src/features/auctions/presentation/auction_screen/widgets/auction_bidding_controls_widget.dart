@@ -83,6 +83,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final VoidCallback? onGoToLiveLot;
   final bool suppressSwipe;
   final bool bidPending;
+  final num? knownHighestBid;
 
   const AuctionBiddingControlsWidget({
     super.key,
@@ -101,6 +102,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.onGoToLiveLot,
     this.suppressSwipe = false,
     this.bidPending = false,
+    this.knownHighestBid,
   });
 
   @override
@@ -286,6 +288,11 @@ class _AuctionBiddingControlsWidgetState
 
     // Determine the latest bid from either real-time update or initial data
     // Filter initial bids by the current product to avoid using bids from previous items
+    final catalogBids = bidsForSelectedLot(
+      productBids: widget.selectedProduct?.bids,
+      auctionBids: widget.auction.auctionBids,
+      productId: currentProductId,
+    );
     final AuctionBid? latestBid = (() {
       // Prefer real-time bid if it matches the current product
       if (lastBid != null &&
@@ -296,14 +303,8 @@ class _AuctionBiddingControlsWidgetState
 
       // Fall back to the highest public bid. Inactive rows are hidden max bids,
       // not the current price (a 5000 ceiling must not turn a 3100 lot into 5200).
-      if (widget.auction.auctionBids != null &&
-          widget.auction.auctionBids!.isNotEmpty) {
-        final productBids = currentProductId != null
-            ? widget.auction.auctionBids!
-                  .where((b) => b.productId == currentProductId)
-                  .toList()
-            : widget.auction.auctionBids!;
-        final publicBids = productBids.where((b) => b.isActive != false).toList();
+      if (catalogBids.isNotEmpty) {
+        final publicBids = catalogBids.where((b) => b.isActive != false).toList();
 
         if (publicBids.isNotEmpty) {
           final sorted = [...publicBids]
@@ -331,6 +332,10 @@ class _AuctionBiddingControlsWidgetState
     if (latestBid != null) {
       currentPrice = latestBid.bid ?? openingPrice;
     }
+    currentPrice = highestVisibleBid(
+      openingPrice: currentPrice,
+      knownHighest: widget.knownHighestBid,
+    );
     // If a rejection informed us of a higher price, use it
     if (rejectedServerPrice != null && rejectedServerPrice > currentPrice) {
       currentPrice = rejectedServerPrice;
@@ -385,11 +390,12 @@ class _AuctionBiddingControlsWidgetState
     // Filter all bids to just the ones for the current product
     // Start with initial bids from the API
     final List<AuctionBid> initialProductBids = currentProductId != null
-        ? (widget.auction.auctionBids
-                  ?.where((bid) => bid.productId == currentProductId)
-                  .toList() ??
-              [])
-        : (widget.auction.auctionBids ?? []);
+        ? catalogBids
+              .where(
+                (bid) => bid.productId == null || bid.productId == currentProductId,
+              )
+              .toList()
+        : catalogBids;
 
     // Merge in accumulated socket bids for the current product
     final socketBids = ref.watch(accumulatedBidsProvider);

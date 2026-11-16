@@ -79,6 +79,34 @@ private struct LotCountdown: View {
   }
 }
 
+private func lotTitle(_ raw: String) -> String {
+  let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+  if trimmed.isEmpty { return "بند" }
+  if trimmed.contains("بند") { return trimmed }
+  return "بند \(trimmed)"
+}
+
+private func bidTitle(_ raw: String) -> String {
+  let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+  if trimmed.isEmpty { return "" }
+  if trimmed.contains("ر.س") || trimmed.contains("ريال") { return trimmed }
+  return "\(trimmed) ر.س"
+}
+
+@available(iOS 16.1, *)
+private struct EnterAuctionButton: View {
+  var body: some View {
+    Text("دخول المزاد")
+      .font(.headline)
+      .frame(maxWidth: .infinity, minHeight: 44)
+      .background(Color.white)
+      .foregroundStyle(turathyBrand)
+      .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      .accessibilityLabel("دخول المزاد")
+      .accessibilityAddTraits(.isButton)
+  }
+}
+
 @available(iOS 16.1, *)
 struct TurathyLiveActivity: Widget {
   var body: some WidgetConfiguration {
@@ -87,8 +115,7 @@ struct TurathyLiveActivity: Widget {
     } dynamicIsland: { context in
       let attributes = context.attributes
       let lotNumber = liveString(attributes, "lotNumber")
-      let status = liveString(attributes, "statusLabel")
-      let price = liveString(attributes, "bidPrice")
+      let price = bidTitle(liveString(attributes, "bidPrice"))
       let endsAt = liveEndsAt(attributes)
 
       return DynamicIsland {
@@ -97,34 +124,33 @@ struct TurathyLiveActivity: Widget {
         }
         DynamicIslandExpandedRegion(.trailing) {
           LotCountdown(endsAt: endsAt)
-            .font(.caption)
+            .font(.headline)
             .foregroundStyle(.white)
         }
-        DynamicIslandExpandedRegion(.center) {
-          VStack(alignment: .leading, spacing: 2) {
-            Text(lotNumber.isEmpty ? "Live" : lotNumber)
+        DynamicIslandExpandedRegion(.bottom) {
+          VStack(alignment: .leading, spacing: 8) {
+            Text(lotTitle(lotNumber))
               .font(.headline)
-              .lineLimit(1)
-            Text(status)
-              .font(.caption2)
               .lineLimit(1)
             if !price.isEmpty {
               Text(price)
-                .font(.caption2)
+                .font(.subheadline)
                 .lineLimit(1)
             }
+            EnterAuctionButton()
           }
         }
       } compactLeading: {
         LotLogo(side: 22)
       } compactTrailing: {
-        Text(lotNumber.isEmpty ? "•" : lotNumber)
+        LotCountdown(endsAt: endsAt)
           .font(.caption)
           .fontWeight(.semibold)
           .lineLimit(1)
       } minimal: {
         LotLogo(side: 18)
       }
+      .widgetURL(URL(string: "turathy://live"))
     }
   }
 }
@@ -135,32 +161,32 @@ private struct TurathyLockScreen: View {
 
   var body: some View {
     let lotNumber = liveString(attributes, "lotNumber")
-    let status = liveString(attributes, "statusLabel")
-    let price = liveString(attributes, "bidPrice")
+    let price = bidTitle(liveString(attributes, "bidPrice"))
     let endsAt = liveEndsAt(attributes)
 
-    HStack(spacing: 12) {
-      LotLogo(side: 44)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(lotNumber.isEmpty ? "Live" : lotNumber)
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 12) {
+        LotLogo(side: 44)
+        Text(lotTitle(lotNumber))
           .font(.headline)
           .lineLimit(1)
-        Text(status)
-          .font(.caption)
-          .lineLimit(1)
-        if !price.isEmpty {
-          Text(price)
-            .font(.caption)
-            .lineLimit(1)
-        }
+        Spacer(minLength: 8)
+        LotCountdown(endsAt: endsAt)
+          .font(.title2)
+          .foregroundStyle(.white)
       }
-      Spacer(minLength: 8)
-      LotCountdown(endsAt: endsAt)
-        .font(.title3)
-        .foregroundStyle(.white)
+      if !price.isEmpty {
+        Text(price)
+          .font(.title3)
+          .fontWeight(.semibold)
+          .lineLimit(1)
+      }
+      EnterAuctionButton()
     }
     .padding(14)
     .foregroundStyle(.white)
+    .environment(\.layoutDirection, .rightToLeft)
     .activityBackgroundTint(turathyBrand)
+    .widgetURL(URL(string: "turathy://live"))
   }
 }

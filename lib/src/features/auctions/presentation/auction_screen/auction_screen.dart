@@ -16,6 +16,7 @@ import 'package:turathy/src/features/auctions/presentation/auction_screen/widget
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_countdown_label.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/utils/auction_details_helper.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_main_image_widget.dart';
+import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/lot_action_row.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_title_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_thumbnails_widget.dart';
 import 'package:turathy/src/features/auctions/presentation/auction_screen/widgets/auction_item_description_widget.dart';
@@ -255,6 +256,15 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
               }
             }
           });
+          AuctionBid? newest;
+          for (final bid in _highestBids.values) {
+            if (newest == null || (bid.bid ?? 0) >= (newest.bid ?? 0)) {
+              newest = bid;
+            }
+          }
+          if (newest != null) {
+            ref.read(currentBidStateProvider.notifier).state = newest;
+          }
         });
 
     // Listen for new bids and track highest bid per product
@@ -294,7 +304,29 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                     user: existing?.user,
                   );
             }
+            final stored = _highestBids[productId];
+            final products = _currentAuction.auctionProducts;
+            if (stored != null && products != null) {
+              for (final lot in products) {
+                if (lot.id != productId) continue;
+                final history = lot.bids ?? <AuctionBid>[];
+                final already = history.any(
+                  (row) =>
+                      (stored.id != null && row.id == stored.id) ||
+                      (row.productId == stored.productId &&
+                          row.userId == stored.userId &&
+                          row.bid == stored.bid),
+                );
+                if (!already) {
+                  lot.bids = [stored, ...history];
+                }
+              }
+            }
           });
+          final shown = _highestBids[productId];
+          if (shown != null) {
+            ref.read(currentBidStateProvider.notifier).state = shown;
+          }
         });
 
     // Listen for auction started / pre-started events → re-check access
@@ -1469,6 +1501,9 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
               return AuctionBiddingControlsWidget(
                 auction: _currentAuction,
                 selectedProduct: product,
+                knownHighestBid: product.id == null
+                    ? null
+                    : _highestBids[product.id]?.bid,
                 showOnlyMaxBid: true,
                 sellerBidBlocked:
                     product.bidBlockedReason == 'SELLER' ||
@@ -1518,40 +1553,56 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                             style: Theme.of(sheetContext).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                          Builder(
-                            builder: (context) {
-                              final config = ref
-                                  .watch(appConfigProvider)
-                                  .valueOrNull;
-                              if (config == null ||
-                                  supportWhatsAppUri(
-                                        config,
-                                        lotNumber: product.lotNumber,
-                                      ) ==
-                                      null) {
-                                return const SizedBox.shrink();
-                              }
-                              return IconButton(
-                                tooltip: AppStrings.whatsApp.tr(),
-                                onPressed: () => openSupportWhatsApp(
-                                  context,
-                                  config,
-                                  lotNumber: product.lotNumber,
-                                ),
-                                icon: Image.asset(
-                                  'assets/icons/whats.png',
-                                  width: 22,
-                                  height: 22,
-                                  semanticLabel: AppStrings.whatsApp.tr(),
-                                ),
-                              );
-                            },
-                          ),
                           IconButton(
+                            tooltip: 'إغلاق',
                             icon: const Icon(Icons.close),
                             onPressed: () => Navigator.pop(sheetContext),
                           ),
                         ],
+                      ),
+                      gapH8,
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: LotActionRow(
+                          watched: product.id != null &&
+                              ref.watch(favoritesControllerProvider).maybeWhen(
+                                    data: (d) =>
+                                        d.watchedLotIds.contains(product.id),
+                                    orElse: () => false,
+                                  ),
+                          onWatch: product.id == null
+                              ? null
+                              : () {
+                                  ref
+                                      .read(
+                                        favoritesControllerProvider.notifier,
+                                      )
+                                      .toggleWatchLot(product);
+                                },
+                          onShare: () {
+                            showItemShareSheet(
+                              context: sheetContext,
+                              title: product.displayName.isNotEmpty
+                                  ? product.displayName
+                                  : _currentAuction.displayTitle,
+                              url: ItemShareHelper.auctionLotUrl(
+                                auctionId: _currentAuction.id ?? 0,
+                                lotNumber: product.lotNumber,
+                                productId: product.id,
+                              ),
+                            );
+                          },
+                          onWhatsApp: () {
+                            final config =
+                                ref.read(appConfigProvider).valueOrNull;
+                            if (config == null) return;
+                            openSupportWhatsApp(
+                              sheetContext,
+                              config,
+                              lotNumber: product.lotNumber,
+                            );
+                          },
+                        ),
                       ),
                       gapH16,
 
@@ -1582,49 +1633,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                                 onPageChanged: onPageChanged,
                                                 statusLabel: badge.label,
                                                 statusColor: badge.color,
-                                                onShare: () {
-                                                  showItemShareSheet(
-                                                    context: context,
-                                                    title: product.displayName.isNotEmpty
-                                                        ? product.displayName
-                                                        : _currentAuction
-                                                            .displayTitle,
-                                                    url: ItemShareHelper
-                                                        .auctionLotUrl(
-                                                      auctionId:
-                                                          _currentAuction.id ??
-                                                              0,
-                                                      lotNumber:
-                                                          product.lotNumber,
-                                                      productId: product.id,
-                                                    ),
-                                                  );
-                                                },
-                                                onWatch: product.id == null
-                                                    ? null
-                                                    : () {
-                                                        ref
-                                                            .read(
-                                                              favoritesControllerProvider
-                                                                  .notifier,
-                                                            )
-                                                            .toggleWatchLot(
-                                                              product,
-                                                            );
-                                                      },
-                                                isWatched: product.id != null &&
-                                                    ref
-                                                        .watch(
-                                                          favoritesControllerProvider,
-                                                        )
-                                                        .maybeWhen(
-                                                          data: (d) => d
-                                                              .watchedLotIds
-                                                              .contains(
-                                                                product.id,
-                                                              ),
-                                                          orElse: () => false,
-                                                        ),
                                               ),
                                               AuctionItemTitleWidget(
                                                 auction: _currentAuction,
@@ -1694,41 +1702,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                           onPageChanged: onPageChanged,
                                           statusLabel: badge.label,
                                           statusColor: badge.color,
-                                          onShare: () {
-                                            showItemShareSheet(
-                                              context: context,
-                                              title: product.displayName.isNotEmpty
-                                                  ? product.displayName
-                                                  : _currentAuction.displayTitle,
-                                              url: ItemShareHelper
-                                                  .auctionLotUrl(
-                                                auctionId:
-                                                    _currentAuction.id ?? 0,
-                                                lotNumber: product.lotNumber,
-                                                productId: product.id,
-                                              ),
-                                            );
-                                          },
-                                          onWatch: product.id == null
-                                              ? null
-                                              : () {
-                                                  ref
-                                                      .read(
-                                                        favoritesControllerProvider
-                                                            .notifier,
-                                                      )
-                                                      .toggleWatchLot(product);
-                                                },
-                                          isWatched: product.id != null &&
-                                              ref
-                                                  .watch(
-                                                    favoritesControllerProvider,
-                                                  )
-                                                  .maybeWhen(
-                                                    data: (d) => d.watchedLotIds
-                                                        .contains(product.id),
-                                                    orElse: () => false,
-                                                  ),
                                         ),
                                         AuctionItemTitleWidget(
                                           auction: _currentAuction,
