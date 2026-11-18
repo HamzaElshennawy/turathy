@@ -61,9 +61,9 @@ Future<void> showItemShareSheet({
                   _ShareAction(
                     key: const Key('share_whatsapp'),
                     label: AppStrings.shareWhatsApp.tr(),
-                    icon: Icons.chat_rounded,
-                    background: const Color(0xFF25D366),
-                    foreground: Colors.white,
+                    asset: 'assets/icons/whats.png',
+                    background: Colors.white,
+                    foreground: const Color(0xFF25D366),
                     onTap: () async {
                       Navigator.pop(ctx);
                       final result = await ItemShareHelper.shareWhatsApp(
@@ -143,7 +143,8 @@ void _toast(BuildContext context, String message) {
 
 class _ShareAction extends StatelessWidget {
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final String? asset;
   final Color background;
   final Color foreground;
   final VoidCallback onTap;
@@ -151,11 +152,12 @@ class _ShareAction extends StatelessWidget {
   const _ShareAction({
     super.key,
     required this.label,
-    required this.icon,
+    this.icon,
+    this.asset,
     required this.background,
     required this.foreground,
     required this.onTap,
-  });
+  }) : assert(icon != null || asset != null);
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +183,16 @@ class _ShareAction extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(icon, color: foreground, size: 26),
+              child: asset != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(
+                        asset!,
+                        fit: BoxFit.contain,
+                        semanticLabel: label,
+                      ),
+                    )
+                  : Icon(icon!, color: foreground, size: 26),
             ),
             const SizedBox(height: 8),
             Text(

@@ -37,7 +37,7 @@ class LotActionRow extends StatelessWidget {
         if (onWhatsApp != null)
           _ActionButton(
             tooltip: AppStrings.whatsApp.tr(),
-            icon: Icons.chat_rounded,
+            asset: 'assets/icons/whats.png',
             onPressed: onWhatsApp!,
           ),
       ],
@@ -48,22 +48,32 @@ class LotActionRow extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.tooltip,
-    required this.icon,
     required this.onPressed,
-  });
+    this.icon,
+    this.asset,
+  }) : assert(icon != null || asset != null);
 
   final String tooltip;
-  final IconData icon;
+  final IconData? icon;
+  final String? asset;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
+    final Widget mark = asset != null
+        ? Image.asset(
+            asset!,
+            width: 22,
+            height: 22,
+            semanticLabel: tooltip,
+          )
+        : Icon(icon!, size: 22);
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
       constraints: const BoxConstraints.tightFor(width: 44, height: 44),
       padding: EdgeInsets.zero,
-      icon: Icon(icon, size: 22),
+      icon: mark,
     );
   }
 }
