@@ -16,6 +16,35 @@ enum LotResultKind {
   unsold,
 }
 
+/// Whether an `auctionItemEnded` event should play sound, notify, and move
+/// the room. A repeated id or a client already sitting on the next lot still
+/// records the sale; it must not run those side effects again.
+class EndedLotApply {
+  const EndedLotApply({required this.sold, required this.runSideEffects});
+
+  final bool sold;
+  final bool runSideEffects;
+}
+
+EndedLotApply endedLotApply({
+  required int? endedProductId,
+  required int? lastEndedProductId,
+  required int? nextItemId,
+  required int? currentProductId,
+  required bool? eventIsSold,
+  required bool hasWinner,
+}) {
+  final duplicate =
+      endedProductId != null && endedProductId == lastEndedProductId;
+  final alreadyOnNext = nextItemId != null &&
+      nextItemId == currentProductId &&
+      endedProductId != currentProductId;
+  return EndedLotApply(
+    sold: lotWasSold(eventIsSold: eventIsSold, hasWinner: hasWinner),
+    runSideEffects: !duplicate && !alreadyOnNext,
+  );
+}
+
 /// Resolves sale from explicit flags. [hasWinner] is a fallback for
 /// `auctionItemEnded` payloads that currently omit [eventIsSold] and only
 /// attach a winner when the lot actually sold.

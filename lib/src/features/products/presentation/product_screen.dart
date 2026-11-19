@@ -151,69 +151,8 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          Builder(
-            builder: (context) {
-              final config = ref.watch(appConfigProvider).valueOrNull;
-              if (config == null ||
-                  supportWhatsAppUri(
-                        config,
-                        lotNumber: widget.product.lotNumber,
-                      ) ==
-                      null) {
-                return const SizedBox.shrink();
-              }
-              return IconButton(
-                tooltip: AppStrings.whatsApp.tr(),
-                onPressed: () => openSupportWhatsApp(
-                  context,
-                  config,
-                  lotNumber: widget.product.lotNumber,
-                ),
-                icon: Image.asset(
-                  'assets/icons/whats.png',
-                  width: 22,
-                  height: 22,
-                  semanticLabel: AppStrings.whatsApp.tr(),
-                ),
-              );
-            },
-          ),
           IconButton(
-            key: const Key('product_share_button'),
-            tooltip: AppStrings.shareItem.tr(),
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: const Icon(
-                Icons.ios_share_rounded,
-                color: Colors.black,
-                size: 20,
-              ),
-            ),
-            onPressed: () {
-              showItemShareSheet(
-                context: context,
-                title: _productTitle,
-                url: ItemShareHelper.productUrl(productId: widget.product.id),
-              );
-            },
-          ),
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: const Icon(
-                Icons.notifications_outlined,
-                color: Colors.black,
-                size: 20,
-              ),
-            ),
+            tooltip: AppStrings.notifications.tr(),
             onPressed: () {
               Navigator.push(
                 context,
@@ -222,6 +161,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
                 ),
               );
             },
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
           ),
         ],
       ),
@@ -236,6 +176,7 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
                 children: [
                   _buildImageCarousel(),
                   if (_images.length > 1) _buildThumbnailStrip(),
+                  _buildGalleryActions(),
                   gapH16,
                   _buildHeaderSection(),
                   gapH24,
@@ -259,6 +200,75 @@ class _ProductScreenState extends ConsumerState<ProductScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _galleryAction({
+    required String tooltip,
+    required VoidCallback onPressed,
+    required Widget icon,
+    Key? key,
+  }) {
+    return IconButton(
+      key: key,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+      padding: EdgeInsets.zero,
+      icon: icon,
+    );
+  }
+
+  Widget _buildGalleryActions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Builder(
+              builder: (context) {
+                final config = ref.watch(appConfigProvider).valueOrNull;
+                if (config == null ||
+                    supportWhatsAppUri(
+                          config,
+                          lotNumber: widget.product.lotNumber,
+                        ) ==
+                        null) {
+                  return const SizedBox.shrink();
+                }
+                return _galleryAction(
+                  tooltip: AppStrings.whatsApp.tr(),
+                  onPressed: () => openSupportWhatsApp(
+                    context,
+                    config,
+                    lotNumber: widget.product.lotNumber,
+                  ),
+                  icon: Image.asset(
+                    'assets/icons/whats.png',
+                    width: 22,
+                    height: 22,
+                    semanticLabel: AppStrings.whatsApp.tr(),
+                  ),
+                );
+              },
+            ),
+            _galleryAction(
+              key: const Key('product_share_button'),
+              tooltip: AppStrings.shareItem.tr(),
+              onPressed: () {
+                showItemShareSheet(
+                  context: context,
+                  title: _productTitle,
+                  url: ItemShareHelper.productUrl(productId: widget.product.id),
+                );
+              },
+              icon: const Icon(Icons.ios_share_rounded, size: 22),
+            ),
+          ],
+        ),
       ),
     );
   }

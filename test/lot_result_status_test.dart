@@ -92,6 +92,33 @@ void main() {
       );
     });
 
+    test('past sold lot is not drawn unsold', () {
+      final kind = visibleLotResult(
+        resolveLotResult(
+          isEnded: true,
+          isLive: false,
+          isSold: true,
+          userParticipated: false,
+        ),
+        thisLotHasEnded: true,
+      );
+      expect(kind, isNot(LotResultKind.unsold));
+      expect(kind, LotResultKind.sold);
+    });
+
+    test('ended lot without a sale flag stays unsold', () {
+      final kind = visibleLotResult(
+        resolveLotResult(
+          isEnded: true,
+          isLive: false,
+          isSold: false,
+          userParticipated: true,
+        ),
+        thisLotHasEnded: true,
+      );
+      expect(kind, LotResultKind.unsold);
+    });
+
     test('sold when sold and user did not bid', () {
       expect(
         resolveLotResult(
@@ -103,6 +130,85 @@ void main() {
           userParticipated: false,
         ),
         LotResultKind.sold,
+      );
+    });
+  });
+
+  group('endedLotApply', () {
+    test('alreadyOnNext still records the sale and skips side effects', () {
+      final apply = endedLotApply(
+        endedProductId: 11,
+        lastEndedProductId: null,
+        nextItemId: 12,
+        currentProductId: 12,
+        eventIsSold: true,
+        hasWinner: true,
+      );
+      expect(apply.sold, isTrue);
+      expect(apply.runSideEffects, isFalse);
+      expect(
+        visibleLotResult(
+          resolveLotResult(
+            isEnded: true,
+            isLive: false,
+            isSold: apply.sold,
+            userParticipated: false,
+          ),
+          thisLotHasEnded: true,
+        ),
+        isNot(LotResultKind.unsold),
+      );
+    });
+
+    test('a repeated endedProductId still records the sale', () {
+      final apply = endedLotApply(
+        endedProductId: 11,
+        lastEndedProductId: 11,
+        nextItemId: 12,
+        currentProductId: 11,
+        eventIsSold: true,
+        hasWinner: false,
+      );
+      expect(apply.sold, isTrue);
+      expect(apply.runSideEffects, isFalse);
+    });
+
+    test('the first end event records the sale and runs side effects', () {
+      final apply = endedLotApply(
+        endedProductId: 11,
+        lastEndedProductId: null,
+        nextItemId: 12,
+        currentProductId: 11,
+        eventIsSold: true,
+        hasWinner: true,
+      );
+      expect(apply.sold, isTrue);
+      expect(apply.runSideEffects, isTrue);
+    });
+
+    test('bids alone do not mean the lot sold', () {
+      final apply = endedLotApply(
+        endedProductId: 11,
+        lastEndedProductId: null,
+        nextItemId: 12,
+        currentProductId: 11,
+        eventIsSold: null,
+        hasWinner: false,
+      );
+      expect(apply.sold, isFalse);
+      expect(
+        visibleLotResult(
+          resolveLotResult(
+            isEnded: true,
+            isLive: false,
+            isSold: apply.sold,
+            currentUserId: 10,
+            winnerUserId: 10,
+            userParticipated: true,
+          ),
+          thisLotHasEnded: true,
+        ),
+        LotResultKind.unsold,
       );
     });
   });

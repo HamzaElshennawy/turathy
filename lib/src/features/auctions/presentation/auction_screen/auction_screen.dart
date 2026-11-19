@@ -1530,6 +1530,49 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
               );
             }
 
+            final lotActions = Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: LotActionRow(
+                  watched: product.id != null &&
+                      ref.watch(favoritesControllerProvider).maybeWhen(
+                            data: (d) => d.watchedLotIds.contains(product.id),
+                            orElse: () => false,
+                          ),
+                  onWatch: product.id == null
+                      ? null
+                      : () {
+                          ref
+                              .read(favoritesControllerProvider.notifier)
+                              .toggleWatchLot(product);
+                        },
+                  onShare: () {
+                    showItemShareSheet(
+                      context: sheetContext,
+                      title: product.displayName.isNotEmpty
+                          ? product.displayName
+                          : _currentAuction.displayTitle,
+                      url: ItemShareHelper.auctionLotUrl(
+                        auctionId: _currentAuction.id ?? 0,
+                        lotNumber: product.lotNumber,
+                        productId: product.id,
+                      ),
+                    );
+                  },
+                  onWhatsApp: () {
+                    final config = ref.read(appConfigProvider).valueOrNull;
+                    if (config == null) return;
+                    openSupportWhatsApp(
+                      sheetContext,
+                      config,
+                      lotNumber: product.lotNumber,
+                    );
+                  },
+                ),
+              ),
+            );
+
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
@@ -1561,50 +1604,6 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                         ],
                       ),
                       gapH8,
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: LotActionRow(
-                          watched: product.id != null &&
-                              ref.watch(favoritesControllerProvider).maybeWhen(
-                                    data: (d) =>
-                                        d.watchedLotIds.contains(product.id),
-                                    orElse: () => false,
-                                  ),
-                          onWatch: product.id == null
-                              ? null
-                              : () {
-                                  ref
-                                      .read(
-                                        favoritesControllerProvider.notifier,
-                                      )
-                                      .toggleWatchLot(product);
-                                },
-                          onShare: () {
-                            showItemShareSheet(
-                              context: sheetContext,
-                              title: product.displayName.isNotEmpty
-                                  ? product.displayName
-                                  : _currentAuction.displayTitle,
-                              url: ItemShareHelper.auctionLotUrl(
-                                auctionId: _currentAuction.id ?? 0,
-                                lotNumber: product.lotNumber,
-                                productId: product.id,
-                              ),
-                            );
-                          },
-                          onWhatsApp: () {
-                            final config =
-                                ref.read(appConfigProvider).valueOrNull;
-                            if (config == null) return;
-                            openSupportWhatsApp(
-                              sheetContext,
-                              config,
-                              lotNumber: product.lotNumber,
-                            );
-                          },
-                        ),
-                      ),
-                      gapH16,
 
                       // ── Body: two-column on tablet, single-column on phone ──
                       Flexible(
@@ -1634,6 +1633,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                                 statusLabel: badge.label,
                                                 statusColor: badge.color,
                                               ),
+                                              lotActions,
                                               AuctionItemTitleWidget(
                                                 auction: _currentAuction,
                                                 activeProduct: product,
@@ -1703,6 +1703,7 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                                           statusLabel: badge.label,
                                           statusColor: badge.color,
                                         ),
+                                        lotActions,
                                         AuctionItemTitleWidget(
                                           auction: _currentAuction,
                                           activeProduct: product,

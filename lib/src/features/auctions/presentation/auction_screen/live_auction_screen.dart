@@ -763,30 +763,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     ref.listen(auctionItemEndedProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event != null) {
-        if (event.endedProductId != null &&
-            event.endedProductId == _lastEndedProductId) {
-          return;
-        }
-        final alreadyOnNext =
-            event.nextItem?.id != null &&
-            event.nextItem!.id == auction.currentProductId &&
-            event.endedProductId != auction.currentProductId;
-        if (alreadyOnNext) {
-          _lastEndedProductId = event.endedProductId;
-          return;
-        }
-        _lastEndedProductId = event.endedProductId;
-        // ── Side effects that must fire immediately (before any rebuild) ───────
-        _cancelFailSafeTimer();
-        //_wasLiveWhenJoined = true;
-
-        // Record sale/winner for the just-ended product. Sale is isSold only —
-        // a winner is attached by the server only when reserve was met.
+        // Record sale before any early return. A duplicate or a client already
+        // on the next lot must still stamp isSold, without sound or navigation.
         final endedProductId = event.endedProductId ?? auction.currentProductId;
-        final sold = lotWasSold(
+        final apply = endedLotApply(
+          endedProductId: event.endedProductId,
+          lastEndedProductId: _lastEndedProductId,
+          nextItemId: event.nextItem?.id,
+          currentProductId: auction.currentProductId,
           eventIsSold: event.isSold,
           hasWinner: event.winner != null,
         );
+        final sold = apply.sold;
 
         if (endedProductId != null) {
           _productSold[endedProductId] = sold;
@@ -803,6 +791,16 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
             }
           }
         }
+
+        if (!apply.runSideEffects) {
+          _lastEndedProductId = event.endedProductId;
+          if (mounted) setState(() {});
+          return;
+        }
+        _lastEndedProductId = event.endedProductId;
+        // ── Side effects that must fire immediately (before any rebuild) ───────
+        _cancelFailSafeTimer();
+        //_wasLiveWhenJoined = true;
 
         final didIParticipate =
             (endedProductId != null &&
@@ -1129,27 +1127,6 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         centerTitle: true,
         leading: const BackButton(),
         actions: [
-          Builder(
-            builder: (context) {
-              final config = ref.watch(appConfigProvider).valueOrNull;
-              final lotNumber = _selectedProduct?.lotNumber;
-              if (config == null ||
-                  supportWhatsAppUri(config, lotNumber: lotNumber) == null) {
-                return const SizedBox.shrink();
-              }
-              return IconButton(
-                tooltip: AppStrings.whatsApp.tr(),
-                onPressed: () =>
-                    openSupportWhatsApp(context, config, lotNumber: lotNumber),
-                icon: Image.asset(
-                  'assets/icons/whats.png',
-                  width: 22,
-                  height: 22,
-                  semanticLabel: AppStrings.whatsApp.tr(),
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.notifications_none),
             onPressed: () {
@@ -1489,6 +1466,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            AuctionMainImageWidget(
+                              key: ValueKey(activeProduct?.id),
+                              images: imagesToShow,
+                              pageController: _mainImagePageController,
+                              onPageChanged: (idx) {
+                                setState(() {
+                                  _currentMainImageIndex = idx;
+                                });
+                              },
+                              statusLabel: badge.label,
+                              statusColor: badge.color,
+                            ),
                             Align(
                               alignment: AlignmentDirectional.centerStart,
                               child: LotActionRow(
@@ -1517,19 +1506,25 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                                     url: url,
                                   );
                                 },
+                                onWhatsApp: () {
+                                  final config =
+                                      ref.read(appConfigProvider).valueOrNull;
+                                  final lotNumber = activeProduct?.lotNumber;
+                                  if (config == null ||
+                                      supportWhatsAppUri(
+                                            config,
+                                            lotNumber: lotNumber,
+                                          ) ==
+                                          null) {
+                                    return;
+                                  }
+                                  openSupportWhatsApp(
+                                    context,
+                                    config,
+                                    lotNumber: lotNumber,
+                                  );
+                                },
                               ),
-                            ),
-                            AuctionMainImageWidget(
-                              key: ValueKey(activeProduct?.id),
-                              images: imagesToShow,
-                              pageController: _mainImagePageController,
-                              onPageChanged: (idx) {
-                                setState(() {
-                                  _currentMainImageIndex = idx;
-                                });
-                              },
-                              statusLabel: badge.label,
-                              statusColor: badge.color,
                             ),
                             AuctionItemTitleWidget(
                               auction: auction,
