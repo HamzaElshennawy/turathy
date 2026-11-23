@@ -24,6 +24,20 @@ num? parseBidAcceptedPrice(Map<String, dynamic> data) {
   return null;
 }
 
+/// Green «أعلى مزايدة» follows the server winner, not an equal amount.
+/// An explicit outbid stays outbid even when both sides show the same price.
+bool sessionUserLeadsLot({
+  required int? sessionUserId,
+  required int? leaderUserId,
+  required bool ackOutbid,
+  required bool amountSaysLeader,
+}) {
+  if (sessionUserId == null) return false;
+  if (ackOutbid) return false;
+  if (leaderUserId != null) return leaderUserId == sessionUserId;
+  return amountSaysLeader;
+}
+
 /// Sender lost the proxy war in the same accepted bid.
 class BidAcceptDecision {
   const BidAcceptDecision({

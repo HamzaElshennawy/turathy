@@ -269,6 +269,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                   .addBid(AuctionBid.fromJson(Map<String, dynamic>.from(raw)));
             }
           }
+          final visible = decision.visibleBid ?? parseBidAcceptedPrice(map);
+          if (visible != null) {
+            final leaderBid = AuctionBid(
+              productId: productId,
+              auctionId: auctionId,
+              userId: decision.leaderUserId,
+              bid: visible,
+              isActive: true,
+            );
+            ref.read(currentBidStateProvider.notifier).state = leaderBid;
+            ref.read(accumulatedBidsProvider.notifier).addBid(leaderBid);
+          }
           if (decision.outbid) {
             AppFunctions.showSnackBar(
               context: context,
@@ -1601,6 +1613,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                   ),
               onGoToLiveLot: _jumpToLiveLot,
               selectedProduct: _selectedProduct,
+              knownHighestBid: _liveCurrentPrice,
               isOwner: auction.userId == CachedVariables.userId,
               winnerId: _winnerId,
               winnerName: _winnerName,

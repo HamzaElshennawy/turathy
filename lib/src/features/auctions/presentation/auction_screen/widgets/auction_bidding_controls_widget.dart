@@ -15,6 +15,7 @@ import 'package:turathy/src/features/orders/domain/order_flow_state.dart';
 import 'package:turathy/src/features/orders/domain/order_model.dart';
 import 'package:turathy/src/features/orders/data/order_repository.dart';
 
+import 'package:turathy/src/core/helper/live_bid_sync.dart';
 import 'package:turathy/src/core/helper/socket/socket_exports.dart';
 import 'package:turathy/src/core/time/server_clock.dart';
 import 'package:turathy/src/core/helper/cache/cached_variables.dart';
@@ -46,6 +47,76 @@ num? activeOwnMaxAmount({
     return maxAmount;
   }
   return null;
+}
+
+/// What to paint after `bidAccepted`. A higher ceiling does not need `newBid`.
+/// An outbid ack hides the server list until this sheet is opened again.
+class OwnMaxAck {
+  const OwnMaxAck({required this.amount, required this.suppressServerMax});
+
+  final num? amount;
+  final bool suppressServerMax;
+}
+
+OwnMaxAck ownMaxAfterAccept({
+  required bool outbid,
+  required num? submittedAmount,
+}) {
+  if (outbid) {
+    return const OwnMaxAck(amount: null, suppressServerMax: true);
+  }
+  final amount =
+      submittedAmount != null && submittedAmount > 0 ? submittedAmount : null;
+  return OwnMaxAck(amount: amount, suppressServerMax: false);
+}
+
+/// Local ceiling wins immediately. The server list is used only when no ack
+/// is pending, and is ignored after an outbid until the sheet reopens.
+num? visibleOwnMaxAmount({
+  required num? acceptedOwnMax,
+  required bool suppressServerMax,
+  required int? sessionUserId,
+  required int? productId,
+  required Iterable<MaxBidModel> bids,
+}) {
+  if (acceptedOwnMax != null) return acceptedOwnMax;
+  if (suppressServerMax) return null;
+  return activeOwnMaxAmount(
+    sessionUserId: sessionUserId,
+    productId: productId,
+    bids: bids,
+  );
+}
+
+/// A timer reset must not wipe a ceiling that was just saved.
+bool shouldClearAcceptedBidState({required bool productChanged}) =>
+    productChanged;
+
+/// The accepted public price replaces a stale on-screen price.
+num visiblePriceAfterAccept({
+  required num visiblePrice,
+  required num? acceptedCurrentPrice,
+}) {
+  if (acceptedCurrentPrice != null && acceptedCurrentPrice > visiblePrice) {
+    return acceptedCurrentPrice;
+  }
+  return visiblePrice;
+}
+
+/// Socket rows omit `is_active`. Those are public bids. Only an explicit
+/// false is a hidden proxy row and stays out of the confrontation count.
+int visibleConfrontationCount(Iterable<AuctionBid> bids) =>
+    bids.where((bid) => bid.isActive != false).length;
+
+/// Rejected bids carry the server price. A higher value replaces the stale one.
+num visiblePriceAfterRejection({
+  required num visiblePrice,
+  required num? rejectedCurrentPrice,
+}) {
+  if (rejectedCurrentPrice != null && rejectedCurrentPrice > visiblePrice) {
+    return rejectedCurrentPrice;
+  }
+  return visiblePrice;
 }
 
 /// Owner of an active cap sees the badge while the visible price has not
@@ -125,6 +196,12 @@ class _AuctionBiddingControlsWidgetState
   int? _memoizedBidStepsProductId;
   DateTime? _effectiveExpiry;
   bool _lotExpired = false;
+  num? _acceptedOwnMax;
+  bool _suppressServerMax = false;
+  num? _rejectedPriceFloor;
+  num? _acceptedVisiblePrice;
+  int? _ackLeaderUserId;
+  bool _ackOutbid = false;
 
   @override
   void initState() {
@@ -136,11 +213,22 @@ class _AuctionBiddingControlsWidgetState
   @override
   void didUpdateWidget(covariant AuctionBiddingControlsWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.auction.expiryDate != widget.auction.expiryDate ||
+    final productChanged =
+        oldWidget.selectedProduct?.id != widget.selectedProduct?.id;
+    final timerChanged =
+        oldWidget.auction.expiryDate != widget.auction.expiryDate ||
         oldWidget.expiryDate != widget.expiryDate ||
         oldWidget.auction.liveStartDate != widget.auction.liveStartDate ||
-        oldWidget.auction.isPreAuction != widget.auction.isPreAuction ||
-        oldWidget.selectedProduct?.id != widget.selectedProduct?.id) {
+        oldWidget.auction.isPreAuction != widget.auction.isPreAuction;
+    if (shouldClearAcceptedBidState(productChanged: productChanged)) {
+      _acceptedOwnMax = null;
+      _suppressServerMax = false;
+      _rejectedPriceFloor = null;
+      _acceptedVisiblePrice = null;
+      _ackLeaderUserId = null;
+      _ackOutbid = false;
+    }
+    if (productChanged || timerChanged) {
       _lotExpired = false;
       _syncExpiryFromWidget();
     }
@@ -242,6 +330,49 @@ class _AuctionBiddingControlsWidgetState
         ref.invalidate(userMaxBidsProvider);
       }
     });
+    ref.listen(bidAcceptedProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event == null) return;
+      final openProductId = widget.selectedProduct?.id;
+      if (openProductId != null &&
+          event.productId != null &&
+          event.productId != openProductId) {
+        return;
+      }
+      final ack = ownMaxAfterAccept(
+        outbid: event.outbid,
+        submittedAmount: event.submittedAmount ?? event.amount,
+      );
+      setState(() {
+        _acceptedOwnMax = ack.amount;
+        _suppressServerMax = ack.suppressServerMax;
+        _ackOutbid = event.outbid;
+        if (event.leaderUserId != null) {
+          _ackLeaderUserId = event.leaderUserId;
+        }
+        final price = event.currentPrice;
+        if (price != null &&
+            price > 0 &&
+            (_acceptedVisiblePrice == null || price > _acceptedVisiblePrice!)) {
+          _acceptedVisiblePrice = price;
+        }
+      });
+      ref.invalidate(userMaxBidsProvider);
+    });
+    ref.listen(bidRejectedProvider, (previous, next) {
+      final event = next.valueOrNull;
+      if (event == null) return;
+      final openProductId = widget.selectedProduct?.id;
+      if (openProductId != null &&
+          event.productId != null &&
+          event.productId != openProductId) {
+        return;
+      }
+      final price = event.currentPrice;
+      if (price == null || price <= 0) return;
+      if (_rejectedPriceFloor != null && price <= _rejectedPriceFloor!) return;
+      setState(() => _rejectedPriceFloor = price);
+    });
     ref.listen(timerExtendedEventProvider, (previous, next) {
       final expiryDateTime = next.valueOrNull?.expiryDate;
       if (expiryDateTime == null) return;
@@ -336,15 +467,24 @@ class _AuctionBiddingControlsWidgetState
       openingPrice: currentPrice,
       knownHighest: widget.knownHighestBid,
     );
-    // If a rejection informed us of a higher price, use it
-    if (rejectedServerPrice != null && rejectedServerPrice > currentPrice) {
-      currentPrice = rejectedServerPrice;
-    }
-    if (widget.selectedProduct == null && widget.auction.isLive == true) {
-      final liveActual = widget.auction.liveCurrentPrice;
-      if (liveActual != null && liveActual > currentPrice && latestBid != null) {
-        currentPrice = liveActual;
-      }
+    // If a rejection informed us of a higher price, use it for the number and ladder.
+    currentPrice = visiblePriceAfterRejection(
+      visiblePrice: currentPrice,
+      rejectedCurrentPrice: rejectedServerPrice,
+    );
+    currentPrice = visiblePriceAfterRejection(
+      visiblePrice: currentPrice,
+      rejectedCurrentPrice: _rejectedPriceFloor,
+    );
+    currentPrice = visiblePriceAfterAccept(
+      visiblePrice: currentPrice,
+      acceptedCurrentPrice: _acceptedVisiblePrice,
+    );
+    if (widget.auction.isLive == true) {
+      currentPrice = visiblePriceAfterAccept(
+        visiblePrice: currentPrice,
+        acceptedCurrentPrice: widget.auction.liveCurrentPrice,
+      );
     }
 
     if (auctionProduct != null && widget.selectedProduct == null) {
@@ -417,26 +557,38 @@ class _AuctionBiddingControlsWidgetState
       ),
     ];
 
-    // Find the highest user bid vs the highest active bid
+    // Find the highest user bid vs the highest public bid.
+    // A missing isActive flag is a public socket row, not a hidden proxy.
     final AuctionBid? highestBidAny = currentProductBids.isNotEmpty
         ? (List.of(
             currentProductBids,
           )..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0))).first
         : null;
 
-    final AuctionBid? highestActiveBid =
-        currentProductBids.where((b) => b.isActive == true).isNotEmpty
-        ? (List.of(
-            currentProductBids.where((b) => b.isActive == true),
-          )..sort((a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0))).first
+    final publicBids = currentProductBids
+        .where((bid) => bid.isActive != false)
+        .toList();
+    final AuctionBid? highestActiveBid = publicBids.isNotEmpty
+        ? (List.of(publicBids)
+              ..sort((a, b) {
+                final byAmount = (b.bid ?? 0).compareTo(a.bid ?? 0);
+                if (byAmount != 0) return byAmount;
+                return (b.id ?? 0).compareTo(a.id ?? 0);
+              }))
+            .first
         : highestBidAny;
 
-    // Determine the user's status
-    final bool isHighestActiveBidder =
+    final bool amountSaysLeader =
         highestActiveBid?.userId == CachedVariables.userId;
+    final bool isHighestActiveBidder = sessionUserLeadsLot(
+      sessionUserId: CachedVariables.userId,
+      leaderUserId: _ackLeaderUserId,
+      ackOutbid: _ackOutbid,
+      amountSaysLeader: amountSaysLeader,
+    );
 
     // Check if the user has the absolute highest bid, but it's not active yet (proxy bid)
-    final bool isHighestBidderInactive =
+    final bool isHighestBidderInactive = !_ackOutbid &&
         highestBidAny?.userId == CachedVariables.userId &&
         !isHighestActiveBidder;
 
@@ -446,10 +598,10 @@ class _AuctionBiddingControlsWidgetState
     );
 
     // A user is outbid if they participated but are not the highest bidder (active or inactive)
-    final bool hasBeenOutbid =
-        hasParticipated && !isHighestActiveBidder && !isHighestBidderInactive;
+    final bool hasBeenOutbid = _ackOutbid ||
+        (hasParticipated && !isHighestActiveBidder && !isHighestBidderInactive);
 
-    final int bidNumber = currentProductBids.length;
+    final int bidNumber = visibleConfrontationCount(currentProductBids);
 
     final num stepsBase = maxBidFloor(
       highestActiveBid: highestActiveBid?.bid,
@@ -1115,19 +1267,15 @@ class _AuctionBiddingControlsWidgetState
   /// Draft copy until the client confirms the final sentence.
   Widget _buildAutoBidBadge(num currentPrice) {
     final bids = ref.watch(userMaxBidsProvider).valueOrNull ?? const [];
-    final maxAmount = activeOwnMaxAmount(
+    final lotId = widget.selectedProduct?.id ?? widget.auction.currentProductId;
+    final maxAmount = visibleOwnMaxAmount(
+      acceptedOwnMax: _acceptedOwnMax,
+      suppressServerMax: _suppressServerMax,
       sessionUserId: CachedVariables.userId,
-      productId: widget.selectedProduct?.id,
+      productId: lotId,
       bids: bids,
     );
-    if (maxAmount == null ||
-        !shouldShowAutoBidBadge(
-          sellerBlocked: _sellerCannotBid,
-          sessionUserId: CachedVariables.userId,
-          productId: widget.selectedProduct?.id,
-          visiblePrice: currentPrice,
-          bids: bids,
-        )) {
+    if (maxAmount == null || _sellerCannotBid || currentPrice > maxAmount) {
       return const SizedBox.shrink();
     }
     return Padding(

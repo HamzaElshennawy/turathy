@@ -221,6 +221,13 @@ class AccumulatedBidsNotifier extends StateNotifier<List<AuctionBid>> {
   /// Appends a single new bid to the history, performing a de-duplication check.
   void addBid(AuctionBid bid) {
     if (bid.id != null && state.any((b) => b.id == bid.id)) return;
+    final sameVisibleRow = state.any(
+      (existing) =>
+          existing.productId == bid.productId &&
+          existing.userId == bid.userId &&
+          existing.bid == bid.bid,
+    );
+    if (sameVisibleRow) return;
     state = [bid, ...state];
   }
 }

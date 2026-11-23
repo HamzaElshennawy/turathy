@@ -91,6 +91,30 @@ void main() {
       expect(decision.leaderUserId, 326);
     });
 
+    test('an equal visible price of 50 is not a win when someone else leads', () {
+      final decision = decideBidAccept(
+        {
+          'outbid': true,
+          'submittedAmount': 50,
+          'visibleBid': 50,
+          'currentPrice': 50,
+          'newBid': {'user_id': 80, 'bid': 50},
+        },
+        sessionUserId: 7,
+      );
+      expect(decision.visibleBid, 50);
+      expect(decision.leaderUserId, 80);
+      expect(
+        sessionUserLeadsLot(
+          sessionUserId: 7,
+          leaderUserId: decision.leaderUserId,
+          ackOutbid: decision.outbid,
+          amountSaysLeader: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('the same user leading is not an outbid', () {
       final decision = decideBidAccept(
         {

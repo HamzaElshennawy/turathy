@@ -731,9 +731,9 @@ class BidRejectedEvent {
   factory BidRejectedEvent.fromJson(Map<String, dynamic> json) {
     return BidRejectedEvent(
       message: (json['message'] as String?) ?? '',
-      currentPrice: json['currentPrice'] as num?,
-      minimumBid: json['minimumBid'] as num?,
-      productId: json['productId'] as int?,
+      currentPrice: _socketNum(json['currentPrice']),
+      minimumBid: _socketNum(json['minimumBid']),
+      productId: _socketInt(json['productId']),
     );
   }
 
@@ -763,30 +763,74 @@ class BidAcceptedEvent {
   /// The product ID the bid was placed on.
   final int? productId;
 
-  /// The accepted bid amount.
+  /// The accepted bid amount. The server sends [submittedAmount], not `amount`.
   final num? amount;
 
+  /// Ceiling the bidder just saved. Present even when the public price stays put.
+  final num? submittedAmount;
+
+  /// Public price after the accept. Unchanged when only the ceiling was raised.
+  final num? currentPrice;
+
+  /// True when this bidder lost the proxy war and their ceiling was deactivated.
+  final bool outbid;
+
+  /// Winner of the public row after any automatic reply. Not the amount.
+  final int? leaderUserId;
+
   /// Default constructor for bid acceptance ACKs.
-  const BidAcceptedEvent({this.auctionId, this.productId, this.amount});
+  const BidAcceptedEvent({
+    this.auctionId,
+    this.productId,
+    this.amount,
+    this.submittedAmount,
+    this.currentPrice,
+    this.outbid = false,
+    this.leaderUserId,
+  });
 
   /// Parses the ACK payload defensively — the server may send minimal data.
   factory BidAcceptedEvent.fromJson(Map<String, dynamic> json) {
-    int? asInt(dynamic v) {
-      if (v is int) return v;
-      if (v != null) return int.tryParse(v.toString());
-      return null;
-    }
-
+    final submitted = _socketNum(
+      json['submittedAmount'] ?? json['submitted_amount'] ?? json['amount'],
+    );
+    final nested = json['newBid'];
+    final leader = nested is Map
+        ? _socketInt(
+            nested['user_id'] ??
+                nested['userId'] ??
+                (nested['user'] is Map ? nested['user']['id'] : null),
+          )
+        : null;
     return BidAcceptedEvent(
-      auctionId: asInt(json['auctionId'] ?? json['auction_id']),
-      productId: asInt(json['productId'] ?? json['product_id']),
-      amount: json['amount'] as num? ?? num.tryParse('${json['amount']}'),
+      auctionId: _socketInt(json['auctionId'] ?? json['auction_id']),
+      productId: _socketInt(json['productId'] ?? json['product_id']),
+      amount: submitted,
+      submittedAmount: submitted,
+      currentPrice: _socketNum(
+        json['currentPrice'] ?? json['visibleBid'] ?? json['current_price'],
+      ),
+      outbid: json['outbid'] == true || json['outbid'] == 1,
+      leaderUserId: leader,
     );
   }
 
   @override
   String toString() =>
-      'BidAcceptedEvent(auctionId: $auctionId, productId: $productId, amount: $amount)';
+      'BidAcceptedEvent(auctionId: $auctionId, productId: $productId, submittedAmount: $submittedAmount, outbid: $outbid)';
+}
+
+int? _socketInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value == null) return null;
+  return int.tryParse(value.toString());
+}
+
+num? _socketNum(dynamic value) {
+  if (value is num) return value;
+  if (value == null) return null;
+  return num.tryParse(value.toString());
 }
 
 /// Payload for the authoritative 'auctionStateUpdate' broadcast.
