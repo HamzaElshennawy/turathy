@@ -202,6 +202,7 @@ class _AuctionBiddingControlsWidgetState
   num? _acceptedVisiblePrice;
   int? _ackLeaderUserId;
   bool _ackOutbid = false;
+  LiveLotPaint? _lotPaint;
 
   @override
   void initState() {
@@ -227,11 +228,23 @@ class _AuctionBiddingControlsWidgetState
       _acceptedVisiblePrice = null;
       _ackLeaderUserId = null;
       _ackOutbid = false;
+      _lotPaint = null;
     }
     if (productChanged || timerChanged) {
       _lotExpired = false;
       _syncExpiryFromWidget();
     }
+  }
+
+  void _commitPaint(LiveLotPaintResult result) {
+    _lotPaint = result.paint;
+    _acceptedOwnMax = result.paint.ownMax;
+    _suppressServerMax = result.paint.suppressOwnMax;
+    _acceptedVisiblePrice = result.paint.price;
+    _ackLeaderUserId = result.paint.leaderUserId;
+    _ackOutbid = result.paint.leaderUserId != null &&
+        result.paint.userParticipated &&
+        result.paint.leaderUserId != CachedVariables.userId;
   }
 
   void _syncExpiryFromWidget() {
@@ -319,44 +332,73 @@ class _AuctionBiddingControlsWidgetState
 
     ref.listen(newBidEventProvider, (previous, next) {
       final event = next.valueOrNull;
-      if (event?.expiryDate != null) {
-        setState(() {
-          _effectiveExpiry = event!.expiryDate;
-          _lotExpired = _computeLotExpired();
-        });
+      if (event == null) return;
+      final openProductId =
+          widget.selectedProduct?.id ?? widget.auction.currentProductId;
+      if (event.eventProductId != null &&
+          openProductId != null &&
+          event.eventProductId != openProductId) {
+        return;
       }
-      final openProductId = widget.selectedProduct?.id;
-      if (openProductId != null && event?.eventProductId == openProductId) {
+      final rows = event.auctionBids.isNotEmpty
+          ? event.auctionBids
+          : <AuctionBid>[if (event.newBid != null) event.newBid!];
+      final result = applyLiveLotPaint(
+        current: _lotPaint,
+        incoming: LiveLotPaintInput(
+          fromAccepted: false,
+          productId: event.eventProductId,
+          bidId: event.newBid?.id,
+          leaderUserId: event.newBid?.userId,
+          price: event.currentPrice ?? event.newBid?.bid,
+          confrontation: visibleConfrontationCount(rows),
+          sessionUserId: CachedVariables.userId,
+          participantIds: [
+            for (final bid in rows)
+              if (bid.userId != null) bid.userId!,
+          ],
+        ),
+      );
+      setState(() {
+        if (event.expiryDate != null) {
+          _effectiveExpiry = event.expiryDate;
+          _lotExpired = _computeLotExpired();
+        }
+        _commitPaint(result);
+      });
+      if (openProductId != null && event.eventProductId == openProductId) {
         ref.invalidate(userMaxBidsProvider);
       }
     });
     ref.listen(bidAcceptedProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event == null) return;
-      final openProductId = widget.selectedProduct?.id;
+      final openProductId =
+          widget.selectedProduct?.id ?? widget.auction.currentProductId;
       if (openProductId != null &&
           event.productId != null &&
           event.productId != openProductId) {
         return;
       }
-      final ack = ownMaxAfterAccept(
-        outbid: event.outbid,
-        submittedAmount: event.submittedAmount ?? event.amount,
+      final result = applyLiveLotPaint(
+        current: _lotPaint,
+        incoming: LiveLotPaintInput(
+          fromAccepted: true,
+          productId: event.productId,
+          bidId: event.leaderBidId,
+          leaderUserId: event.leaderUserId,
+          price: event.currentPrice,
+          confrontation: visibleConfrontationCount(event.auctionBids),
+          explicitOutbid: event.outbid,
+          submittedAmount: event.submittedAmount ?? event.amount,
+          sessionUserId: CachedVariables.userId,
+          participantIds: [
+            for (final bid in event.auctionBids)
+              if (bid.userId != null) bid.userId!,
+          ],
+        ),
       );
-      setState(() {
-        _acceptedOwnMax = ack.amount;
-        _suppressServerMax = ack.suppressServerMax;
-        _ackOutbid = event.outbid;
-        if (event.leaderUserId != null) {
-          _ackLeaderUserId = event.leaderUserId;
-        }
-        final price = event.currentPrice;
-        if (price != null &&
-            price > 0 &&
-            (_acceptedVisiblePrice == null || price > _acceptedVisiblePrice!)) {
-          _acceptedVisiblePrice = price;
-        }
-      });
+      setState(() => _commitPaint(result));
       ref.invalidate(userMaxBidsProvider);
     });
     ref.listen(bidRejectedProvider, (previous, next) {
@@ -601,7 +643,9 @@ class _AuctionBiddingControlsWidgetState
     final bool hasBeenOutbid = _ackOutbid ||
         (hasParticipated && !isHighestActiveBidder && !isHighestBidderInactive);
 
-    final int bidNumber = visibleConfrontationCount(currentProductBids);
+    final int bidNumber = _lotPaint != null && _lotPaint!.confrontation > 0
+        ? _lotPaint!.confrontation
+        : visibleConfrontationCount(currentProductBids);
 
     final num stepsBase = maxBidFloor(
       highestActiveBid: highestActiveBid?.bid,

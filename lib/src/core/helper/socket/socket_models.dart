@@ -778,6 +778,12 @@ class BidAcceptedEvent {
   /// Winner of the public row after any automatic reply. Not the amount.
   final int? leaderUserId;
 
+  /// `newBid.id`. Older than the last painted id means this ACK is late.
+  final int? leaderBidId;
+
+  /// Public rows included with the ACK, used for the confrontation count.
+  final List<AuctionBid> auctionBids;
+
   /// Default constructor for bid acceptance ACKs.
   const BidAcceptedEvent({
     this.auctionId,
@@ -787,6 +793,8 @@ class BidAcceptedEvent {
     this.currentPrice,
     this.outbid = false,
     this.leaderUserId,
+    this.leaderBidId,
+    this.auctionBids = const [],
   });
 
   /// Parses the ACK payload defensively — the server may send minimal data.
@@ -812,6 +820,8 @@ class BidAcceptedEvent {
       ),
       outbid: json['outbid'] == true || json['outbid'] == 1,
       leaderUserId: leader,
+      leaderBidId: nested is Map ? _socketInt(nested['id']) : null,
+      auctionBids: _socketBids(json['auctionBids']),
     );
   }
 
@@ -831,6 +841,14 @@ num? _socketNum(dynamic value) {
   if (value is num) return value;
   if (value == null) return null;
   return num.tryParse(value.toString());
+}
+
+List<AuctionBid> _socketBids(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw
+      .whereType<Map>()
+      .map((row) => AuctionBid.fromJson(Map<String, dynamic>.from(row)))
+      .toList();
 }
 
 /// Payload for the authoritative 'auctionStateUpdate' broadcast.

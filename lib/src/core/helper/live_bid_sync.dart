@@ -24,6 +24,197 @@ num? parseBidAcceptedPrice(Map<String, dynamic> data) {
   return null;
 }
 
+/// One painted lot: price, confrontation count, winner, and the caller's ceiling.
+/// Both `bidAccepted` and `newBid` write this. A later event replaces it.
+class LiveLotPaint {
+  const LiveLotPaint({
+    this.productId,
+    this.price,
+    this.confrontation = 0,
+    this.leaderUserId,
+    this.bidId,
+    this.ownMax,
+    this.suppressOwnMax = false,
+    this.userParticipated = false,
+  });
+
+  final int? productId;
+  final num? price;
+  final int confrontation;
+  final int? leaderUserId;
+  final int? bidId;
+  final num? ownMax;
+  final bool suppressOwnMax;
+  final bool userParticipated;
+}
+
+/// What one socket event wants to paint. [bidId] is `newBid.id`.
+class LiveLotPaintInput {
+  const LiveLotPaintInput({
+    required this.fromAccepted,
+    this.productId,
+    this.bidId,
+    this.leaderUserId,
+    this.price,
+    this.confrontation = 0,
+    this.explicitOutbid = false,
+    this.submittedAmount,
+    this.sessionUserId,
+    this.participantIds = const [],
+  });
+
+  final bool fromAccepted;
+  final int? productId;
+  final int? bidId;
+  final int? leaderUserId;
+  final num? price;
+  final int confrontation;
+  final bool explicitOutbid;
+  final num? submittedAmount;
+  final int? sessionUserId;
+  final List<int> participantIds;
+}
+
+enum LiveLotPaintEffect { ignored, ceilingOnly, painted }
+
+class LiveLotPaintResult {
+  const LiveLotPaintResult({required this.paint, required this.effect});
+
+  final LiveLotPaint paint;
+  final LiveLotPaintEffect effect;
+}
+
+class _CeilingPaint {
+  const _CeilingPaint({required this.ownMax, required this.suppress});
+
+  final num? ownMax;
+  final bool suppress;
+}
+
+/// A winning `bidAccepted` restores the green line. Any other leader hides it,
+/// including a tie where the visible price equals the saved ceiling.
+_CeilingPaint _resolveCeiling({
+  required num? ownMax,
+  required bool suppress,
+  required num? price,
+  required int? leaderUserId,
+  required LiveLotPaintInput incoming,
+}) {
+  var nextMax = ownMax;
+  var nextSuppress = suppress;
+  final sessionUserId = incoming.sessionUserId;
+  final userWon = incoming.fromAccepted &&
+      !incoming.explicitOutbid &&
+      (incoming.leaderUserId == null ||
+          sessionUserId == null ||
+          incoming.leaderUserId == sessionUserId);
+  if (userWon &&
+      incoming.submittedAmount != null &&
+      incoming.submittedAmount! > 0) {
+    nextMax = incoming.submittedAmount;
+    nextSuppress = false;
+  }
+  final otherLeads = leaderUserId != null &&
+      sessionUserId != null &&
+      leaderUserId != sessionUserId;
+  if (otherLeads || incoming.explicitOutbid) {
+    return const _CeilingPaint(ownMax: null, suppress: true);
+  }
+  if (price != null && nextMax != null && price > nextMax) {
+    return const _CeilingPaint(ownMax: null, suppress: true);
+  }
+  return _CeilingPaint(ownMax: nextMax, suppress: nextSuppress);
+}
+
+LiveLotPaint _ceilingOnly(LiveLotPaint current, LiveLotPaintInput incoming) {
+  final ceiling = _resolveCeiling(
+    ownMax: current.ownMax,
+    suppress: current.suppressOwnMax,
+    price: current.price,
+    leaderUserId: current.leaderUserId,
+    incoming: incoming,
+  );
+  return LiveLotPaint(
+    productId: current.productId,
+    price: current.price,
+    confrontation: current.confrontation,
+    leaderUserId: current.leaderUserId,
+    bidId: current.bidId,
+    ownMax: ceiling.ownMax,
+    suppressOwnMax: ceiling.suppress,
+    userParticipated: current.userParticipated || incoming.fromAccepted,
+  );
+}
+
+/// Applies one live event. An older [LiveLotPaintInput.bidId] is ignored.
+/// The same id may refresh the ceiling and must not move the winner.
+/// Without an id, the event applies only when the confrontation count grows.
+LiveLotPaintResult applyLiveLotPaint({
+  required LiveLotPaint? current,
+  required LiveLotPaintInput incoming,
+}) {
+  final baseline = current ?? const LiveLotPaint();
+  if (incoming.productId != null &&
+      baseline.productId != null &&
+      incoming.productId != baseline.productId) {
+    return LiveLotPaintResult(
+      paint: baseline,
+      effect: LiveLotPaintEffect.ignored,
+    );
+  }
+  final incomingId = incoming.bidId;
+  final appliedId = baseline.bidId;
+  if (incomingId != null && appliedId != null && incomingId < appliedId) {
+    return LiveLotPaintResult(
+      paint: baseline,
+      effect: LiveLotPaintEffect.ignored,
+    );
+  }
+  if (incomingId != null && appliedId != null && incomingId == appliedId) {
+    return LiveLotPaintResult(
+      paint: _ceilingOnly(baseline, incoming),
+      effect: LiveLotPaintEffect.ceilingOnly,
+    );
+  }
+  if (incomingId == null && incoming.confrontation <= baseline.confrontation) {
+    return LiveLotPaintResult(
+      paint: baseline,
+      effect: LiveLotPaintEffect.ignored,
+    );
+  }
+
+  final sessionUserId = incoming.sessionUserId;
+  final participated = baseline.userParticipated ||
+      incoming.fromAccepted ||
+      (sessionUserId != null &&
+          (incoming.leaderUserId == sessionUserId ||
+              incoming.participantIds.contains(sessionUserId)));
+  final price = incoming.price ?? baseline.price;
+  final leaderUserId = incoming.leaderUserId ?? baseline.leaderUserId;
+  final ceiling = _resolveCeiling(
+    ownMax: baseline.ownMax,
+    suppress: baseline.suppressOwnMax,
+    price: price,
+    leaderUserId: leaderUserId,
+    incoming: incoming,
+  );
+  return LiveLotPaintResult(
+    paint: LiveLotPaint(
+      productId: incoming.productId ?? baseline.productId,
+      price: price,
+      confrontation: incoming.confrontation > 0
+          ? incoming.confrontation
+          : baseline.confrontation,
+      leaderUserId: leaderUserId,
+      bidId: incomingId ?? appliedId,
+      ownMax: ceiling.ownMax,
+      suppressOwnMax: ceiling.suppress,
+      userParticipated: participated,
+    ),
+    effect: LiveLotPaintEffect.painted,
+  );
+}
+
 /// Green «أعلى مزايدة» follows the server winner, not an equal amount.
 /// An explicit outbid stays outbid even when both sides show the same price.
 bool sessionUserLeadsLot({

@@ -135,6 +135,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   final List<PendingClientBid> _pendingBids = [];
   int? _lastEndedProductId;
   int? _heldForProductId;
+  LiveLotPaint? _lotPaint;
   Timer? _bidAckTimer;
 
   @override
@@ -252,34 +253,65 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           }
           if (matched == null) return;
           _pendingBids.remove(matched);
+          final openProductId = auction.currentProductId;
+          if (openProductId != null && productId != openProductId) return;
           final decision = decideBidAccept(
             map,
             sessionUserId: CachedVariables.userId,
           );
-          _applyRoomBidUpdate(
-            currentPrice: decision.visibleBid ?? parseBidAcceptedPrice(map),
-            expiryDate: parseSocketDate(map['expiryDate']),
-            eventProductId: productId,
-          );
+          final nested = map['newBid'];
+          final bidId = nested is Map ? parsePositiveInt(nested['id']) : null;
+          final parsedRows = <AuctionBid>[];
           final rawBids = map['auctionBids'];
           if (rawBids is List) {
             for (final raw in rawBids.whereType<Map>()) {
-              ref
-                  .read(accumulatedBidsProvider.notifier)
-                  .addBid(AuctionBid.fromJson(Map<String, dynamic>.from(raw)));
+              parsedRows.add(
+                AuctionBid.fromJson(Map<String, dynamic>.from(raw)),
+              );
             }
           }
           final visible = decision.visibleBid ?? parseBidAcceptedPrice(map);
-          if (visible != null) {
-            final leaderBid = AuctionBid(
+          final result = applyLiveLotPaint(
+            current: _lotPaint,
+            incoming: LiveLotPaintInput(
+              fromAccepted: true,
               productId: productId,
-              auctionId: auctionId,
-              userId: decision.leaderUserId,
-              bid: visible,
-              isActive: true,
+              bidId: bidId,
+              leaderUserId: decision.leaderUserId,
+              price: visible,
+              confrontation: visibleConfrontationCount(parsedRows),
+              explicitOutbid: decision.outbid,
+              submittedAmount: decision.submittedAmount,
+              sessionUserId: CachedVariables.userId,
+              participantIds: [
+                for (final bid in parsedRows)
+                  if (bid.userId != null) bid.userId!,
+              ],
+            ),
+          );
+          _lotPaint = result.paint;
+          if (result.effect == LiveLotPaintEffect.ignored) return;
+          if (result.effect == LiveLotPaintEffect.painted) {
+            _applyRoomBidUpdate(
+              currentPrice: visible,
+              expiryDate: parseSocketDate(map['expiryDate']),
+              eventProductId: productId,
             );
-            ref.read(currentBidStateProvider.notifier).state = leaderBid;
-            ref.read(accumulatedBidsProvider.notifier).addBid(leaderBid);
+            for (final bid in parsedRows) {
+              ref.read(accumulatedBidsProvider.notifier).addBid(bid);
+            }
+            if (visible != null) {
+              final leaderBid = AuctionBid(
+                productId: productId,
+                auctionId: auctionId,
+                userId: decision.leaderUserId,
+                bid: visible,
+                isActive: true,
+                id: bidId,
+              );
+              ref.read(currentBidStateProvider.notifier).state = leaderBid;
+              ref.read(accumulatedBidsProvider.notifier).addBid(leaderBid);
+            }
           }
           if (decision.outbid) {
             AppFunctions.showSnackBar(
@@ -465,6 +497,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         }
         _liveCurrentPrice = null;
         _liveExpiryDate = null;
+        _lotPaint = null;
         _currentMainImageIndex = 0;
       });
       if (_mainImagePageController.hasClients) {
@@ -1010,21 +1043,41 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
     ref.listen(newBidEventProvider, (previous, next) {
       final event = next.valueOrNull;
       if (event != null) {
+        final incomingBid = event.newBid;
+        final bidProductId = event.eventProductId ?? incomingBid?.productId;
         if (shouldIgnoreLiveBid(
-          eventProductId: event.eventProductId,
+          eventProductId: bidProductId,
           currentProductId: auction.currentProductId,
         )) {
           return;
         }
-
-        final incomingBid = event.newBid;
+        final rows = event.auctionBids.isNotEmpty
+            ? event.auctionBids
+            : <AuctionBid>[?incomingBid];
+        final paint = applyLiveLotPaint(
+          current: _lotPaint,
+          incoming: LiveLotPaintInput(
+            fromAccepted: false,
+            productId: bidProductId,
+            bidId: incomingBid?.id,
+            leaderUserId: incomingBid?.userId,
+            price: event.currentPrice ?? incomingBid?.bid,
+            confrontation: visibleConfrontationCount(rows),
+            sessionUserId: CachedVariables.userId,
+            participantIds: [
+              for (final bid in rows)
+                if (bid.userId != null) bid.userId!,
+            ],
+          ),
+        );
+        _lotPaint = paint.paint;
+        if (paint.effect == LiveLotPaintEffect.ignored) return;
         if (incomingBid != null &&
             incomingBid.userId != CachedVariables.userId) {
           _safePlay('sounds/higher_bid_notification.wav');
           HapticFeedback.lightImpact();
         }
 
-        final bidProductId = event.eventProductId ?? incomingBid?.productId;
         if (bidProductId != null && auction.auctionProducts != null) {
           final matchingProduct = auction.auctionProducts!.firstWhere(
             (p) => p.id == bidProductId,
@@ -1067,6 +1120,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         auction.currentProductId != _heldForProductId) {
       _liveCurrentPrice = null;
       _liveExpiryDate = null;
+      _lotPaint = null;
     }
     _heldForProductId = auction.currentProductId;
     applyHeldLiveFields(
