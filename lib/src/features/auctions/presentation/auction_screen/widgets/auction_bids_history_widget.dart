@@ -57,19 +57,9 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
       return true;
     }).toList();
 
-    int stamp(AuctionBid bid) {
-      final raw = bid.createdAt;
-      if (raw == null || raw.isEmpty) return 0;
-      return DateTime.tryParse(raw)?.millisecondsSinceEpoch ?? 0;
-    }
+    final visibleBids = visibleBidHistory(allBids);
 
-    allBids.sort((a, b) {
-      final byTime = stamp(b).compareTo(stamp(a));
-      if (byTime != 0) return byTime;
-      return (b.bid ?? 0).compareTo(a.bid ?? 0);
-    });
-
-    if (allBids.isEmpty) {
+    if (visibleBids.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(16.0),
         child: Center(
@@ -105,12 +95,12 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: allBids.length > 3
+            itemCount: visibleBids.length > 3
                 ? 3
-                : allBids.length, // Show last 3 bids
+                : visibleBids.length, // Show last 3 bids
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final bid = allBids[index];
+              final bid = visibleBids[index];
               final isMyBid =
                   currentUserId != null && bid.userId == currentUserId;
 
@@ -120,7 +110,7 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
               if (isMyBid &&
                   bid.isActive == true &&
                   isCurrentUserOverallHighest) {
-                final hasHigherActiveBid = allBids.any(
+                final hasHigherActiveBid = visibleBids.any(
                   (b) =>
                       b.userId == currentUserId &&
                       b.isActive == true &&
@@ -249,4 +239,40 @@ class AuctionBidsHistoryWidget extends ConsumerWidget {
       return '';
     }
   }
+}
+
+/// Public rows that share an amount collapse to the newest one.
+/// The viewer's own hidden ceiling stays only when it differs from the public price.
+List<AuctionBid> visibleBidHistory(List<AuctionBid> bids) {
+  int stamp(AuctionBid bid) {
+    final raw = bid.createdAt;
+    if (raw == null || raw.isEmpty) return 0;
+    return DateTime.tryParse(raw)?.millisecondsSinceEpoch ?? 0;
+  }
+
+  int newestFirst(AuctionBid left, AuctionBid right) {
+    final byTime = stamp(right).compareTo(stamp(left));
+    if (byTime != 0) return byTime;
+    return (right.id ?? 0).compareTo(left.id ?? 0);
+  }
+
+  final ordered = [...bids]..sort(newestFirst);
+  final seenAmounts = <num>{};
+  final publicRows = <AuctionBid>[];
+  num? highestPublic;
+  for (final bid in ordered) {
+    if (bid.isActive == false) continue;
+    final amount = bid.bid ?? 0;
+    if (!seenAmounts.add(amount)) continue;
+    publicRows.add(bid);
+    if (highestPublic == null || amount > highestPublic) {
+      highestPublic = amount;
+    }
+  }
+  final ceilings = ordered.where((bid) {
+    if (bid.isActive != false) return false;
+    final amount = bid.bid ?? 0;
+    return highestPublic == null || amount != highestPublic;
+  });
+  return [...publicRows, ...ceilings]..sort(newestFirst);
 }
