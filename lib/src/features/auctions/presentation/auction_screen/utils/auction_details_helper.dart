@@ -92,7 +92,7 @@ class AuctionDetailsHelper {
           highestBid = productBids.first;
         }
 
-        final isSold = lotWasSold(
+        final isSold = badgeLotWasSold(
           productIsSold: activeProduct.isSold,
           eventIsSold: isSoldOverride,
           hasWinner: winnerUserIdOverride != null,
@@ -106,10 +106,15 @@ class AuctionDetailsHelper {
         final didIBid = userParticipatedOverride ??
             productBids.any((b) => b.userId == currentUserId);
 
-        final kind = resolveLotResult(
-          isEnded: true,
-          isLive: false,
+        final kind = settledLotBadge(
           isSold: isSold,
+          explicitlyUnsold: lotExplicitlyUnsold(
+            productIsExpired: activeProduct.isExpired,
+            eventIsSold: isSoldOverride,
+            auctionClosed: isAuctionEnded ||
+                auction.isExpired == true ||
+                auction.isCanceled == true,
+          ),
           currentUserId: currentUserId,
           winnerUserId: winnerId,
           userParticipated: didIBid,

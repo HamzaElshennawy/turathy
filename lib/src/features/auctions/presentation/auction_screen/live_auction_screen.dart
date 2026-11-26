@@ -810,7 +810,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
       if (event != null) {
         // Record sale before any early return. A duplicate or a client already
         // on the next lot must still stamp isSold, without sound or navigation.
-        final endedProductId = event.endedProductId ?? auction.currentProductId;
+        final endedProductId = endedLotIdToStamp(
+          eventEndedProductId: event.endedProductId,
+          currentProductId: auction.currentProductId,
+          nextItemId: event.nextItem?.id,
+          productIdsInOrder:
+              auction.auctionProducts?.map((p) => p.id).toList() ?? const [],
+        );
         final apply = endedLotApply(
           endedProductId: event.endedProductId,
           lastEndedProductId: _lastEndedProductId,
@@ -819,23 +825,34 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           eventIsSold: event.isSold,
           hasWinner: event.winner != null,
         );
-        final sold = apply.sold;
+        final bool? sold = apply.sold;
+        final catalog = ref
+                .read(auctionDetailsProvider(widget.auctionId))
+                .valueOrNull ??
+            auction;
 
-        if (endedProductId != null) {
-          _productSold[endedProductId] = sold;
-          if (sold && event.winner != null) {
-            _productWinners[endedProductId] = event.winner!;
-          }
-          final products = auction.auctionProducts;
+        void stampClosedLot() {
+          if (endedProductId == null || sold == null) return;
+          final products = catalog.auctionProducts;
+          AuctionProducts? stamped;
           if (products != null) {
             for (final p in products) {
-              if (p.id == endedProductId) {
-                p.isSold = sold;
-                p.isExpired = !sold;
-              }
+              if (p.id != endedProductId) continue;
+              stamped = p;
+              break;
             }
           }
+          final keepSold = sold == true || stamped?.isSold == true;
+          _productSold[endedProductId] = keepSold;
+          if (keepSold && event.winner != null) {
+            _productWinners[endedProductId] = event.winner!;
+          }
+          if (stamped == null) return;
+          stamped.isSold = keepSold;
+          stamped.isExpired = !keepSold;
         }
+
+        stampClosedLot();
 
         if (!apply.runSideEffects) {
           _lastEndedProductId = event.endedProductId;
@@ -857,16 +874,18 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                 ) ??
                 false);
 
-        final kind = resolveLotResult(
-          isEnded: true,
-          isLive: false,
-          isSold: sold,
-          currentUserId: CachedVariables.userId,
-          winnerUserId: event.winner?.id,
-          userParticipated: didIParticipate,
-        );
+        final kind = sold == null
+            ? LotResultKind.none
+            : resolveLotResult(
+                isEnded: true,
+                isLive: false,
+                isSold: sold,
+                currentUserId: CachedVariables.userId,
+                winnerUserId: event.winner?.id,
+                userParticipated: didIParticipate,
+              );
 
-        if (sold && event.winner != null) {
+        if (sold == true && event.winner != null) {
           if (event.winner!.id == CachedVariables.userId) {
             _safePlay('sounds/win_bid_notification.wav');
             final lang = AppLocaleSync.uiLanguageCode;
@@ -915,6 +934,14 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
           // Do not paint the ended lot's «لم تُبع» on the next live item.
           _lotResultTimer?.cancel();
           setState(() {
+            stampClosedLot();
+            catalog.currentProduct = nextItem.displayName;
+            catalog.currentProductId = nextItem.id;
+            catalog.bidPrice = newBidPrice;
+            catalog.liveCurrentPrice = heldPriceForNextLot(newBidPrice);
+            catalog.minBidPrice = null;
+            if (newImageUrl != null) catalog.imageUrl = newImageUrl;
+            if (newExpiry != null) catalog.expiryDate = newExpiry;
             auction.currentProduct = nextItem.displayName;
             auction.currentProductId = nextItem.id;
             auction.bidPrice = newBidPrice;
@@ -1668,6 +1695,9 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
               onGoToLiveLot: _jumpToLiveLot,
               selectedProduct: _selectedProduct,
               knownHighestBid: _liveCurrentPrice,
+              lotSoldOverride: _selectedProduct?.id == null
+                  ? null
+                  : _productSold[_selectedProduct!.id],
               isOwner: auction.userId == CachedVariables.userId,
               winnerId: _winnerId,
               winnerName: _winnerName,
@@ -1897,11 +1927,13 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   LotResultKind _endedLotResult(AuctionProducts item) {
     final liveSold = item.id != null ? _productSold[item.id] : null;
     final liveWinner = item.id != null ? _productWinners[item.id] : null;
-    final isSold = lotWasSold(
-      productIsSold: item.isSold,
+    final decided = explicitLotSale(
       eventIsSold: liveSold,
-      hasWinner: liveWinner != null,
+      productIsSold: item.isSold,
+      productExpired: item.isExpired,
     );
+    if (decided == null) return LotResultKind.none;
+    final isSold = decided;
 
     int? winnerId = liveWinner?.id;
     if (winnerId == null && isSold) {

@@ -355,27 +355,31 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
         .listen((event) {
           if (!mounted) return;
           if (event.auction.id == auctionId) {
-            final endedId =
-                event.endedProductId ?? _currentAuction.currentProductId;
-            final sold = lotWasSold(
-              eventIsSold: event.isSold,
-              hasWinner: event.winner != null,
+            final endedId = endedLotIdToStamp(
+              eventEndedProductId: event.endedProductId,
+              currentProductId: _currentAuction.currentProductId,
+              nextItemId: event.nextItem?.id,
+              productIdsInOrder:
+                  _currentAuction.auctionProducts?.map((p) => p.id).toList() ??
+                  const [],
             );
+            final sold = event.isSold;
             setState(() {
-              _currentAuction.currentProduct = event.auction.currentProduct;
-              _currentAuction.currentProductId = event.auction.currentProductId;
-              _currentAuction.expiryDate = event.auction.expiryDate;
-              if (endedId != null) {
+              if (endedId != null && sold != null) {
                 final products = _currentAuction.auctionProducts;
                 if (products != null) {
                   for (final p in products) {
                     if (p.id == endedId) {
-                      p.isSold = sold;
-                      p.isExpired = !sold;
+                      final explicit = sold;
+                      p.isSold = explicit;
+                      p.isExpired = !explicit;
                     }
                   }
                 }
               }
+              _currentAuction.currentProduct = event.auction.currentProduct;
+              _currentAuction.currentProductId = event.auction.currentProductId;
+              _currentAuction.expiryDate = event.auction.expiryDate;
             });
           }
         });
@@ -1013,27 +1017,32 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
     IconData badgeIcon;
     Color badgeColor;
 
+    AuctionProducts? endedProduct;
     if (isProductEnded) {
-      AuctionProducts? product;
       final products = _currentAuction.auctionProducts;
       if (products != null) {
         for (final p in products) {
           if (p.id == productId) {
-            product = p;
+            endedProduct = p;
             break;
           }
         }
       }
-      final isSold = lotWasSold(productIsSold: product?.isSold);
-      if (!isSold) {
-        badgeText = AppStrings.unsold.tr();
-        badgeIcon = Icons.remove_circle_outline;
-        badgeColor = Colors.blueGrey;
-      } else {
-        badgeText = isHighest ? AppStrings.youWon.tr() : AppStrings.youLost.tr();
-        badgeIcon = isHighest ? Icons.emoji_events : Icons.close;
-        badgeColor = isHighest ? Colors.green.shade600 : Colors.red.shade600;
-      }
+    }
+    final decided = isProductEnded
+        ? explicitLotSale(
+            productIsSold: endedProduct?.isSold,
+            productExpired: endedProduct?.isExpired,
+          )
+        : null;
+    if (decided == false) {
+      badgeText = AppStrings.unsold.tr();
+      badgeIcon = Icons.remove_circle_outline;
+      badgeColor = Colors.blueGrey;
+    } else if (decided == true) {
+      badgeText = isHighest ? AppStrings.youWon.tr() : AppStrings.youLost.tr();
+      badgeIcon = isHighest ? Icons.emoji_events : Icons.close;
+      badgeColor = isHighest ? Colors.green.shade600 : Colors.red.shade600;
     } else {
       if (isHighest) {
         badgeText = AppStrings.highestBid.tr();
@@ -1361,7 +1370,12 @@ class _AuctionScreenState extends ConsumerState<AuctionScreen> {
                 if (currentIndex != -1 &&
                     thisIndex != -1 &&
                     thisIndex < currentIndex) {
-                  final isSold = lotWasSold(productIsSold: product.isSold);
+                  final decided = explicitLotSale(
+                    productIsSold: product.isSold,
+                    productExpired: product.isExpired,
+                  );
+                  if (decided == null) return const SizedBox.shrink();
+                  final isSold = decided;
                   if (!isSold) {
                     return Container(
                       width: double.infinity,

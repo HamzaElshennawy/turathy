@@ -151,7 +151,7 @@ void main() {
           resolveLotResult(
             isEnded: true,
             isLive: false,
-            isSold: apply.sold,
+            isSold: apply.sold == true,
             userParticipated: false,
           ),
           thisLotHasEnded: true,
@@ -186,29 +186,86 @@ void main() {
       expect(apply.runSideEffects, isTrue);
     });
 
-    test('bids alone do not mean the lot sold', () {
+    test('a missing isSold flag does not become unsold or clear a sale', () {
       final apply = endedLotApply(
         endedProductId: 11,
         lastEndedProductId: null,
         nextItemId: 12,
-        currentProductId: 11,
+        currentProductId: 12,
         eventIsSold: null,
         hasWinner: false,
       );
-      expect(apply.sold, isFalse);
+      expect(apply.sold, isNull);
+      expect(apply.runSideEffects, isFalse);
       expect(
-        visibleLotResult(
-          resolveLotResult(
-            isEnded: true,
-            isLive: false,
-            isSold: apply.sold,
-            currentUserId: 10,
-            winnerUserId: 10,
-            userParticipated: true,
-          ),
-          thisLotHasEnded: true,
+        explicitLotSale(eventIsSold: apply.sold, productIsSold: false),
+        isNull,
+      );
+      expect(
+        explicitLotSale(eventIsSold: true, productIsSold: false),
+        isTrue,
+      );
+      expect(
+        explicitLotSale(productIsSold: true, productExpired: false),
+        isTrue,
+      );
+      expect(
+        explicitLotSale(productExpired: true, productIsSold: false),
+        isFalse,
+      );
+    });
+  });
+
+  group('sold badge waits for an explicit close', () {
+    test('moving the live pointer with an empty sale flag is not unsold', () {
+      final stampId = endedLotIdToStamp(
+        eventEndedProductId: null,
+        currentProductId: 12,
+        nextItemId: 12,
+        productIdsInOrder: [11, 12],
+      );
+      expect(stampId, 11);
+      expect(explicitLotSale(productIsSold: null, productExpired: null), isNull);
+      expect(
+        settledLotBadge(
+          isSold: false,
+          explicitlyUnsold: false,
+          userParticipated: false,
+        ),
+        LotResultKind.none,
+      );
+    });
+
+    test('an ended event with isSold true is sold', () {
+      expect(
+        settledLotBadge(
+          isSold: badgeLotWasSold(eventIsSold: true, productIsSold: false),
+          explicitlyUnsold: lotExplicitlyUnsold(eventIsSold: true),
+          userParticipated: false,
+        ),
+        LotResultKind.sold,
+      );
+    });
+
+    test('an ended event with isSold false is unsold', () {
+      expect(
+        settledLotBadge(
+          isSold: badgeLotWasSold(eventIsSold: false),
+          explicitlyUnsold: lotExplicitlyUnsold(eventIsSold: false),
+          userParticipated: true,
         ),
         LotResultKind.unsold,
+      );
+    });
+
+    test('a sold product beats a stale session false', () {
+      expect(
+        explicitLotSale(eventIsSold: false, productIsSold: true),
+        isTrue,
+      );
+      expect(
+        badgeLotWasSold(eventIsSold: false, productIsSold: true),
+        isTrue,
       );
     });
   });

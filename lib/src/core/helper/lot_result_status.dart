@@ -22,7 +22,9 @@ enum LotResultKind {
 class EndedLotApply {
   const EndedLotApply({required this.sold, required this.runSideEffects});
 
-  final bool sold;
+  /// Server `isSold` only. Null means the payload did not decide, so the
+  /// room must not write «لم يبع» or clear a sale already recorded.
+  final bool? sold;
   final bool runSideEffects;
 }
 
@@ -39,10 +41,27 @@ EndedLotApply endedLotApply({
   final alreadyOnNext = nextItemId != null &&
       nextItemId == currentProductId &&
       endedProductId != currentProductId;
+  // A winner object without isSold is not a sale decision.
+  final winnerWithoutFlag = hasWinner && eventIsSold == null;
   return EndedLotApply(
-    sold: lotWasSold(eventIsSold: eventIsSold, hasWinner: hasWinner),
+    sold: winnerWithoutFlag ? null : eventIsSold,
     runSideEffects: !duplicate && !alreadyOnNext,
   );
+}
+
+/// Sale that is safe to paint on a lot which is no longer open.
+///
+/// Null means neither the live event nor the product row has an explicit
+/// decision yet. A missing flag must not become «لم يبع».
+bool? explicitLotSale({
+  bool? eventIsSold,
+  bool? productIsSold,
+  bool? productExpired,
+}) {
+  if (productIsSold == true) return true;
+  if (eventIsSold != null) return eventIsSold;
+  if (productExpired == true) return false;
+  return null;
 }
 
 /// Resolves sale from explicit flags. [hasWinner] is a fallback for
@@ -56,6 +75,68 @@ bool lotWasSold({
   if (eventIsSold != null) return eventIsSold;
   if (productIsSold != null) return productIsSold;
   return hasWinner;
+}
+
+/// A product the API already marked sold stays sold.
+/// A stale session `false` must not hide that flag.
+bool badgeLotWasSold({
+  bool? productIsSold,
+  bool? eventIsSold,
+  bool hasWinner = false,
+}) {
+  if (productIsSold == true) return true;
+  return lotWasSold(
+    productIsSold: productIsSold,
+    eventIsSold: eventIsSold,
+    hasWinner: hasWinner,
+  );
+}
+
+/// «لم يُبع» needs a server close. Sitting before the live lot is not enough.
+bool lotExplicitlyUnsold({
+  bool? productIsExpired,
+  bool? eventIsSold,
+  bool auctionClosed = false,
+}) {
+  if (eventIsSold == false) return true;
+  if (productIsExpired == true) return true;
+  return auctionClosed;
+}
+
+/// Sold only when [isSold]. Unsold only when [explicitlyUnsold].
+/// Otherwise the lot has no result badge yet.
+LotResultKind settledLotBadge({
+  required bool isSold,
+  required bool explicitlyUnsold,
+  int? currentUserId,
+  int? winnerUserId,
+  required bool userParticipated,
+}) {
+  if (!isSold && !explicitlyUnsold) return LotResultKind.none;
+  return resolveLotResult(
+    isEnded: true,
+    isLive: false,
+    isSold: isSold,
+    currentUserId: currentUserId,
+    winnerUserId: winnerUserId,
+    userParticipated: userParticipated,
+  );
+}
+
+/// Stamp the lot that just closed, never the lot that is about to open.
+/// When the pointer already moved, the previous id is the one before [nextItemId].
+int? endedLotIdToStamp({
+  required int? eventEndedProductId,
+  required int? currentProductId,
+  required int? nextItemId,
+  required List<int?> productIdsInOrder,
+}) {
+  if (eventEndedProductId != null) return eventEndedProductId;
+  if (nextItemId != null && currentProductId == nextItemId) {
+    final nextIndex = productIdsInOrder.indexOf(nextItemId);
+    if (nextIndex > 0) return productIdsInOrder[nextIndex - 1];
+  }
+  return currentProductId;
 }
 
 /// Outcome for badges / the non-blocking end-of-lot banner.

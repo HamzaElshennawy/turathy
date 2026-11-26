@@ -156,6 +156,10 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   final bool bidPending;
   final num? knownHighestBid;
 
+  /// Live `auctionItemEnded.isSold` for [selectedProduct]. Null means the
+  /// server has not decided yet, so the card must not fall back to «لم يبع».
+  final bool? lotSoldOverride;
+
   const AuctionBiddingControlsWidget({
     super.key,
     required this.auction,
@@ -174,6 +178,7 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.suppressSwipe = false,
     this.bidPending = false,
     this.knownHighestBid,
+    this.lotSoldOverride,
   });
 
   @override
@@ -844,11 +849,17 @@ class _AuctionBiddingControlsWidgetState
                           ?.where((b) => b.productId == productId)
                           .toList() ??
                       [];
-                  final isSold = lotWasSold(
+                  final decided = explicitLotSale(
+                    eventIsSold: widget.lotSoldOverride,
                     productIsSold: widget.selectedProduct?.isSold,
+                    productExpired: widget.selectedProduct?.isExpired,
                   );
 
-                  if (!isSold) {
+                  if (decided == null) {
+                    return _goToLiveLotControls();
+                  }
+
+                  if (!decided) {
                     final stillLiveOpen = isCurrentLiveLot(
                           productId: widget.selectedProduct?.id,
                           productName: widget.selectedProduct?.displayName,
@@ -1383,10 +1394,12 @@ class _AuctionBiddingControlsWidgetState
   }
 
   Widget _buildResultContainer(num currentPrice, List<OrderModel> orders) {
-    final isSold = lotWasSold(
+    final decided = explicitLotSale(
+      eventIsSold: widget.lotSoldOverride,
       productIsSold: widget.selectedProduct?.isSold,
-      hasWinner: widget.winnerId != null,
+      productExpired: widget.selectedProduct?.isExpired,
     );
+    final isSold = decided == true;
 
     final lotStillOpen = !isCurrentLiveLotClosedByServer(
       isAuctionEnded: widget.isAuctionEnded,
@@ -1403,7 +1416,7 @@ class _AuctionBiddingControlsWidgetState
     );
 
     if (!isSold) {
-      if (lotStillOpen && viewingCurrentLive) {
+      if (decided == null || (lotStillOpen && viewingCurrentLive)) {
         return const SizedBox.shrink();
       }
       return const LotResultBanner(kind: LotResultKind.unsold);
