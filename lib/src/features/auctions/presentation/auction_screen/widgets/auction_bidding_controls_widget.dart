@@ -160,6 +160,12 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
   /// server has not decided yet, so the card must not fall back to «لم يبع».
   final bool? lotSoldOverride;
 
+  /// Winner recorded for [selectedProduct] only. The auction-ended winner
+  /// must not be painted on a different lot.
+  final int? lotWinnerUserId;
+  final num? lotWinnerPrice;
+  final int? endedLotId;
+
   const AuctionBiddingControlsWidget({
     super.key,
     required this.auction,
@@ -179,6 +185,9 @@ class AuctionBiddingControlsWidget extends ConsumerStatefulWidget {
     this.bidPending = false,
     this.knownHighestBid,
     this.lotSoldOverride,
+    this.lotWinnerUserId,
+    this.lotWinnerPrice,
+    this.endedLotId,
   });
 
   @override
@@ -545,9 +554,24 @@ class _AuctionBiddingControlsWidgetState
       }
     }
 
-    if (widget.isAuctionEnded && widget.finalPrice != null) {
-      currentPrice = widget.finalPrice!;
-    }
+    final selectedId = widget.selectedProduct?.id;
+    final closingLot = selectedId != null &&
+        widget.endedLotId != null &&
+        selectedId == widget.endedLotId;
+    // After the auction ends, a different lot keeps its own bid. The last
+    // live price and the hammer belong to the lot that just closed.
+    final priceForHeader = widget.isAuctionEnded &&
+            selectedId != null &&
+            !closingLot
+        ? (latestBid?.bid ?? openingPrice)
+        : currentPrice;
+    currentPrice = headerPriceForSelectedLot(
+      lotPrice: priceForHeader,
+      auctionEnded: widget.isAuctionEnded,
+      auctionFinalPrice: widget.finalPrice,
+      selectedLotId: selectedId,
+      endedLotId: widget.endedLotId,
+    );
 
     // Determine if the auction has truly ended based on explicit flags.
     // The parent widget (LiveAuctionScreen) sets isAuctionEnded via socket events.
@@ -845,10 +869,29 @@ class _AuctionBiddingControlsWidgetState
                 final productId = widget.selectedProduct?.id;
 
                 if (productId != null) {
-                  final productBids = widget.auction.auctionBids
-                          ?.where((b) => b.productId == productId)
-                          .toList() ??
-                      [];
+                  final lead = leadingLotBid(
+                    [
+                      for (final bid
+                          in widget.selectedProduct?.bids ??
+                              const <AuctionBid>[])
+                        LotBidRow(
+                          id: bid.id,
+                          productId: bid.productId ?? productId,
+                          userId: bid.userId,
+                          amount: bid.bid,
+                        ),
+                      for (final bid
+                          in widget.auction.auctionBids ??
+                              const <AuctionBid>[])
+                        LotBidRow(
+                          id: bid.id,
+                          productId: bid.productId,
+                          userId: bid.userId,
+                          amount: bid.bid,
+                        ),
+                    ],
+                    productId,
+                  );
                   final decided = explicitLotSale(
                     eventIsSold: widget.lotSoldOverride,
                     productIsSold: widget.selectedProduct?.isSold,
@@ -885,15 +928,9 @@ class _AuctionBiddingControlsWidgetState
                     );
                   }
 
-                  if (productBids.isNotEmpty) {
-                    productBids.sort(
-                      (a, b) => (b.bid ?? 0).compareTo(a.bid ?? 0),
-                    );
-                    final highestBid = productBids.first;
-
-                    if (highestBid.userId == currentUserId) {
-                      // User won this product! Show upload receipt
-                      final wonPrice = highestBid.bid ?? 0;
+                  final winnerId = widget.lotWinnerUserId ?? lead.userId;
+                  final wonPrice = widget.lotWinnerPrice ?? lead.amount ?? 0;
+                  if (winnerId != null && winnerId == currentUserId) {
 
                       final existingOrder = orders
                           .where(
@@ -1037,7 +1074,6 @@ class _AuctionBiddingControlsWidgetState
                           ),
                         ],
                       );
-                    }
                   }
                 }
 
@@ -1422,7 +1458,13 @@ class _AuctionBiddingControlsWidgetState
       return const LotResultBanner(kind: LotResultKind.unsold);
     }
 
-    if (widget.isAuctionEnded && widget.winnerId != null) {
+    final selectedId = widget.selectedProduct?.id;
+    final globalWinnerIsThisLot = widget.endedLotId == null ||
+        selectedId == null ||
+        selectedId == widget.endedLotId;
+    if (widget.isAuctionEnded &&
+        widget.winnerId != null &&
+        globalWinnerIsThisLot) {
       final isWinner = widget.winnerId == CachedVariables.userId;
       final finalPrice = widget.finalPrice ?? currentPrice;
 

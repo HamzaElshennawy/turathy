@@ -106,6 +106,7 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
   // Tracks winners per product from live auctionItemEnded events.
   // Key: productId, Value: winner SocketUser
   final Map<int, SocketUser> _productWinners = {};
+  int? _auctionWinnerLotId;
 
   // Explicit isSold from auctionItemEnded / product payload. Bids never imply sold.
   final Map<int, bool> _productSold = {};
@@ -1010,8 +1011,24 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
         resetNewBidStream(ref);
 
         final endedLotId = auction.currentProductId;
+        if (endedLotId != null && event.winnerId != null) {
+          _productWinners[endedLotId] = SocketUser(
+            id: event.winnerId!,
+            name: event.winnerName,
+          );
+          _productSold[endedLotId] = true;
+          final products = auction.auctionProducts;
+          if (products != null) {
+            for (final lot in products) {
+              if (lot.id != endedLotId || lot.isSold == true) continue;
+              lot.isSold = true;
+              lot.isExpired = false;
+            }
+          }
+        }
         setState(() {
           _isAuctionEnded = true;
+          _auctionWinnerLotId = endedLotId;
           _winnerId = event.winnerId;
           _winnerName = event.winnerName;
           _finalPrice = event.finalBidAmount;
@@ -1683,15 +1700,25 @@ class _LiveAuctionScreenState extends ConsumerState<LiveAuctionScreen>
                       _sellerBlockedLots.contains(_selectedProduct!.id)),
               expiryDate: auction.expiryDate,
               isAuctionEnded: _isAuctionEnded,
-              isViewOnly:
-                  !auction.isPreAuction &&
-                  _selectedProduct != null &&
-                  !isCurrentLiveLot(
-                    productId: _selectedProduct?.id,
-                    productName: _selectedProduct?.displayName,
-                    currentProductId: auction.currentProductId,
-                    currentProductName: auction.currentProduct,
-                  ),
+              isViewOnly: selectedLotIsViewOnly(
+                isPreAuction: auction.isPreAuction,
+                hasSelectedProduct: _selectedProduct != null,
+                auctionEnded: _isAuctionEnded,
+                selectedIsCurrentLive: isCurrentLiveLot(
+                  productId: _selectedProduct?.id,
+                  productName: _selectedProduct?.displayName,
+                  currentProductId: auction.currentProductId,
+                  currentProductName: auction.currentProduct,
+                ),
+              ),
+              endedLotId: _auctionWinnerLotId,
+              lotWinnerUserId: _selectedProduct?.id == null
+                  ? null
+                  : _productWinners[_selectedProduct!.id]?.id,
+              lotWinnerPrice: _selectedProduct?.id != null &&
+                      _selectedProduct!.id == _auctionWinnerLotId
+                  ? _finalPrice
+                  : null,
               onGoToLiveLot: _jumpToLiveLot,
               selectedProduct: _selectedProduct,
               knownHighestBid: _liveCurrentPrice,

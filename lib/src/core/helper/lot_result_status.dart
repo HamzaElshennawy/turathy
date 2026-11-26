@@ -300,6 +300,79 @@ bool isCurrentLiveLot({
   return !hasPointer;
 }
 
+class LotBidRow {
+  const LotBidRow({this.id, this.productId, this.userId, this.amount});
+
+  final int? id;
+  final int? productId;
+  final int? userId;
+  final num? amount;
+}
+
+class LotPriceLead {
+  const LotPriceLead({this.userId, this.amount});
+
+  final int? userId;
+  final num? amount;
+}
+
+/// Highest bid on one lot. Rows from the live product list and the
+/// auction list are combined; a later higher amount wins.
+LotPriceLead leadingLotBid(Iterable<LotBidRow> rows, int productId) {
+  final bestById = <int, LotBidRow>{};
+  final withoutId = <LotBidRow>[];
+  for (final row in rows) {
+    if (row.productId != null && row.productId != productId) continue;
+    final id = row.id;
+    if (id == null) {
+      withoutId.add(row);
+      continue;
+    }
+    final previous = bestById[id];
+    if (previous == null || (row.amount ?? 0) >= (previous.amount ?? 0)) {
+      bestById[id] = row;
+    }
+  }
+  LotBidRow? best;
+  for (final row in [...bestById.values, ...withoutId]) {
+    if (best == null || (row.amount ?? 0) > (best.amount ?? 0)) {
+      best = row;
+    }
+  }
+  return LotPriceLead(userId: best?.userId, amount: best?.amount);
+}
+
+/// The large price is this lot's own price. The auction hammer is shown
+/// only on the lot that just closed.
+num headerPriceForSelectedLot({
+  required num lotPrice,
+  required bool auctionEnded,
+  required num? auctionFinalPrice,
+  required int? selectedLotId,
+  required int? endedLotId,
+}) {
+  if (auctionEnded &&
+      auctionFinalPrice != null &&
+      selectedLotId != null &&
+      endedLotId != null &&
+      selectedLotId == endedLotId) {
+    return auctionFinalPrice;
+  }
+  return lotPrice;
+}
+
+/// After the auction closes, every selected lot is view-only.
+/// A missing live pointer must not keep the last winner on the other lots.
+bool selectedLotIsViewOnly({
+  required bool isPreAuction,
+  required bool hasSelectedProduct,
+  required bool auctionEnded,
+  required bool selectedIsCurrentLive,
+}) {
+  if (isPreAuction || !hasSelectedProduct) return false;
+  return auctionEnded || !selectedIsCurrentLive;
+}
+
 bool isUpcomingLiveLot({
   required List<int?> productIdsInOrder,
   required int? selectedProductId,

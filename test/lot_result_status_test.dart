@@ -309,6 +309,75 @@ void main() {
     });
   });
 
+  group('lot winner stays on its own lot', () {
+    test('a later session bid beats the stale auction row', () {
+      final lead = leadingLotBid(
+        const [
+          LotBidRow(id: 1, productId: 2, userId: 7, amount: 20),
+          LotBidRow(id: 2, productId: 2, userId: 9, amount: 30),
+          LotBidRow(id: 3, productId: 8, userId: 4, amount: 500),
+        ],
+        2,
+      );
+      expect(lead.userId, 9);
+      expect(lead.amount, 30);
+    });
+
+    test('a closed auction does not keep another lot on the last winner panel', () {
+      expect(
+        selectedLotIsViewOnly(
+          isPreAuction: false,
+          hasSelectedProduct: true,
+          auctionEnded: true,
+          selectedIsCurrentLive: true,
+        ),
+        isTrue,
+      );
+      expect(
+        selectedLotIsViewOnly(
+          isPreAuction: false,
+          hasSelectedProduct: true,
+          auctionEnded: false,
+          selectedIsCurrentLive: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('the large price stays on the selected lot after the auction ends', () {
+      expect(
+        headerPriceForSelectedLot(
+          lotPrice: 20,
+          auctionEnded: true,
+          auctionFinalPrice: 500,
+          selectedLotId: 2,
+          endedLotId: 8,
+        ),
+        20,
+      );
+      expect(
+        headerPriceForSelectedLot(
+          lotPrice: 20,
+          auctionEnded: true,
+          auctionFinalPrice: 500,
+          selectedLotId: 8,
+          endedLotId: 8,
+        ),
+        500,
+      );
+      expect(
+        headerPriceForSelectedLot(
+          lotPrice: 30,
+          auctionEnded: false,
+          auctionFinalPrice: 500,
+          selectedLotId: 2,
+          endedLotId: 8,
+        ),
+        30,
+      );
+    });
+  });
+
   group('live lot pointer helpers', () {
     test('isCurrentLiveLot matches product id', () {
       expect(
